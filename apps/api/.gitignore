@@ -1,0 +1,20 @@
+# Local environment file with real credentials.
+.env
+
+# Local SQLite database created by `alembic upgrade head`.
+data/*
+!data/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+
+# Virtual environments and tool caches.
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+*.egg-info/
