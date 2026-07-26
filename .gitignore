@@ -29,9 +29,18 @@ build/
 
 # --- Node / frontend ---
 node_modules/
+.pnpm-store/
 
 # --- Editors & OS ---
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# --- Visual Studio / MSBuild leftovers (from PR #3) ---
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
