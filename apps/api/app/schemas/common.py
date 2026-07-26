@@ -25,6 +25,17 @@ class HealthResponse(APIModel):
     database: str = Field(examples=["connected"])
 
 
+class DashboardSummary(APIModel):
+    """Real counters shown on the dashboard (no analytics, no trends)."""
+
+    competitors_count: int = Field(ge=0)
+    reels_count: int = Field(ge=0)
+    ideas_count: int = Field(ge=0)
+    scripts_count: int = Field(ge=0)
+    ready_count: int = Field(ge=0)
+    active_jobs_count: int = Field(ge=0)
+
+
 class ErrorDetail(APIModel):
     """Body of the unified error envelope."""
 

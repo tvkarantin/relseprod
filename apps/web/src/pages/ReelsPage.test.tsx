@@ -1,0 +1,193 @@
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { ReelsPage } from './ReelsPage'
+
+import { ApiError } from '@/api/client'
+import * as competitorsApi from '@/api/competitors'
+import * as reelsApi from '@/api/reels'
+import { makeCompetitor, makeReel, page } from '@/test/fixtures'
+import { renderWithProviders } from '@/test/utils'
+
+vi.mock('@/api/reels')
+vi.mock('@/api/competitors')
+
+const mockedReels = vi.mocked(reelsApi)
+const mockedCompetitors = vi.mocked(competitorsApi)
+
+beforeEach(() => {
+  mockedCompetitors.fetchCompetitors.mockResolvedValue([
+    makeCompetitor({ id: 1, instagramUsername: 'natgeo' }),
+    makeCompetitor({ id: 2, instagramUsername: 'nasa' }),
+  ])
+  mockedReels.fetchReels.mockResolvedValue(page([]))
+})
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('ReelsPage', () => {
+  it('shows a loading skeleton before data arrives', () => {
+    mockedReels.fetchReels.mockReturnValue(new Promise(() => {}))
+
+    const { container } = renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(container.querySelectorAll('.skeleton-card').length).toBeGreaterThan(0)
+  })
+
+  it('shows the empty state with a link to competitors', async () => {
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByText('Библиотека пуста')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Перейти к конкурентам/ })).toBeInTheDocument()
+  })
+
+  it('renders reel cards with real metrics', async () => {
+    mockedReels.fetchReels.mockResolvedValue(
+      page([
+        makeReel({
+          id: 10,
+          caption: 'Как снимать рилсы',
+          viewsCount: 1_200_000,
+          likesCount: 5000,
+          commentsCount: 120,
+        }),
+      ]),
+    )
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByText('Как снимать рилсы')).toBeInTheDocument()
+    expect(screen.getByText('@example')).toBeInTheDocument()
+    expect(screen.getByTitle('Просмотры')).toHaveTextContent('1,2 млн')
+    expect(screen.getByTitle('Лайки')).toHaveTextContent('5 тыс.')
+  })
+
+  it('renders an em dash instead of a fake zero for unknown metrics', async () => {
+    mockedReels.fetchReels.mockResolvedValue(
+      page([makeReel({ viewsCount: null, likesCount: null, commentsCount: null })]),
+    )
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByTitle('Просмотры')).toHaveTextContent('—')
+    expect(screen.getByTitle('Лайки')).toHaveTextContent('—')
+  })
+
+  it('links each card to its details page', async () => {
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel({ id: 42 })]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    const link = await screen.findByRole('link', { name: /Открыть рилс/ })
+    expect(link).toHaveAttribute('href', '/reels/42')
+  })
+
+  it('opens the original on Instagram in a safe new tab', async () => {
+    mockedReels.fetchReels.mockResolvedValue(
+      page([makeReel({ originalUrl: 'https://www.instagram.com/reel/ABC123/' })]),
+    )
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    const link = await screen.findByRole('link', { name: /Открыть оригинал/ })
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('debounces the search and resets paging', async () => {
+    const user = userEvent.setup()
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels?page=3' })
+    await screen.findByText('Как снимать рилсы')
+
+    await user.type(screen.getByLabelText('Поиск по рилсам'), 'маркетинг')
+
+    await waitFor(
+      () =>
+        expect(mockedReels.fetchReels).toHaveBeenLastCalledWith(
+          expect.objectContaining({ search: 'маркетинг', page: 1 }),
+          expect.anything(),
+        ),
+      { timeout: 3000 },
+    )
+  })
+
+  it('shows a dedicated empty state when the search finds nothing', async () => {
+    mockedReels.fetchReels.mockResolvedValue(page([]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels?search=ничего' })
+
+    expect(await screen.findByText('Ничего не найдено')).toBeInTheDocument()
+  })
+
+  it('filters by competitor and resets the page', async () => {
+    const user = userEvent.setup()
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels?page=2' })
+    await screen.findByText('Как снимать рилсы')
+
+    await user.selectOptions(screen.getByLabelText('Фильтр по конкуренту'), '2')
+
+    await waitFor(() =>
+      expect(mockedReels.fetchReels).toHaveBeenLastCalledWith(
+        expect.objectContaining({ competitorId: 2, page: 1 }),
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('reads filters from the URL on first render', async () => {
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels?search=test&competitor_id=2&page=2' })
+
+    await waitFor(() =>
+      expect(mockedReels.fetchReels).toHaveBeenCalledWith(
+        { competitorId: 2, search: 'test', page: 2, limit: 20 },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('paginates and disables the boundaries', async () => {
+    const user = userEvent.setup()
+    mockedReels.fetchReels.mockResolvedValue(
+      page([makeReel()], { page: 1, total: 45, pages: 3 }),
+    )
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+    await screen.findByText('Как снимать рилсы')
+
+    expect(screen.getByRole('button', { name: /Назад/ })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Страница 2' }))
+
+    await waitFor(() =>
+      expect(mockedReels.fetchReels).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('shows an error state with retry', async () => {
+    mockedReels.fetchReels.mockRejectedValueOnce(
+      new ApiError('Ошибка сервера', { code: 'INTERNAL_ERROR', status: 500 }),
+    )
+    const user = userEvent.setup()
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByText(/Не удалось загрузить данные/)).toBeInTheDocument()
+
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+
+    expect(await screen.findByText('Как снимать рилсы')).toBeInTheDocument()
+  })
+})

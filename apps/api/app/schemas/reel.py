@@ -8,7 +8,8 @@ from typing import Any
 from pydantic import Field
 
 from app.schemas.base import APIModel
-from app.schemas.reel_content import ReelContentRead
+from app.schemas.competitor import CompetitorBrief
+from app.schemas.reel_content import ReelContentRead, ReelContentView
 
 
 class ReelBase(APIModel):
@@ -35,7 +36,7 @@ class ReelCreate(ReelBase):
 
 
 class ReelRead(ReelBase):
-    """Reel representation returned by the API.
+    """Reel representation used internally and by the importer tests.
 
     ``raw_data`` is deliberately not exposed: it holds the untrusted upstream
     payload and is only useful for debugging.
@@ -48,8 +49,26 @@ class ReelRead(ReelBase):
     content: ReelContentRead | None = None
 
 
+class ReelView(ReelBase):
+    """Reel as returned by the library endpoints."""
+
+    id: int
+    competitor: CompetitorBrief
+    content: ReelContentView
+
+
+class ReelPage(APIModel):
+    """One page of the reels library."""
+
+    items: list[ReelView]
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1)
+    total: int = Field(ge=0)
+    pages: int = Field(ge=0)
+
+
 class ReelList(APIModel):
-    """Paginated collection of reels."""
+    """Simple collection of reels (kept for internal use)."""
 
     items: list[ReelRead]
     total: int = Field(ge=0)

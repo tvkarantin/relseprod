@@ -62,6 +62,27 @@ def enable_sqlite_foreign_keys(engine: Engine) -> None:
             cursor.close()
 
 
+def register_unicode_lower(engine: Engine) -> None:
+    """Override SQLite's ``lower()`` with a Unicode-aware implementation.
+
+    The bundled ``lower()`` only folds ASCII, so a search for "МАРКЕТИНГ" would
+    never match "Маркетинг". Registering Python's ``str.lower`` makes
+    case-insensitive search work for Cyrillic and every other alphabet.
+    """
+
+    @event.listens_for(engine, "connect")
+    def _register(dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry) -> None:
+        create_function = getattr(dbapi_connection, "create_function", None)
+        if create_function is None:  # pragma: no cover - non-sqlite driver
+            return
+        create_function("lower", 1, _unicode_lower, deterministic=True)
+
+
+def _unicode_lower(value: object) -> object:
+    """SQLite scalar function: lowercase a text value, pass anything else through."""
+    return value.lower() if isinstance(value, str) else value
+
+
 def create_database_engine(settings: Settings | None = None) -> Engine:
     """Create a SQLAlchemy engine configured for the given settings."""
     settings = settings or get_settings()
@@ -79,6 +100,7 @@ def create_engine_for_url(url: str) -> Engine:
     )
     if url.startswith("sqlite"):
         enable_sqlite_foreign_keys(engine)
+        register_unicode_lower(engine)
     return engine
 
 

@@ -7,6 +7,7 @@ from app.database.session import (
     get_db,
     get_engine,
     get_session_factory,
+    register_unicode_lower,
     session_scope,
 )
 
@@ -19,6 +20,7 @@ __all__ = [
     "get_db",
     "get_engine",
     "get_session_factory",
+    "register_unicode_lower",
     "session_scope",
     "utcnow",
 ]

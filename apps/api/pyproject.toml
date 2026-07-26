@@ -75,6 +75,8 @@ ignore = [
 "app/api/v1/router.py" = ["TC002", "TC003"]
 "app/api/v1/competitors.py" = ["TC002", "TC003"]
 "app/api/v1/jobs.py" = ["TC002", "TC003"]
+"app/api/v1/reels.py" = ["TC001", "TC002", "TC003"]
+"app/api/v1/dashboard.py" = ["TC002", "TC003"]
 "app/main.py" = ["TC002", "TC003"]
 "app/database/session.py" = ["TC002", "TC003"]
 # SQLAlchemy resolves `Mapped[...]` annotations at mapper configuration time,

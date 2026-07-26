@@ -56,6 +56,14 @@ class CompetitorRead(APIModel):
     updated_at: datetime
 
 
+class CompetitorBrief(APIModel):
+    """Compact competitor used inside reel payloads."""
+
+    id: int
+    instagram_username: str = Field(max_length=30)
+    profile_url: str = Field(max_length=PROFILE_MAX_LENGTH)
+
+
 class CompetitorList(APIModel):
     """Paginated collection of competitors."""
 

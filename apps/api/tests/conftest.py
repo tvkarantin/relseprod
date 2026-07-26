@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.deps import DbSession
 from app.core.config import API_DIR, Settings
 from app.database.base import Base
-from app.database.session import enable_sqlite_foreign_keys
+from app.database.session import enable_sqlite_foreign_keys, register_unicode_lower
 from app.main import create_app
 from app.models import Competitor, ParsingJob, Reel, ReelContent
 
@@ -74,6 +74,7 @@ def engine(settings: Settings) -> Generator[Engine, None, None]:
         future=True,
     )
     enable_sqlite_foreign_keys(test_engine)
+    register_unicode_lower(test_engine)
 
     alembic_cfg = Config(str(API_DIR / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(API_DIR / "migrations"))

@@ -111,6 +111,15 @@ class ParsingJobRepository(BaseRepository[ParsingJob]):
         )
         return list(self.db.scalars(stmt))
 
+    def count_active(self) -> int:
+        """Number of queued or running jobs across all competitors."""
+        stmt = (
+            select(func.count())
+            .select_from(ParsingJob)
+            .where(ParsingJob.status.in_(ParsingJobStatus.active_statuses()))
+        )
+        return self.db.scalar(stmt) or 0
+
     def count_for_competitor(self, competitor_id: int) -> int:
         """Number of jobs stored for a competitor."""
         stmt = (
