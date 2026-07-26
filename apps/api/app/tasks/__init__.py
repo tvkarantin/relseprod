@@ -1,5 +1,9 @@
 """Background tasks.
 
-Intentionally empty at this stage: parsing jobs are executed synchronously and
-a real task runner will be introduced together with the Apify integration.
+The MVP runs tasks in-process via FastAPI ``BackgroundTasks`` — no Docker,
+Redis, Celery or a separate worker. See ``README.md`` for the trade-offs.
 """
+
+from app.tasks.parse_competitor import parse_competitor_job
+
+__all__ = ["parse_competitor_job"]

@@ -26,6 +26,13 @@ class ParsingJobRead(APIModel):
     created_at: datetime
 
 
+class ParsingJobStart(APIModel):
+    """Response returned when a job is queued (``202 Accepted``)."""
+
+    job_id: int = Field(gt=0)
+    status: ParsingJobStatus
+
+
 class ParsingJobList(APIModel):
     """Collection of parsing jobs."""
 

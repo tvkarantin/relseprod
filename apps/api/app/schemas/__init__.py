@@ -8,7 +8,7 @@ from app.schemas.competitor import (
     CompetitorRead,
     CompetitorUpdate,
 )
-from app.schemas.parsing_job import ParsingJobList, ParsingJobRead
+from app.schemas.parsing_job import ParsingJobList, ParsingJobRead, ParsingJobStart
 from app.schemas.reel import ReelCreate, ReelList, ReelRead
 from app.schemas.reel_content import ReelContentRead, ReelContentUpdate
 
@@ -23,6 +23,7 @@ __all__ = [
     "HealthResponse",
     "ParsingJobList",
     "ParsingJobRead",
+    "ParsingJobStart",
     "ReelContentRead",
     "ReelContentUpdate",
     "ReelCreate",

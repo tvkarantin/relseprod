@@ -1,8 +1,4 @@
-"""API v1 router.
-
-Only infrastructure endpoints exist at this stage. Feature routers (competitors,
-reels, parsing jobs) will be included here in the next stage.
-"""
+"""API v1 router: infrastructure endpoints plus the feature routers."""
 
 from __future__ import annotations
 
@@ -13,9 +9,12 @@ from sqlalchemy.orm import Session
 
 from app import __version__
 from app.api.deps import DbSession, check_database
+from app.api.v1 import competitors, jobs
 from app.schemas.common import HealthResponse, ServiceInfo
 
 api_router = APIRouter()
+api_router.include_router(competitors.router)
+api_router.include_router(jobs.router)
 
 
 @api_router.get(

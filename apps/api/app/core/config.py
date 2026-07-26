@@ -47,6 +47,8 @@ class Settings(BaseSettings):
 
     apify_api_token: str = ""
     apify_actor_id: str = ""
+    apify_actor_input_style: str = "auto"
+    apify_base_url: str = "https://api.apify.com/v2"
     apify_results_limit: int = Field(default=20, ge=1, le=1000)
     apify_timeout_seconds: int = Field(default=300, ge=1)
     apify_poll_interval_seconds: int = Field(default=3, ge=1)
@@ -76,6 +78,16 @@ class Settings(BaseSettings):
     @classmethod
     def _normalize_log_level(cls, value: str) -> str:
         return value.strip().upper()
+
+    @field_validator("apify_actor_input_style", mode="after")
+    @classmethod
+    def _normalize_input_style(cls, value: str) -> str:
+        normalized = value.strip().lower() or "auto"
+        allowed = {"auto", "username", "direct_urls"}
+        if normalized not in allowed:
+            msg = f"apify_actor_input_style must be one of {sorted(allowed)}"
+            raise ValueError(msg)
+        return normalized
 
     @property
     def is_sqlite(self) -> bool:

@@ -31,7 +31,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "scripts*"]
 
 [tool.ruff]
 target-version = "py312"
@@ -64,13 +64,17 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN201", "ANN001"]
+# FastAPI TestClient is used at runtime in fixtures and assertions.
+"tests/*" = ["ANN201", "ANN001", "TC002", "TC003"]
 "migrations/env.py" = ["ANN201", "E402"]
+"scripts/*" = ["T201"]  # the dev script intentionally prints to stdout
 # FastAPI resolves annotations at runtime (dependency injection, response
 # models), so `Session`, `Generator` & co. must be imported unconditionally in
 # these modules — a `TYPE_CHECKING` block would break the app at startup.
 "app/api/deps.py" = ["TC002", "TC003"]
 "app/api/v1/router.py" = ["TC002", "TC003"]
+"app/api/v1/competitors.py" = ["TC002", "TC003"]
+"app/api/v1/jobs.py" = ["TC002", "TC003"]
 "app/main.py" = ["TC002", "TC003"]
 "app/database/session.py" = ["TC002", "TC003"]
 # SQLAlchemy resolves `Mapped[...]` annotations at mapper configuration time,

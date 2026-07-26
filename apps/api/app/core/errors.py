@@ -29,6 +29,13 @@ class ErrorCode(StrEnum):
     ACTIVE_JOB_ALREADY_EXISTS = "ACTIVE_JOB_ALREADY_EXISTS"
     INVALID_INSTAGRAM_PROFILE = "INVALID_INSTAGRAM_PROFILE"
     INVALID_JOB_STATE = "INVALID_JOB_STATE"
+    COMPETITOR_HAS_ACTIVE_JOB = "COMPETITOR_HAS_ACTIVE_JOB"
+    APIFY_NOT_CONFIGURED = "APIFY_NOT_CONFIGURED"
+    APIFY_REQUEST_FAILED = "APIFY_REQUEST_FAILED"
+    APIFY_RUN_FAILED = "APIFY_RUN_FAILED"
+    APIFY_RUN_TIMEOUT = "APIFY_RUN_TIMEOUT"
+    APIFY_DATASET_ERROR = "APIFY_DATASET_ERROR"
+    APIFY_EMPTY_DATASET = "APIFY_EMPTY_DATASET"
     DATABASE_ERROR = "DATABASE_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -38,7 +45,9 @@ _HTTP_STATUS_TO_ERROR_CODE: dict[int, ErrorCode] = {
     status.HTTP_404_NOT_FOUND: ErrorCode.NOT_FOUND,
     status.HTTP_409_CONFLICT: ErrorCode.VALIDATION_ERROR,
     HTTP_422_UNPROCESSABLE: ErrorCode.VALIDATION_ERROR,
+    status.HTTP_502_BAD_GATEWAY: ErrorCode.APIFY_REQUEST_FAILED,
     status.HTTP_503_SERVICE_UNAVAILABLE: ErrorCode.DATABASE_ERROR,
+    status.HTTP_504_GATEWAY_TIMEOUT: ErrorCode.APIFY_RUN_TIMEOUT,
 }
 
 
@@ -117,6 +126,52 @@ class InvalidJobStateError(AppError):
     code = ErrorCode.INVALID_JOB_STATE
     status_code = status.HTTP_409_CONFLICT
     message = "Недопустимое состояние задачи парсинга"
+
+
+class CompetitorHasActiveJobError(AppError):
+    code = ErrorCode.COMPETITOR_HAS_ACTIVE_JOB
+    status_code = status.HTTP_409_CONFLICT
+    message = "Нельзя удалить конкурента, пока выполняется импорт"
+
+
+class ApifyError(AppError):
+    """Base class for every failure of the Apify integration."""
+
+    code = ErrorCode.APIFY_REQUEST_FAILED
+    status_code = status.HTTP_502_BAD_GATEWAY
+    message = "Ошибка при обращении к Apify"
+
+
+class ApifyNotConfiguredError(ApifyError):
+    code = ErrorCode.APIFY_NOT_CONFIGURED
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "Интеграция с Apify не настроена: задайте APIFY_API_TOKEN и APIFY_ACTOR_ID"
+
+
+class ApifyRequestFailedError(ApifyError):
+    code = ErrorCode.APIFY_REQUEST_FAILED
+    message = "Запрос к Apify завершился ошибкой"
+
+
+class ApifyRunFailedError(ApifyError):
+    code = ErrorCode.APIFY_RUN_FAILED
+    message = "Запуск Apify Actor завершился неуспешно"
+
+
+class ApifyRunTimeoutError(ApifyError):
+    code = ErrorCode.APIFY_RUN_TIMEOUT
+    status_code = status.HTTP_504_GATEWAY_TIMEOUT
+    message = "Apify Actor не завершился за отведённое время"
+
+
+class ApifyDatasetError(ApifyError):
+    code = ErrorCode.APIFY_DATASET_ERROR
+    message = "Не удалось получить результаты из Apify Dataset"
+
+
+class ApifyEmptyDatasetError(ApifyError):
+    code = ErrorCode.APIFY_EMPTY_DATASET
+    message = "Apify не вернул ни одного рилса"
 
 
 class DatabaseError(AppError):
