@@ -10,6 +10,7 @@ from pydantic import Field
 from app.schemas.base import APIModel
 from app.schemas.competitor import CompetitorBrief
 from app.schemas.reel_content import ReelContentRead, ReelContentView
+from app.schemas.transcription import TranscriptionSummary
 
 
 class ReelBase(APIModel):
@@ -55,6 +56,7 @@ class ReelView(ReelBase):
     id: int
     competitor: CompetitorBrief
     content: ReelContentView
+    transcription: TranscriptionSummary | None = None
 
 
 class ReelPage(APIModel):

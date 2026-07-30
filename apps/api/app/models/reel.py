@@ -15,6 +15,7 @@ from app.database.types import UTCDateTime
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
     from app.models.reel_content import ReelContent
+    from app.models.reel_transcription import ReelTranscription
 
 
 class Reel(TimestampMixin, Base):
@@ -59,6 +60,12 @@ class Reel(TimestampMixin, Base):
 
     competitor: Mapped[Competitor] = relationship(back_populates="reels")
     content: Mapped[ReelContent | None] = relationship(
+        back_populates="reel",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+    transcription: Mapped[ReelTranscription | None] = relationship(
         back_populates="reel",
         cascade="all, delete-orphan",
         passive_deletes=True,

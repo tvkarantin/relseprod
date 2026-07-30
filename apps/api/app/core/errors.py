@@ -36,6 +36,16 @@ class ErrorCode(StrEnum):
     APIFY_RUN_TIMEOUT = "APIFY_RUN_TIMEOUT"
     APIFY_DATASET_ERROR = "APIFY_DATASET_ERROR"
     APIFY_EMPTY_DATASET = "APIFY_EMPTY_DATASET"
+    DEEPGRAM_NOT_CONFIGURED = "DEEPGRAM_NOT_CONFIGURED"
+    DEEPGRAM_AUTH_FAILED = "DEEPGRAM_AUTH_FAILED"
+    DEEPGRAM_REQUEST_FAILED = "DEEPGRAM_REQUEST_FAILED"
+    DEEPGRAM_RATE_LIMITED = "DEEPGRAM_RATE_LIMITED"
+    DEEPGRAM_QUOTA_EXCEEDED = "DEEPGRAM_QUOTA_EXCEEDED"
+    DEEPGRAM_INVALID_RESPONSE = "DEEPGRAM_INVALID_RESPONSE"
+    REEL_VIDEO_UNAVAILABLE = "REEL_VIDEO_UNAVAILABLE"
+    ACTIVE_TRANSCRIPTION_ALREADY_EXISTS = "ACTIVE_TRANSCRIPTION_ALREADY_EXISTS"
+    INVALID_TRANSCRIPTION_STATE = "INVALID_TRANSCRIPTION_STATE"
+    TRANSCRIPTION_NOT_FOUND = "TRANSCRIPTION_NOT_FOUND"
     DATABASE_ERROR = "DATABASE_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -172,6 +182,69 @@ class ApifyDatasetError(ApifyError):
 class ApifyEmptyDatasetError(ApifyError):
     code = ErrorCode.APIFY_EMPTY_DATASET
     message = "Apify не вернул ни одного рилса"
+
+
+class DeepgramError(AppError):
+    """Base class for every failure of the Deepgram integration."""
+
+    code = ErrorCode.DEEPGRAM_REQUEST_FAILED
+    status_code = status.HTTP_502_BAD_GATEWAY
+    message = "Ошибка при обращении к Deepgram"
+
+
+class DeepgramNotConfiguredError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_NOT_CONFIGURED
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "Интеграция с Deepgram не настроена: задайте DEEPGRAM_API_KEY"
+
+
+class DeepgramRequestFailedError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_REQUEST_FAILED
+    message = "Запрос к Deepgram завершился ошибкой"
+
+
+class DeepgramAuthFailedError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_AUTH_FAILED
+    message = "Deepgram отклонил токен авторизации"
+
+
+class DeepgramQuotaExceededError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_QUOTA_EXCEEDED
+    message = "Превышена квота или недостаточно средств в Deepgram"
+
+
+class DeepgramRateLimitedError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_RATE_LIMITED
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    message = "Превышен лимит запросов к Deepgram (429)"
+
+
+class DeepgramInvalidResponseError(DeepgramError):
+    code = ErrorCode.DEEPGRAM_INVALID_RESPONSE
+    message = "Deepgram вернул некорректный ответ"
+
+
+class ReelVideoUnavailableError(AppError):
+    code = ErrorCode.REEL_VIDEO_UNAVAILABLE
+    status_code = HTTP_422_UNPROCESSABLE
+    message = "Для этого рилса нет доступной ссылки на видео"
+
+
+class ActiveTranscriptionAlreadyExistsError(AppError):
+    code = ErrorCode.ACTIVE_TRANSCRIPTION_ALREADY_EXISTS
+    status_code = status.HTTP_409_CONFLICT
+    message = "Для этого рилса уже выполняется или ожидает транскрибация"
+
+
+class InvalidTranscriptionStateError(AppError):
+    code = ErrorCode.INVALID_TRANSCRIPTION_STATE
+    status_code = status.HTTP_409_CONFLICT
+    message = "Недопустимое состояние транскрибации для этого действия"
+
+
+class TranscriptionNotFoundError(NotFoundError):
+    code = ErrorCode.TRANSCRIPTION_NOT_FOUND
+    message = "Транскрибация не найдена"
 
 
 class DatabaseError(AppError):
