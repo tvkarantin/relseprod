@@ -130,6 +130,7 @@ def test_dominant_language_and_languages_calculation() -> None:
         {"word": "world", "language": "en"},
         {"word": "Bonjour", "language": "fr"},
     ]
+
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=sample_deepgram_response(words=words))
 
@@ -144,9 +145,7 @@ def test_empty_transcript_handling() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             200,
-            json=sample_deepgram_response(
-                transcript="", words=[], utterances=[], paragraphs=[]
-            ),
+            json=sample_deepgram_response(transcript="", words=[], utterances=[], paragraphs=[]),
         )
 
     with make_deepgram_service(handler) as service:
@@ -273,6 +272,7 @@ def test_background_task_execution(
 
     def mock_transcribe(self: Any, url: str) -> Any:
         from app.services.deepgram import DeepgramTranscript
+
         return DeepgramTranscript(
             transcript="Background success",
             confidence=0.99,
@@ -287,9 +287,7 @@ def test_background_task_execution(
         )
 
     monkeypatch.setattr(DeepgramService, "transcribe_url", mock_transcribe)
-    monkeypatch.setattr(
-        task_module, "get_session_factory", lambda _settings: (lambda: db_session)
-    )
+    monkeypatch.setattr(task_module, "get_session_factory", lambda _settings: lambda: db_session)
 
     transcribe_reel_job(t_id, settings)
 

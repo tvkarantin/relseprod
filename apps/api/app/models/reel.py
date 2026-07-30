@@ -14,6 +14,7 @@ from app.database.types import UTCDateTime
 
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
+    from app.models.reel_analysis import ReelAnalysis
     from app.models.reel_content import ReelContent
     from app.models.reel_transcription import ReelTranscription
 
@@ -71,9 +72,14 @@ class Reel(TimestampMixin, Base):
         passive_deletes=True,
         uselist=False,
     )
+    analysis: Mapped[ReelAnalysis | None] = relationship(
+        back_populates="reel",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debugging helper
         return (
-            f"<Reel id={self.id} competitor_id={self.competitor_id} "
-            f"shortcode={self.shortcode!r}>"
+            f"<Reel id={self.id} competitor_id={self.competitor_id} shortcode={self.shortcode!r}>"
         )

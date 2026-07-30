@@ -69,9 +69,7 @@ class ReelLibraryService:
         statuses = (content_status,) if content_status else WORKING_STATUSES
         total = self.reels.count_by_content_statuses(statuses, search=search)
         pages = math.ceil(total / limit) if total else 0
-        items = self.reels.list_by_content_statuses(
-            statuses, search=search, page=page, limit=limit
-        )
+        items = self.reels.list_by_content_statuses(statuses, search=search, page=page, limit=limit)
         return items, total, pages
 
     def get_reel(self, reel_id: int) -> Reel:
@@ -124,9 +122,7 @@ class ReelContentService:
         )
         self.session.commit()
         self.session.refresh(content)
-        logger.info(
-            "Reel content saved: reel_id=%s status=%s", reel_id, content.content_status
-        )
+        logger.info("Reel content saved: reel_id=%s status=%s", reel_id, content.content_status)
         return content
 
 

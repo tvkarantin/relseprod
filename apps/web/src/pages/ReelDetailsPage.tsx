@@ -9,6 +9,7 @@ import { ReelContentEditor, type ReelContentEditorHandle } from '@/components/fo
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ReelPlayer } from '@/components/reels/ReelPlayer'
 import { ReelTranscriptionControls } from '@/components/reels/ReelTranscriptionControls'
+import { ReelAnalysisControls } from '@/components/reels/ReelAnalysisControls'
 import type { ReelContentFormValues } from '@/schemas/reelContent'
 import type { Reel } from '@/types/reel'
 import { formatDateTime, formatDuration, formatNumber, truncate } from '@/utils/format'
@@ -67,6 +68,20 @@ export function ReelDetailsPage() {
 
   const handleGetCurrentScript = useCallback(() => {
     return editorRef.current?.getScript() ?? ''
+  }, [])
+
+  const handleApplyAnalysis = useCallback((hook: string, script: string, cta: string) => {
+    editorRef.current?.setHook(hook)
+    editorRef.current?.setScript(script)
+    editorRef.current?.setCta(cta)
+  }, [])
+
+  const handleGetCurrentValues = useCallback(() => {
+    return {
+      hook: editorRef.current?.getHook() ?? '',
+      script: editorRef.current?.getScript() ?? '',
+      cta: editorRef.current?.getCta() ?? ''
+    }
   }, [])
 
   if (!Number.isFinite(reelId) || reelId <= 0) {
@@ -173,6 +188,12 @@ export function ReelDetailsPage() {
             initialTranscription={reel.transcription}
             onApplyScript={handleApplyScript}
             getCurrentScript={handleGetCurrentScript}
+          />
+          <ReelAnalysisControls
+            reelId={reel.id}
+            transcription={reel.transcription}
+            onApplyScript={handleApplyAnalysis}
+            getCurrentValues={handleGetCurrentValues}
           />
           {/* Remounting on reelId resets the editor when navigating between reels. */}
           <ReelContentEditor

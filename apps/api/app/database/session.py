@@ -52,9 +52,7 @@ def enable_sqlite_foreign_keys(engine: Engine) -> None:
     """Turn on ``PRAGMA foreign_keys`` so ON DELETE CASCADE works in SQLite."""
 
     @event.listens_for(engine, "connect")
-    def _set_sqlite_pragma(
-        dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry
-    ) -> None:
+    def _set_sqlite_pragma(dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry) -> None:
         cursor = dbapi_connection.cursor()
         try:
             cursor.execute("PRAGMA foreign_keys=ON")

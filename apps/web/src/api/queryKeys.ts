@@ -21,5 +21,6 @@ export const queryKeys = {
     details: (id: number) => ['reels', 'details', id] as const,
     my: (query: MyReelsQuery) => ['reels', 'my', query] as const,
     transcription: (id: number) => ['reels', 'transcription', id] as const,
+    analysis: (id: number) => ['reels', 'analysis', id] as const,
   },
 } as const

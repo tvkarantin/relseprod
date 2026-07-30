@@ -83,9 +83,7 @@ def test_caption_variants(key: str) -> None:
     assert reel.caption == "Текст подписи"
 
 
-@pytest.mark.parametrize(
-    "key", ["videoViewCount", "viewsCount", "playCount", "videoPlayCount"]
-)
+@pytest.mark.parametrize("key", ["videoViewCount", "viewsCount", "playCount", "videoPlayCount"])
 def test_views_variants_as_int(key: str) -> None:
     reel = normalize_apify_reel(base_item(**{key: 1_200_000}))
 

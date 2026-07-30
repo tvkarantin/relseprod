@@ -155,10 +155,9 @@ def test_application_errors_are_rendered_with_their_code(app: FastAPI) -> None:
         bad_profile = test_client.get("/test/bad-profile")
 
     assert not_found.status_code == 404
-    assert (
-        assert_error_envelope(not_found.json(), ErrorCode.COMPETITOR_NOT_FOUND)["details"]
-        == {"competitorId": 42}
-    )
+    assert assert_error_envelope(not_found.json(), ErrorCode.COMPETITOR_NOT_FOUND)["details"] == {
+        "competitorId": 42
+    }
 
     assert bad_profile.status_code == 422
     assert_error_envelope(bad_profile.json(), ErrorCode.INVALID_INSTAGRAM_PROFILE)

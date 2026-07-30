@@ -35,6 +35,7 @@ def escape_like(term: str) -> str:
         .replace("_", f"{LIKE_ESCAPE}_")
     )
 
+
 EXTERNAL_FIELD_NAMES: frozenset[str] = frozenset(
     {
         "instagram_id",
@@ -170,6 +171,7 @@ class ReelRepository(BaseRepository[Reel]):
                 joinedload(Reel.competitor),
                 joinedload(Reel.content),
                 joinedload(Reel.transcription),
+                joinedload(Reel.analysis),
             )
             .order_by(
                 Reel.published_at.is_(None).asc(),
@@ -182,14 +184,10 @@ class ReelRepository(BaseRepository[Reel]):
         )
         return list(self.db.scalars(stmt).unique())
 
-    def count_filtered(
-        self, *, competitor_id: int | None = None, search: str | None = None
-    ) -> int:
+    def count_filtered(self, *, competitor_id: int | None = None, search: str | None = None) -> int:
         """Count reels matching the same filters as :meth:`list_paginated`."""
         stmt = self._library_query(competitor_id=competitor_id, search=search)
-        return self.db.scalar(
-            select(func.count()).select_from(stmt.order_by(None).subquery())
-        ) or 0
+        return self.db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
 
     def search(self, term: str, *, limit: int = 20) -> list[Reel]:
         """Convenience wrapper around a search-only query."""
@@ -204,6 +202,7 @@ class ReelRepository(BaseRepository[Reel]):
                 joinedload(Reel.competitor),
                 joinedload(Reel.content),
                 joinedload(Reel.transcription),
+                joinedload(Reel.analysis),
             )
         )
         return self.db.scalars(stmt).unique().one_or_none()
@@ -244,6 +243,7 @@ class ReelRepository(BaseRepository[Reel]):
                 joinedload(Reel.competitor),
                 joinedload(Reel.content),
                 joinedload(Reel.transcription),
+                joinedload(Reel.analysis),
             )
             .order_by(ReelContent.updated_at.desc(), Reel.id.desc())
             .limit(limit)
@@ -256,9 +256,7 @@ class ReelRepository(BaseRepository[Reel]):
     ) -> int:
         """Count reels matching :meth:`list_by_content_statuses`."""
         stmt = self._library_query(search=search, content_statuses=statuses)
-        return self.db.scalar(
-            select(func.count()).select_from(stmt.order_by(None).subquery())
-        ) or 0
+        return self.db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
 
     def count_all(self) -> int:
         """Total number of stored reels."""

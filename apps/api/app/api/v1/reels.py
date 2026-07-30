@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import DbSession
 from app.models.enums import ContentStatus
 from app.models.reel import Reel
+from app.schemas.analysis import ReelAnalysisSummary
 from app.schemas.common import ErrorResponse
 from app.schemas.reel import ReelPage, ReelView
 from app.schemas.reel_content import ReelContentSaved, ReelContentView, ReelContentWrite
@@ -21,12 +22,8 @@ router = APIRouter(prefix="/reels", tags=["reels"])
 ReelId = Annotated[int, Path(gt=0, description="Идентификатор рилса")]
 PageParam = Annotated[int, Query(ge=1, description="Номер страницы")]
 LimitParam = Annotated[int, Query(ge=1, le=100, description="Размер страницы")]
-SearchParam = Annotated[
-    str | None, Query(max_length=200, description="Поиск по тексту и автору")
-]
-CompetitorIdParam = Annotated[
-    int | None, Query(gt=0, description="Фильтр по конкуренту")
-]
+SearchParam = Annotated[str | None, Query(max_length=200, description="Поиск по тексту и автору")]
+CompetitorIdParam = Annotated[int | None, Query(gt=0, description="Фильтр по конкуренту")]
 
 MY_REELS_STATUSES = ", ".join(status.value for status in WORKING_STATUSES)
 
@@ -49,6 +46,18 @@ def _to_view(reel: Reel) -> ReelView:
             updated_at=t.updated_at,
         )
         if t
+        else None
+    )
+    a = reel.analysis
+    analysis_summary = (
+        ReelAnalysisSummary(
+            id=a.id,
+            status=a.status,
+            topic=a.topic,
+            error_code=a.error_code,
+            updated_at=a.updated_at,
+        )
+        if a
         else None
     )
     return ReelView(
@@ -75,6 +84,7 @@ def _to_view(reel: Reel) -> ReelView:
             updated_at=content.updated_at if content else None,
         ),
         transcription=transcription_summary,
+        analysis=analysis_summary,
     )
 
 

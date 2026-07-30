@@ -138,9 +138,7 @@ class ApifyService:
         """
         url = f"{self.base_url}{path}"
         try:
-            response = self._get_client().request(
-                method, url, headers=self._headers(), **kwargs
-            )
+            response = self._get_client().request(method, url, headers=self._headers(), **kwargs)
         except httpx.TimeoutException as exc:
             logger.warning("Apify request timed out: %s %s", method, path)
             raise ApifyRequestFailedError(
@@ -159,9 +157,7 @@ class ApifyService:
                 response.status_code,
                 f"Apify вернул ошибку HTTP {response.status_code}",
             )
-            logger.warning(
-                "Apify returned HTTP %s for %s %s", response.status_code, method, path
-            )
+            logger.warning("Apify returned HTTP %s for %s %s", response.status_code, method, path)
             raise ApifyRequestFailedError(
                 message,
                 details={"statusCode": response.status_code, "operation": path},

@@ -246,9 +246,7 @@ def test_empty_batch_is_a_no_op(
 def test_reels_of_two_competitors_do_not_collide(
     db_session: Session, competitor: Competitor, importer: ReelImporter
 ) -> None:
-    other = Competitor(
-        instagram_username="other", profile_url="https://www.instagram.com/other/"
-    )
+    other = Competitor(instagram_username="other", profile_url="https://www.instagram.com/other/")
     db_session.add(other)
     db_session.flush()
 

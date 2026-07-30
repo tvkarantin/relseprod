@@ -29,8 +29,12 @@ const ALL_STATUSES: ContentStatus[] = [
 ]
 
 export interface ReelContentEditorHandle {
+  getHook: () => string
+  setHook: (hook: string) => void
   getScript: () => string
   setScript: (script: string) => void
+  getCta: () => string
+  setCta: (cta: string) => void
 }
 
 interface ReelContentEditorProps {
@@ -71,12 +75,20 @@ export const ReelContentEditor = forwardRef<ReelContentEditorHandle, ReelContent
     useImperativeHandle(
       ref,
       () => ({
+        getHook: () => values.hook ?? '',
+        setHook: (newHook: string) => {
+          setValue('hook', newHook, { shouldDirty: true, shouldValidate: true })
+        },
         getScript: () => values.script ?? '',
         setScript: (newScript: string) => {
           setValue('script', newScript, { shouldDirty: true, shouldValidate: true })
         },
+        getCta: () => values.cta ?? '',
+        setCta: (newCta: string) => {
+          setValue('cta', newCta, { shouldDirty: true, shouldValidate: true })
+        },
       }),
-      [values.script, setValue],
+      [values.hook, values.script, values.cta, setValue],
     )
 
     const autosave = useAutosave<ReelContentFormValues>({

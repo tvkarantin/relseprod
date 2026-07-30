@@ -46,6 +46,20 @@ class ErrorCode(StrEnum):
     ACTIVE_TRANSCRIPTION_ALREADY_EXISTS = "ACTIVE_TRANSCRIPTION_ALREADY_EXISTS"
     INVALID_TRANSCRIPTION_STATE = "INVALID_TRANSCRIPTION_STATE"
     TRANSCRIPTION_NOT_FOUND = "TRANSCRIPTION_NOT_FOUND"
+    OPENROUTER_NOT_CONFIGURED = "OPENROUTER_NOT_CONFIGURED"
+    OPENROUTER_AUTH_FAILED = "OPENROUTER_AUTH_FAILED"
+    OPENROUTER_REQUEST_FAILED = "OPENROUTER_REQUEST_FAILED"
+    OPENROUTER_RATE_LIMITED = "OPENROUTER_RATE_LIMITED"
+    OPENROUTER_MODEL_UNAVAILABLE = "OPENROUTER_MODEL_UNAVAILABLE"
+    OPENROUTER_INVALID_RESPONSE = "OPENROUTER_INVALID_RESPONSE"
+    OPENROUTER_CONTENT_FILTERED = "OPENROUTER_CONTENT_FILTERED"
+    TRANSCRIPTION_REQUIRED = "TRANSCRIPTION_REQUIRED"
+    TRANSCRIPTION_NOT_COMPLETED = "TRANSCRIPTION_NOT_COMPLETED"
+    TRANSCRIPTION_EMPTY = "TRANSCRIPTION_EMPTY"
+    ACTIVE_ANALYSIS_ALREADY_EXISTS = "ACTIVE_ANALYSIS_ALREADY_EXISTS"
+    INVALID_ANALYSIS_STATE = "INVALID_ANALYSIS_STATE"
+    ANALYSIS_NOT_FOUND = "ANALYSIS_NOT_FOUND"
+    ANALYSIS_INPUT_CHANGED = "ANALYSIS_INPUT_CHANGED"
     DATABASE_ERROR = "DATABASE_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -82,9 +96,7 @@ class AppError(Exception):
         super().__init__(self.message)
 
     def to_response(self) -> JSONResponse:
-        return error_response(
-            self.status_code, self.code, self.message, self.details
-        )
+        return error_response(self.status_code, self.code, self.message, self.details)
 
 
 class ValidationError(AppError):
@@ -247,6 +259,92 @@ class TranscriptionNotFoundError(NotFoundError):
     message = "Транскрибация не найдена"
 
 
+class OpenRouterError(AppError):
+    code = ErrorCode.OPENROUTER_REQUEST_FAILED
+    status_code = status.HTTP_502_BAD_GATEWAY
+    message = "Ошибка при обращении к OpenRouter"
+
+
+class OpenRouterNotConfiguredError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_NOT_CONFIGURED
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "Интеграция с OpenRouter не настроена"
+
+
+class OpenRouterAuthFailedError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_AUTH_FAILED
+    message = "Ошибка авторизации в OpenRouter"
+
+
+class OpenRouterRequestFailedError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_REQUEST_FAILED
+    message = "Запрос к OpenRouter завершился ошибкой"
+
+
+class OpenRouterModelUnavailableError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_MODEL_UNAVAILABLE
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "Модель OpenRouter недоступна"
+
+
+class OpenRouterRateLimitedError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_RATE_LIMITED
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    message = "Превышен лимит запросов к OpenRouter"
+
+
+class OpenRouterInvalidResponseError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_INVALID_RESPONSE
+    message = "Некорректный ответ от OpenRouter"
+
+
+class OpenRouterContentFilteredError(OpenRouterError):
+    code = ErrorCode.OPENROUTER_CONTENT_FILTERED
+    status_code = HTTP_422_UNPROCESSABLE
+    message = "Ответ отклонен фильтрами контента"
+
+
+class TranscriptionRequiredError(AppError):
+    code = ErrorCode.TRANSCRIPTION_REQUIRED
+    status_code = status.HTTP_409_CONFLICT
+    message = "Для анализа требуется транскрибация"
+
+
+class TranscriptionNotCompletedError(AppError):
+    code = ErrorCode.TRANSCRIPTION_NOT_COMPLETED
+    status_code = status.HTTP_409_CONFLICT
+    message = "Транскрибация еще не завершена"
+
+
+class TranscriptionEmptyError(AppError):
+    code = ErrorCode.TRANSCRIPTION_EMPTY
+    status_code = HTTP_422_UNPROCESSABLE
+    message = "Транскрибация пуста, нечего анализировать"
+
+
+class ActiveAnalysisAlreadyExistsError(AppError):
+    code = ErrorCode.ACTIVE_ANALYSIS_ALREADY_EXISTS
+    status_code = status.HTTP_409_CONFLICT
+    message = "Для этого рилса уже выполняется или ожидает анализ"
+
+
+class InvalidAnalysisStateError(AppError):
+    code = ErrorCode.INVALID_ANALYSIS_STATE
+    status_code = status.HTTP_409_CONFLICT
+    message = "Недопустимое состояние анализа для этого действия"
+
+
+class AnalysisNotFoundError(NotFoundError):
+    code = ErrorCode.ANALYSIS_NOT_FOUND
+    message = "Анализ не найден"
+
+
+class AnalysisInputChangedError(AppError):
+    code = ErrorCode.ANALYSIS_INPUT_CHANGED
+    status_code = status.HTTP_409_CONFLICT
+    message = "Входные данные для анализа изменились"
+
+
 class DatabaseError(AppError):
     code = ErrorCode.DATABASE_ERROR
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -327,9 +425,7 @@ async def http_exception_handler(_: Request, exc: Exception) -> JSONResponse:
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Log unexpected exceptions and return a safe generic error."""
-    logger.exception(
-        "Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc
-    )
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
     return error_response(
         status.HTTP_500_INTERNAL_SERVER_ERROR,
         ErrorCode.INTERNAL_ERROR,

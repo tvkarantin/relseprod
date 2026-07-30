@@ -129,9 +129,7 @@ def test_pagination_splits_results_and_reports_totals(
 ) -> None:
     base = datetime(2026, 7, 1, tzinfo=UTC)
     for index in range(5):
-        make_reel(
-            db_session, competitor, f"R{index}", published_at=base + timedelta(days=index)
-        )
+        make_reel(db_session, competitor, f"R{index}", published_at=base + timedelta(days=index))
 
     first = client.get(REELS, params={"page": 1, "limit": 2}).json()
     second = client.get(REELS, params={"page": 2, "limit": 2}).json()
@@ -292,9 +290,7 @@ def test_search_combines_with_the_competitor_filter(
     make_reel(db_session, competitor, "MINE", caption="общая тема")
     make_reel(db_session, other, "THEIRS", caption="общая тема")
 
-    body = client.get(
-        REELS, params={"search": "общая", "competitor_id": competitor.id}
-    ).json()
+    body = client.get(REELS, params={"search": "общая", "competitor_id": competitor.id}).json()
 
     assert [item["shortcode"] for item in body["items"]] == ["MINE"]
 
@@ -409,9 +405,7 @@ def test_editor_preserves_line_breaks_and_indentation(
     reel = make_reel(db_session, competitor, "MULTILINE")
     script = "Первая строка\n\n  Отступ сохранён\nПоследняя"
 
-    body = client.put(
-        f"{REELS}/{reel.id}/content", json=full_payload(script=script)
-    ).json()
+    body = client.put(f"{REELS}/{reel.id}/content", json=full_payload(script=script)).json()
 
     assert body["script"] == script
 
@@ -422,9 +416,7 @@ def test_all_content_statuses_are_accepted(
 ) -> None:
     reel = make_reel(db_session, competitor, f"ST{status}")
 
-    response = client.put(
-        f"{REELS}/{reel.id}/content", json=full_payload(contentStatus=status)
-    )
+    response = client.put(f"{REELS}/{reel.id}/content", json=full_payload(contentStatus=status))
 
     assert response.status_code == 200
     assert response.json()["contentStatus"] == status
@@ -435,9 +427,7 @@ def test_unknown_content_status_is_rejected(
 ) -> None:
     reel = make_reel(db_session, competitor, "BADST")
 
-    response = client.put(
-        f"{REELS}/{reel.id}/content", json=full_payload(contentStatus="invented")
-    )
+    response = client.put(f"{REELS}/{reel.id}/content", json=full_payload(contentStatus="invented"))
 
     assert response.status_code == 422
     assert error_code(response) == ErrorCode.VALIDATION_ERROR.value
