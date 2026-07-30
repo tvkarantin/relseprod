@@ -93,9 +93,7 @@ class ParsingJobRepository(BaseRepository[ParsingJob]):
         )
         return self.db.scalars(stmt).first()
 
-    def get_active_for_competitors(
-        self, competitor_ids: list[int]
-    ) -> dict[int, ParsingJob]:
+    def get_active_for_competitors(self, competitor_ids: list[int]) -> dict[int, ParsingJob]:
         """Return the newest active job for each requested competitor."""
         if not competitor_ids:
             return {}

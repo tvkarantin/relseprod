@@ -9,6 +9,7 @@ from app.models.competitor import Competitor
 from app.models.enums import CompetitorStatus, ContentStatus, ParsingJobStatus, TranscriptionStatus
 from app.models.parsing_job import ParsingJob
 from app.models.reel import Reel
+from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_content import ReelContent
 from app.models.reel_transcription import ReelTranscription
 
@@ -20,6 +21,7 @@ __all__ = [
     "ParsingJob",
     "ParsingJobStatus",
     "Reel",
+    "ReelAnalysis",
     "ReelContent",
     "ReelTranscription",
     "TranscriptionStatus",

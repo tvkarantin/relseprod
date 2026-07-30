@@ -1,5 +1,6 @@
 import type { CompetitorBrief } from './competitor'
 import type { TranscriptionSummary } from './transcription'
+import type { ReelAnalysisSummary } from './analysis'
 
 export type ContentStatus = 'new' | 'idea' | 'script' | 'ready' | 'published' | 'archived'
 
@@ -47,6 +48,7 @@ export interface Reel {
   duration: number | null
   content: ReelContent
   transcription?: TranscriptionSummary | null
+  analysis?: ReelAnalysisSummary | null
 }
 
 export interface ReelContentSaved {

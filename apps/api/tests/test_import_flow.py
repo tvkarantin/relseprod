@@ -274,9 +274,7 @@ def test_unconfigured_apify_fails_the_job_with_a_clear_message(
     job_id = client.post(f"{COMPETITORS}/{competitor_id}/parse").json()["jobId"]
     unconfigured = apify_settings(apify_api_token="", apify_actor_id="")
 
-    service = ParsingService(
-        db_session, settings=unconfigured, apify=ApifyService(unconfigured)
-    )
+    service = ParsingService(db_session, settings=unconfigured, apify=ApifyService(unconfigured))
     with pytest.raises(Exception, match="Apify"):
         service.run_job(job_id)
 
@@ -317,9 +315,7 @@ def test_background_task_swallows_errors_and_records_them(
     job_id = client.post(f"{COMPETITORS}/{competitor_id}/parse").json()["jobId"]
     settings = apify_settings()
 
-    monkeypatch.setattr(
-        task_module, "get_session_factory", lambda _settings: (lambda: db_session)
-    )
+    monkeypatch.setattr(task_module, "get_session_factory", lambda _settings: lambda: db_session)
     monkeypatch.setattr(task_module, "ApifyService", lambda _s: make_apify([], run_status="FAILED"))
 
     # Must not raise.

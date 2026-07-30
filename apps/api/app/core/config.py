@@ -64,6 +64,18 @@ class Settings(BaseSettings):
     deepgram_numerals: bool = True
     deepgram_punctuate: bool = True
 
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "openai/gpt-oss-120b:free"
+    openrouter_timeout_seconds: int = Field(default=180, ge=10, le=1800)
+    openrouter_temperature: float = Field(default=0.1, ge=0, le=2)
+    openrouter_max_output_tokens: int = Field(default=4096, ge=256, le=16384)
+    openrouter_reasoning_effort: str = "low"
+    openrouter_response_healing: bool = True
+    openrouter_http_referer: str = ""
+    openrouter_app_title: str = "Reels Finder"
+    openrouter_invalid_response_retries: int = Field(default=1, ge=0, le=1)
+
     # ``NoDecode`` disables the built-in JSON decoding for complex types so the
     # plain comma-separated ``CORS_ORIGINS`` value is handled by the validator below.
     cors_origins: Annotated[list[str], NoDecode] = Field(
@@ -113,6 +125,10 @@ class Settings(BaseSettings):
     def deepgram_configured(self) -> bool:
         """Whether Deepgram integration can be used."""
         return bool(self.deepgram_api_key)
+
+    @property
+    def openrouter_configured(self) -> bool:
+        return bool(self.openrouter_api_key)
 
     @property
     def sqlalchemy_database_url(self) -> str:

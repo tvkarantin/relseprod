@@ -87,6 +87,7 @@ def engine(settings: Settings) -> Generator[Engine, None, None]:
         "reel_content",
         "parsing_jobs",
         "reel_transcriptions",
+        "reel_analyses",
     }
 
     yield test_engine

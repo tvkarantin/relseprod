@@ -15,6 +15,7 @@ from app.models.enums import TranscriptionStatus
 
 if TYPE_CHECKING:
     from app.models.reel import Reel
+    from app.models.reel_analysis import ReelAnalysis
 
 
 class ReelTranscription(TimestampMixin, Base):
@@ -62,9 +63,12 @@ class ReelTranscription(TimestampMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     reel: Mapped[Reel] = relationship(back_populates="transcription")
+    analysis: Mapped[ReelAnalysis | None] = relationship(
+        back_populates="transcription",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
-        return (
-            f"<ReelTranscription id={self.id} reel_id={self.reel_id} "
-            f"status={self.status!r}>"
-        )
+        return f"<ReelTranscription id={self.id} reel_id={self.reel_id} status={self.status!r}>"

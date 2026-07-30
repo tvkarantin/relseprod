@@ -38,11 +38,7 @@ class TranscriptionService:
 
     def get_transcription(self, reel_id: int) -> ReelTranscription | None:
         self.get_reel(reel_id)
-        return (
-            self.db.query(ReelTranscription)
-            .filter(ReelTranscription.reel_id == reel_id)
-            .first()
-        )
+        return self.db.query(ReelTranscription).filter(ReelTranscription.reel_id == reel_id).first()
 
     def start_transcription(self, reel_id: int) -> ReelTranscription:
         reel = self.get_reel(reel_id)
@@ -130,9 +126,7 @@ class TranscriptionService:
             self.db.refresh(t)
         return t  # type: ignore[return-value]
 
-    def save_success(
-        self, transcription_id: int, result: DeepgramTranscript
-    ) -> ReelTranscription:
+    def save_success(self, transcription_id: int, result: DeepgramTranscript) -> ReelTranscription:
         t = self.db.get(ReelTranscription, transcription_id)
         if t:
             t.status = TranscriptionStatus.COMPLETED
@@ -144,8 +138,7 @@ class TranscriptionService:
             t.confidence = result.confidence
             t.words_json = [w.__dict__ for w in result.words]
             t.utterances_json = [
-                {**u.__dict__, "words": [w.__dict__ for w in u.words]}
-                for u in result.utterances
+                {**u.__dict__, "words": [w.__dict__ for w in u.words]} for u in result.utterances
             ]
             t.paragraphs_json = [p.__dict__ for p in result.paragraphs]
             t.provider_request_id = result.request_id

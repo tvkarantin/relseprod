@@ -171,9 +171,7 @@ def test_delete_removes_the_competitor(client: TestClient) -> None:
     assert client.get(f"{BASE}/{created['id']}").status_code == 404
 
 
-def test_delete_cascades_to_reels_content_and_jobs(
-    client: TestClient, db_session: Session
-) -> None:
+def test_delete_cascades_to_reels_content_and_jobs(client: TestClient, db_session: Session) -> None:
     created = client.post(BASE, json={"profile": "cascade"}).json()
     competitor_id = created["id"]
 
@@ -181,9 +179,7 @@ def test_delete_cascades_to_reels_content_and_jobs(
     db_session.add(reel)
     db_session.flush()
     db_session.add(ReelContent(reel_id=reel.id, hook="Мой хук"))
-    db_session.add(
-        ParsingJob(competitor_id=competitor_id, status=ParsingJobStatus.COMPLETED)
-    )
+    db_session.add(ParsingJob(competitor_id=competitor_id, status=ParsingJobStatus.COMPLETED))
     db_session.flush()
 
     assert client.delete(f"{BASE}/{competitor_id}").status_code == 204

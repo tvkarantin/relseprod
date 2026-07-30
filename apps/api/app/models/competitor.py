@@ -45,9 +45,7 @@ class Competitor(TimestampMixin, Base):
         default=CompetitorStatus.IDLE,
         server_default=CompetitorStatus.IDLE.value,
     )
-    reels_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
+    reels_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     last_parsed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     reels: Mapped[list[Reel]] = relationship(

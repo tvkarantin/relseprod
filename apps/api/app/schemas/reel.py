@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import Field
 
+from app.schemas.analysis import ReelAnalysisSummary
 from app.schemas.base import APIModel
 from app.schemas.competitor import CompetitorBrief
 from app.schemas.reel_content import ReelContentRead, ReelContentView
@@ -57,6 +58,7 @@ class ReelView(ReelBase):
     competitor: CompetitorBrief
     content: ReelContentView
     transcription: TranscriptionSummary | None = None
+    analysis: ReelAnalysisSummary | None = None
 
 
 class ReelPage(APIModel):
