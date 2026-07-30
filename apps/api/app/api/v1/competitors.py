@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
 from app.core.config import Settings, get_settings
+from app.repositories.jobs import ParsingJobRepository
 from app.schemas.common import ErrorResponse
 from app.schemas.competitor import CompetitorCreate, CompetitorRead
 from app.schemas.parsing_job import ParsingJobStart
 from app.services.competitors import CompetitorService
 from app.services.parsing import ParsingService
 from app.tasks.parse_competitor import parse_competitor_job
+
+if TYPE_CHECKING:
+    from app.models.competitor import Competitor
 
 router = APIRouter(prefix="/competitors", tags=["competitors"])
 
@@ -26,6 +30,17 @@ def _settings(request: Request) -> Settings:
     return getattr(request.app.state, "settings", None) or get_settings()
 
 
+def _read_competitor(
+    competitor: Competitor,
+    *,
+    active_job_id: int | None = None,
+) -> CompetitorRead:
+    """Serialize a competitor together with the job the UI should poll."""
+    return CompetitorRead.model_validate(competitor).model_copy(
+        update={"active_job_id": active_job_id}
+    )
+
+
 @router.get(
     "",
     response_model=list[CompetitorRead],
@@ -34,7 +49,16 @@ def _settings(request: Request) -> Settings:
 def list_competitors(db: Annotated[Session, Depends(DbSession)]) -> list[CompetitorRead]:
     """Return every tracked competitor, newest first."""
     competitors = CompetitorService(db).list_competitors()
-    return [CompetitorRead.model_validate(item) for item in competitors]
+    active_jobs = ParsingJobRepository(db).get_active_for_competitors(
+        [item.id for item in competitors]
+    )
+    return [
+        _read_competitor(
+            item,
+            active_job_id=active_jobs[item.id].id if item.id in active_jobs else None,
+        )
+        for item in competitors
+    ]
 
 
 @router.post(
@@ -53,7 +77,7 @@ def create_competitor(
 ) -> CompetitorRead:
     """Normalize the submitted profile and start tracking it."""
     competitor = CompetitorService(db).add_competitor(payload.profile)
-    return CompetitorRead.model_validate(competitor)
+    return _read_competitor(competitor)
 
 
 @router.get(
@@ -68,7 +92,11 @@ def get_competitor(
 ) -> CompetitorRead:
     """Return a single competitor."""
     competitor = CompetitorService(db).get_competitor(competitor_id)
-    return CompetitorRead.model_validate(competitor)
+    active_job = ParsingJobRepository(db).get_active_for_competitor(competitor.id)
+    return _read_competitor(
+        competitor,
+        active_job_id=active_job.id if active_job is not None else None,
+    )
 
 
 @router.delete(

@@ -93,6 +93,30 @@ class ParsingJobRepository(BaseRepository[ParsingJob]):
         )
         return self.db.scalars(stmt).first()
 
+    def get_active_for_competitors(
+        self, competitor_ids: list[int]
+    ) -> dict[int, ParsingJob]:
+        """Return the newest active job for each requested competitor."""
+        if not competitor_ids:
+            return {}
+
+        stmt = (
+            select(ParsingJob)
+            .where(
+                ParsingJob.competitor_id.in_(competitor_ids),
+                ParsingJob.status.in_(ParsingJobStatus.active_statuses()),
+            )
+            .order_by(
+                ParsingJob.competitor_id,
+                ParsingJob.created_at.desc(),
+                ParsingJob.id.desc(),
+            )
+        )
+        active: dict[int, ParsingJob] = {}
+        for job in self.db.scalars(stmt):
+            active.setdefault(job.competitor_id, job)
+        return active
+
     def get_by_apify_run_id(self, apify_run_id: str) -> ParsingJob | None:
         """Return a job by its Apify run id, or ``None``."""
         stmt = select(ParsingJob).where(ParsingJob.apify_run_id == apify_run_id)

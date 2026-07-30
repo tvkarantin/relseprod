@@ -7,6 +7,7 @@ import type { Reel, ReelContent } from '@/types/reel'
 export function makeCompetitor(overrides: Partial<Competitor> = {}): Competitor {
   return {
     id: 1,
+    activeJobId: null,
     instagramUsername: 'example',
     profileUrl: 'https://www.instagram.com/example/',
     status: 'ready',

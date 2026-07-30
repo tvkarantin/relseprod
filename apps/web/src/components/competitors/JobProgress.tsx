@@ -29,11 +29,18 @@ interface JobProgressProps {
   jobId: number
   username: string
   onActiveChange: (isActive: boolean) => void
+  onRestarted: (jobId: number) => void
   onSettled: () => void
 }
 
 /** Live progress of one import, driven entirely by backend values. */
-export function JobProgress({ jobId, username, onActiveChange, onSettled }: JobProgressProps) {
+export function JobProgress({
+  jobId,
+  username,
+  onActiveChange,
+  onRestarted,
+  onSettled,
+}: JobProgressProps) {
   const toast = useToast()
   const queryClient = useQueryClient()
 
@@ -70,7 +77,7 @@ export function JobProgress({ jobId, username, onActiveChange, onSettled }: JobP
       toast.info('Задача перезапущена')
       void queryClient.invalidateQueries({ queryKey: queryKeys.competitors.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.jobs.details(started.jobId) })
-      onSettled()
+      onRestarted(started.jobId)
     },
     onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
   })
@@ -87,26 +94,42 @@ export function JobProgress({ jobId, username, onActiveChange, onSettled }: JobP
 
   if (!job) return null
   if (job.status === 'completed') return null
+  const safeProgress = Math.min(100, Math.max(0, job.progress))
+  const isWaitingForApify = job.status === 'running' && safeProgress >= 30 && safeProgress < 70
 
   return (
-    <div className="job-panel" role="status" aria-live="polite">
-      <div className="job-panel-head">
-        <span>
-          {stageLabel(job)} · @{username}
-        </span>
-        <span>{job.progress}%</span>
+    <div
+      className={`job-panel ${isActive ? 'job-panel-active' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="job-progress-meta">
+        <div>
+          <strong>{stageLabel(job)}</strong>
+          <span>@{username}</span>
+        </div>
+        <strong className="job-progress-percent">{safeProgress}%</strong>
       </div>
 
       <div
         className="progress-track"
         role="progressbar"
-        aria-valuenow={job.progress}
+        aria-valuenow={safeProgress}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`Прогресс импорта @${username}`}
       >
-        <div className="progress-fill" style={{ width: `${job.progress}%` }} />
+        <div
+          className={`progress-fill ${isActive ? 'progress-fill-active' : ''}`}
+          style={{ width: `${safeProgress}%` }}
+        />
       </div>
+
+      {isWaitingForApify ? (
+        <p className="job-progress-note">
+          Apify обрабатывает профиль. Обычно это занимает от 30 секунд до нескольких минут.
+        </p>
+      ) : null}
 
       {job.status === 'failed' ? (
         <div className="job-panel-head" style={{ marginTop: 10, marginBottom: 0 }}>

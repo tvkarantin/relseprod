@@ -2,6 +2,7 @@ export type CompetitorStatus = 'idle' | 'queued' | 'parsing' | 'ready' | 'error'
 
 export interface Competitor {
   id: number
+  activeJobId: number | null
   instagramUsername: string
   profileUrl: string
   status: CompetitorStatus

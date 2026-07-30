@@ -15,6 +15,7 @@ interface CompetitorRowProps {
   isStarting: boolean
   onStartImport: (competitor: Competitor) => void
   onDelete: (competitor: Competitor) => void
+  onJobRestarted: (jobId: number) => void
   onJobSettled: () => void
 }
 
@@ -24,6 +25,7 @@ export function CompetitorRow({
   isStarting,
   onStartImport,
   onDelete,
+  onJobRestarted,
   onJobSettled,
 }: CompetitorRowProps) {
   // A competitor left in queued/parsing (e.g. after a page reload) still shows
@@ -94,6 +96,7 @@ export function CompetitorRow({
           jobId={jobId}
           username={competitor.instagramUsername}
           onActiveChange={setJobActive}
+          onRestarted={onJobRestarted}
           onSettled={onJobSettled}
         />
       ) : null}
