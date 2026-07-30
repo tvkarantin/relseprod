@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { queryKeys } from '@/api/queryKeys'
 import { fetchReel, saveReelContent } from '@/api/reels'
 import { ErrorState, LoadingState } from '@/components/feedback/States'
-import { ReelContentEditor } from '@/components/forms/ReelContentEditor'
+import { ReelContentEditor, type ReelContentEditorHandle } from '@/components/forms/ReelContentEditor'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ReelPlayer } from '@/components/reels/ReelPlayer'
+import { ReelTranscriptionControls } from '@/components/reels/ReelTranscriptionControls'
 import type { ReelContentFormValues } from '@/schemas/reelContent'
 import type { Reel } from '@/types/reel'
 import { formatDateTime, formatDuration, formatNumber, truncate } from '@/utils/format'
@@ -16,6 +17,7 @@ export function ReelDetailsPage() {
   const params = useParams()
   const reelId = Number(params.reelId)
   const queryClient = useQueryClient()
+  const editorRef = useRef<ReelContentEditorHandle>(null)
 
   const reelQuery = useQuery({
     queryKey: queryKeys.reels.details(reelId),
@@ -58,6 +60,14 @@ export function ReelDetailsPage() {
     },
     [saveMutation],
   )
+
+  const handleApplyScript = useCallback((transcript: string) => {
+    editorRef.current?.setScript(transcript)
+  }, [])
+
+  const handleGetCurrentScript = useCallback(() => {
+    return editorRef.current?.getScript() ?? ''
+  }, [])
 
   if (!Number.isFinite(reelId) || reelId <= 0) {
     return (
@@ -156,13 +166,23 @@ export function ReelDetailsPage() {
           </div>
         </div>
 
-        {/* Remounting on reelId resets the editor when navigating between reels. */}
-        <ReelContentEditor
-          key={reel.id}
-          reelId={reel.id}
-          content={reel.content}
-          onSave={handleSave}
-        />
+        <div>
+          <ReelTranscriptionControls
+            reelId={reel.id}
+            videoUrl={reel.videoUrl}
+            initialTranscription={reel.transcription}
+            onApplyScript={handleApplyScript}
+            getCurrentScript={handleGetCurrentScript}
+          />
+          {/* Remounting on reelId resets the editor when navigating between reels. */}
+          <ReelContentEditor
+            ref={editorRef}
+            key={reel.id}
+            reelId={reel.id}
+            content={reel.content}
+            onSave={handleSave}
+          />
+        </div>
       </div>
     </div>
   )

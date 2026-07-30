@@ -38,3 +38,12 @@ class ParsingJobStatus(StrEnum):
     def active_statuses(cls) -> tuple[ParsingJobStatus, ...]:
         """Statuses that mean the job is not finished yet."""
         return (cls.QUEUED, cls.RUNNING)
+
+
+class TranscriptionStatus(StrEnum):
+    """Lifecycle of a speech transcription task."""
+
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"

@@ -166,7 +166,11 @@ class ReelRepository(BaseRepository[Reel]):
         """
         stmt = (
             self._library_query(competitor_id=competitor_id, search=search)
-            .options(joinedload(Reel.competitor), joinedload(Reel.content))
+            .options(
+                joinedload(Reel.competitor),
+                joinedload(Reel.content),
+                joinedload(Reel.transcription),
+            )
             .order_by(
                 Reel.published_at.is_(None).asc(),
                 Reel.published_at.desc(),
@@ -196,7 +200,11 @@ class ReelRepository(BaseRepository[Reel]):
         stmt = (
             select(Reel)
             .where(Reel.id == reel_id)
-            .options(joinedload(Reel.competitor), joinedload(Reel.content))
+            .options(
+                joinedload(Reel.competitor),
+                joinedload(Reel.content),
+                joinedload(Reel.transcription),
+            )
         )
         return self.db.scalars(stmt).unique().one_or_none()
 
@@ -232,7 +240,11 @@ class ReelRepository(BaseRepository[Reel]):
         """Return reels the user is working on, most recently edited first."""
         stmt = (
             self._library_query(search=search, content_statuses=statuses)
-            .options(joinedload(Reel.competitor), joinedload(Reel.content))
+            .options(
+                joinedload(Reel.competitor),
+                joinedload(Reel.content),
+                joinedload(Reel.transcription),
+            )
             .order_by(ReelContent.updated_at.desc(), Reel.id.desc())
             .limit(limit)
             .offset(max(0, (page - 1) * limit))

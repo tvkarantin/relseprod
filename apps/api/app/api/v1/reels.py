@@ -13,6 +13,7 @@ from app.models.reel import Reel
 from app.schemas.common import ErrorResponse
 from app.schemas.reel import ReelPage, ReelView
 from app.schemas.reel_content import ReelContentSaved, ReelContentView, ReelContentWrite
+from app.schemas.transcription import TranscriptionSummary
 from app.services.reel_content import WORKING_STATUSES, ReelContentService, ReelLibraryService
 
 router = APIRouter(prefix="/reels", tags=["reels"])
@@ -37,6 +38,19 @@ def _to_view(reel: Reel) -> ReelView:
     rendered with empty strings so the editor has a stable shape.
     """
     content = reel.content
+    t = reel.transcription
+    transcription_summary = (
+        TranscriptionSummary(
+            id=t.id,
+            status=t.status,
+            dominant_language=t.dominant_language,
+            error_code=t.error_code,
+            error_message=t.error_message,
+            updated_at=t.updated_at,
+        )
+        if t
+        else None
+    )
     return ReelView(
         id=reel.id,
         competitor=reel.competitor,  # type: ignore[arg-type]
@@ -60,6 +74,7 @@ def _to_view(reel: Reel) -> ReelView:
             created_at=content.created_at if content else None,
             updated_at=content.updated_at if content else None,
         ),
+        transcription=transcription_summary,
     )
 
 

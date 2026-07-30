@@ -7,7 +7,7 @@ about the HTTP layer.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from sqlalchemy import select
 
@@ -16,8 +16,10 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+ModelT = TypeVar("ModelT", bound=Base)
 
-class BaseRepository[ModelT: Base]:
+
+class BaseRepository(Generic[ModelT]):
     """Shared CRUD primitives for a single ORM model."""
 
     model: type[ModelT]
