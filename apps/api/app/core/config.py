@@ -53,6 +53,17 @@ class Settings(BaseSettings):
     apify_timeout_seconds: int = Field(default=300, ge=1)
     apify_poll_interval_seconds: int = Field(default=3, ge=1)
 
+    deepgram_api_key: str = ""
+    deepgram_base_url: str = "https://api.deepgram.com/v1"
+    deepgram_model: str = "nova-3"
+    deepgram_language: str = "multi"
+    deepgram_timeout_seconds: int = Field(default=180, ge=10, le=1800)
+    deepgram_smart_format: bool = True
+    deepgram_utterances: bool = True
+    deepgram_paragraphs: bool = True
+    deepgram_numerals: bool = True
+    deepgram_punctuate: bool = True
+
     # ``NoDecode`` disables the built-in JSON decoding for complex types so the
     # plain comma-separated ``CORS_ORIGINS`` value is handled by the validator below.
     cors_origins: Annotated[list[str], NoDecode] = Field(
@@ -97,6 +108,11 @@ class Settings(BaseSettings):
     def apify_configured(self) -> bool:
         """Whether Apify integration can be used (not required in this stage)."""
         return bool(self.apify_api_token and self.apify_actor_id)
+
+    @property
+    def deepgram_configured(self) -> bool:
+        """Whether Deepgram integration can be used."""
+        return bool(self.deepgram_api_key)
 
     @property
     def sqlalchemy_database_url(self) -> str:
