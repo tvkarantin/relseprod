@@ -127,10 +127,13 @@ export function CompetitorsPage() {
             <CompetitorRow
               key={competitor.id}
               competitor={competitor}
-              jobId={activeJobs[competitor.id] ?? null}
+              jobId={competitor.activeJobId ?? activeJobs[competitor.id] ?? null}
               isStarting={startingId === competitor.id}
               onStartImport={(item) => void handleStartImport(item)}
               onDelete={setPendingDelete}
+              onJobRestarted={(jobId) =>
+                setActiveJobs((current) => ({ ...current, [competitor.id]: jobId }))
+              }
               onJobSettled={invalidateCompetitors}
             />
           ))}

@@ -207,6 +207,7 @@ def test_competitor_schema_serializes_camel_case(db_session) -> None:
 
     assert set(payload) == {
         "id",
+        "activeJobId",
         "instagramUsername",
         "profileUrl",
         "status",
@@ -216,6 +217,7 @@ def test_competitor_schema_serializes_camel_case(db_session) -> None:
         "updatedAt",
     }
     assert payload["instagramUsername"] == "camel"
+    assert payload["activeJobId"] is None
     assert payload["reelsCount"] == 7
     assert payload["status"] == "ready"
     assert payload["lastParsedAt"] is None

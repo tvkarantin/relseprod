@@ -56,6 +56,7 @@ def test_response_uses_camel_case_only(client: TestClient) -> None:
 
     assert set(body) == {
         "id",
+        "activeJobId",
         "instagramUsername",
         "profileUrl",
         "status",
@@ -64,6 +65,23 @@ def test_response_uses_camel_case_only(client: TestClient) -> None:
         "createdAt",
         "updatedAt",
     }
+
+
+def test_list_exposes_the_active_job_for_progress_recovery(
+    client: TestClient, db_session: Session
+) -> None:
+    created = client.post(BASE, json={"profile": "progressowner"}).json()
+    job = ParsingJob(
+        competitor_id=created["id"],
+        status=ParsingJobStatus.RUNNING,
+        progress=50,
+    )
+    db_session.add(job)
+    db_session.flush()
+
+    body = client.get(BASE).json()
+
+    assert body[0]["activeJobId"] == job.id
 
 
 def test_duplicate_competitor_is_rejected_with_409(client: TestClient) -> None:

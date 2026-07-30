@@ -157,9 +157,11 @@ describe('CompetitorsPage', () => {
     const user = userEvent.setup()
     mockedCompetitors.fetchCompetitors.mockResolvedValue([makeCompetitor({ id: 1 })])
     mockedCompetitors.startImport.mockResolvedValue({ jobId: 60, status: 'queued' })
-    mockedJobs.fetchJob.mockResolvedValue(
-      makeJob({ id: 60, status: 'failed', progress: 20, errorMessage: 'Apify недоступен' }),
-    )
+    mockedJobs.fetchJob
+      .mockResolvedValueOnce(
+        makeJob({ id: 60, status: 'failed', progress: 20, errorMessage: 'Apify недоступен' }),
+      )
+      .mockResolvedValue(makeJob({ id: 61, status: 'running', progress: 50 }))
     mockedJobs.retryJob.mockResolvedValue({ jobId: 61, status: 'queued' })
 
     renderWithProviders(<CompetitorsPage />)
@@ -173,6 +175,29 @@ describe('CompetitorsPage', () => {
     await user.click(within(panel).getByRole('button', { name: 'Повторить' }))
 
     await waitFor(() => expect(mockedJobs.retryJob).toHaveBeenCalledWith(60))
+    expect(await screen.findByText(/Ожидание завершения Actor/)).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
+    await waitFor(() => expect(mockedJobs.fetchJob).toHaveBeenCalledWith(61, expect.any(AbortSignal)))
+  })
+
+  it('restores progress polling from an active job returned by the API', async () => {
+    mockedCompetitors.fetchCompetitors.mockResolvedValue([
+      makeCompetitor({
+        id: 1,
+        instagramUsername: 'natgeo',
+        status: 'parsing',
+        activeJobId: 77,
+      }),
+    ])
+    mockedJobs.fetchJob.mockResolvedValue(
+      makeJob({ id: 77, competitorId: 1, status: 'running', progress: 50 }),
+    )
+
+    renderWithProviders(<CompetitorsPage />)
+
+    expect(await screen.findByText(/Ожидание завершения Actor/)).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
+    await waitFor(() => expect(mockedJobs.fetchJob).toHaveBeenCalledWith(77, expect.any(AbortSignal)))
   })
 
   it('deletes a competitor after confirmation', async () => {
