@@ -3,10 +3,9 @@ import { useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { queryKeys } from '@/api/queryKeys'
-import { fetchReel, saveReelContent } from '@/api/reels'
+import { fetchReel, getReelThumbnailUrl, saveReelContent } from '@/api/reels'
 import { ErrorState, LoadingState } from '@/components/feedback/States'
 import { ReelContentEditor, type ReelContentEditorHandle } from '@/components/forms/ReelContentEditor'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { ReelPlayer } from '@/components/reels/ReelPlayer'
 import { ReelTranscriptionControls } from '@/components/reels/ReelTranscriptionControls'
 import { ReelAnalysisControls } from '@/components/reels/ReelAnalysisControls'
@@ -112,12 +111,13 @@ export function ReelDetailsPage() {
   const title = reel.caption ? truncate(reel.caption, 60) : `Рилс @${reel.competitor.instagramUsername}`
 
   return (
-    <div className="page-content">
-      <PageHeader
-        title={title}
-        description={`@${reel.competitor.instagramUsername}`}
-        actions={
-          <>
+    <div className="page-content reel-details-page">
+      <header className="reel-detail-header">
+        <div className="reel-detail-title">
+          <h1>{title}</h1>
+          <p>@{reel.competitor.instagramUsername}</p>
+        </div>
+        <div className="reel-detail-actions">
             <Link to="/reels" className="button">
               ← К библиотеке
             </Link>
@@ -131,57 +131,29 @@ export function ReelDetailsPage() {
                 Открыть в Instagram ↗
               </a>
             ) : null}
-          </>
-        }
-      />
+        </div>
+      </header>
 
       <div className="reel-details">
-        <div>
-          <div className="surface reel-media">
+        <aside className="reel-detail-media-column">
+          <div className="surface reel-media reel-detail-player">
             <ReelPlayer
               videoUrl={reel.videoUrl}
-              thumbnailUrl={reel.thumbnailUrl}
+              thumbnailUrl={reel.thumbnailUrl ? getReelThumbnailUrl(reel.id) : null}
               title={title}
             />
           </div>
 
-          <div className="surface reel-meta" style={{ marginTop: 14 }}>
-            <div className="meta-row">
-              <span>Автор</span>
-              <strong>
-                <a href={reel.competitor.profileUrl} target="_blank" rel="noopener noreferrer">
-                  @{reel.competitor.instagramUsername}
-                </a>
-              </strong>
-            </div>
-            <div className="meta-row">
-              <span>Опубликован</span>
-              <strong>{formatDateTime(reel.publishedAt)}</strong>
-            </div>
-            <div className="meta-row">
-              <span>Просмотры</span>
-              <strong>{formatNumber(reel.viewsCount)}</strong>
-            </div>
-            <div className="meta-row">
-              <span>Лайки</span>
-              <strong>{formatNumber(reel.likesCount)}</strong>
-            </div>
-            <div className="meta-row">
-              <span>Комментарии</span>
-              <strong>{formatNumber(reel.commentsCount)}</strong>
-            </div>
-            <div className="meta-row">
-              <span>Длительность</span>
-              <strong>{formatDuration(reel.duration)}</strong>
-            </div>
-
-            {reel.caption ? (
-              <div className="reel-caption-block">{reel.caption}</div>
-            ) : null}
+          <div className="sr-only" aria-label="Данные рилса">
+            <span>{formatDateTime(reel.publishedAt)}</span>
+            <span>{formatNumber(reel.viewsCount)}</span>
+            <span>{formatNumber(reel.likesCount)}</span>
+            <span>{formatNumber(reel.commentsCount)}</span>
+            <span>{formatDuration(reel.duration)}</span>
           </div>
-        </div>
+        </aside>
 
-        <div>
+        <section className="reel-detail-workflow" aria-label="Обработка и сценарий">
           <ReelTranscriptionControls
             reelId={reel.id}
             videoUrl={reel.videoUrl}
@@ -194,6 +166,11 @@ export function ReelDetailsPage() {
             transcription={reel.transcription}
             onApplyScript={handleApplyAnalysis}
             getCurrentValues={handleGetCurrentValues}
+            initialValues={{
+              hook: reel.content.hook,
+              script: reel.content.script,
+              cta: reel.content.cta,
+            }}
           />
           {/* Remounting on reelId resets the editor when navigating between reels. */}
           <ReelContentEditor
@@ -203,7 +180,7 @@ export function ReelDetailsPage() {
             content={reel.content}
             onSave={handleSave}
           />
-        </div>
+        </section>
       </div>
     </div>
   )

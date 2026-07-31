@@ -6,7 +6,13 @@ Alembic autogenerate relies on.
 
 from app.database.base import Base
 from app.models.competitor import Competitor
-from app.models.enums import CompetitorStatus, ContentStatus, ParsingJobStatus, TranscriptionStatus
+from app.models.enums import (
+    CompetitorStatus,
+    ContentStatus,
+    ParsingJobStatus,
+    ReelImportMode,
+    TranscriptionStatus,
+)
 from app.models.parsing_job import ParsingJob
 from app.models.reel import Reel
 from app.models.reel_analysis import ReelAnalysis
@@ -23,6 +29,7 @@ __all__ = [
     "Reel",
     "ReelAnalysis",
     "ReelContent",
+    "ReelImportMode",
     "ReelTranscription",
     "TranscriptionStatus",
 ]

@@ -61,6 +61,7 @@ export function makeJob(overrides: Partial<ParsingJob> = {}): ParsingJob {
     id: 1,
     competitorId: 1,
     apifyRunId: 'run-1',
+    importMode: 'popular',
     status: 'queued',
     progress: 0,
     reelsCreated: 0,

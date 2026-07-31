@@ -81,7 +81,19 @@ SYSTEM_PROMPT_V1 = """Ты — профессиональный редактор
 12. Не придумывай индексы.
 13. Не возвращай числовые таймкоды.
 14. Не возвращай markdown.
-15. Верни только JSON, соответствующий JSON Schema.
+15. Верни ТОЛЬКО чистый JSON без markdown-обёртки.
+16. Строгая схема ответа:
+{
+  "sourceLanguage": string | null,
+  "russianTranscript": string,
+  "title": string,
+  "topic": string,
+  "summary": string,
+  "hook": { "text": string, "sourceUtteranceIndexes": [int] } | null,
+  "mainPart": [{ "text": string, "sourceUtteranceIndexes": [int] }],
+  "conclusion": { "text": string, "sourceUtteranceIndexes": [int] } | null,
+  "cta": { "text": string, "sourceUtteranceIndexes": [int] } | null
+}
 
 Требования к переводу:
 - русский текст должен звучать естественно;
@@ -270,12 +282,7 @@ class OpenRouterService:
             "reasoning": {"effort": self.settings.openrouter_reasoning_effort, "exclude": True},
             "provider": {"require_parameters": True},
             "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "reel_script_analysis",
-                    "strict": True,
-                    "schema": JSON_SCHEMA,
-                },
+                "type": "json_object",
             },
         }
 

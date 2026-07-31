@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
@@ -16,6 +16,7 @@ from app.schemas.reel import ReelPage, ReelView
 from app.schemas.reel_content import ReelContentSaved, ReelContentView, ReelContentWrite
 from app.schemas.transcription import TranscriptionSummary
 from app.services.reel_content import WORKING_STATUSES, ReelContentService, ReelLibraryService
+from app.services.reel_media import ReelThumbnailFetchError, fetch_reel_thumbnail
 
 router = APIRouter(prefix="/reels", tags=["reels"])
 
@@ -140,6 +141,33 @@ def list_my_reels(
         limit=limit,
         total=total,
         pages=pages,
+    )
+
+
+@router.get(
+    "/{reel_id}/thumbnail",
+    response_class=Response,
+    summary="Получить превью рилса",
+    responses={404: {"description": "Превью недоступно"}},
+)
+def get_reel_thumbnail(
+    reel_id: ReelId,
+    db: Annotated[Session, Depends(DbSession)],
+) -> Response:
+    """Proxy an Instagram thumbnail so browser hotlink protection cannot hide it."""
+    reel = ReelLibraryService(db).get_reel(reel_id)
+    if not reel.thumbnail_url:
+        raise HTTPException(status_code=404, detail="Превью рилса недоступно")
+
+    try:
+        thumbnail = fetch_reel_thumbnail(reel.thumbnail_url)
+    except ReelThumbnailFetchError as exc:
+        raise HTTPException(status_code=404, detail="Превью рилса недоступно") from exc
+
+    return Response(
+        content=thumbnail.content,
+        media_type=thumbnail.media_type,
+        headers={"Cache-Control": "private, max-age=3600"},
     )
 
 

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -37,11 +37,11 @@ describe('ReelsPage', () => {
     expect(container.querySelectorAll('.skeleton-card').length).toBeGreaterThan(0)
   })
 
-  it('shows the empty state with a link to competitors', async () => {
+  it('shows the empty state with an add competitor action', async () => {
     renderWithProviders(<ReelsPage />, { route: '/reels' })
 
-    expect(await screen.findByText('Библиотека пуста')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Перейти к конкурентам/ })).toBeInTheDocument()
+    expect(await screen.findByText('Здесь пока пусто')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Добавить конкурента/ })).toBeInTheDocument()
   })
 
   it('renders reel cards with real metrics', async () => {
@@ -60,7 +60,8 @@ describe('ReelsPage', () => {
     renderWithProviders(<ReelsPage />, { route: '/reels' })
 
     expect(await screen.findByText('Как снимать рилсы')).toBeInTheDocument()
-    expect(screen.getByText('@example')).toBeInTheDocument()
+    const card = screen.getByText('Как снимать рилсы').closest('.reel-card') as HTMLElement
+    expect(within(card).getByText(/@example/)).toBeInTheDocument()
     expect(screen.getByTitle('Просмотры')).toHaveTextContent('1,2 млн')
     expect(screen.getByTitle('Лайки')).toHaveTextContent('5 тыс.')
   })
@@ -85,18 +86,6 @@ describe('ReelsPage', () => {
     expect(link).toHaveAttribute('href', '/reels/42')
   })
 
-  it('opens the original on Instagram in a safe new tab', async () => {
-    mockedReels.fetchReels.mockResolvedValue(
-      page([makeReel({ originalUrl: 'https://www.instagram.com/reel/ABC123/' })]),
-    )
-
-    renderWithProviders(<ReelsPage />, { route: '/reels' })
-
-    const link = await screen.findByRole('link', { name: /Открыть оригинал/ })
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-  })
-
   it('debounces the search and resets paging', async () => {
     const user = userEvent.setup()
     mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
@@ -104,7 +93,7 @@ describe('ReelsPage', () => {
     renderWithProviders(<ReelsPage />, { route: '/reels?page=3' })
     await screen.findByText('Как снимать рилсы')
 
-    await user.type(screen.getByLabelText('Поиск по рилсам'), 'маркетинг')
+    await user.type(screen.getByLabelText(/Поиск по заголовку/), 'маркетинг')
 
     await waitFor(
       () =>
@@ -148,7 +137,7 @@ describe('ReelsPage', () => {
 
     await waitFor(() =>
       expect(mockedReels.fetchReels).toHaveBeenCalledWith(
-        { competitorId: 2, search: 'test', page: 2, limit: 20 },
+        { competitorId: 2, search: 'test', page: 2, limit: 8 },
         expect.anything(),
       ),
     )
@@ -163,7 +152,7 @@ describe('ReelsPage', () => {
     renderWithProviders(<ReelsPage />, { route: '/reels' })
     await screen.findByText('Как снимать рилсы')
 
-    expect(screen.getByRole('button', { name: /Назад/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Предыдущая страница/ })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: 'Страница 2' }))
 
@@ -189,5 +178,57 @@ describe('ReelsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Повторить' }))
 
     expect(await screen.findByText('Как снимать рилсы')).toBeInTheDocument()
+  })
+
+  it('opens the competitor import dialog without navigating away', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    await user.click(await screen.findByRole('button', { name: '+ Импорт' }))
+
+    expect(screen.getByRole('dialog', { name: 'Добавить конкурента' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Instagram-аккаунт или ссылка')).toBeInTheDocument()
+  })
+
+  it('opens the competitor import dialog from the dashboard route parameter', async () => {
+    renderWithProviders(<ReelsPage />, { route: '/reels?import=competitor' })
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Добавить конкурента' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Instagram-аккаунт или ссылка')).toHaveFocus()
+    expect(screen.getByRole('radio', { name: /Популярные/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Последние 5/ })).not.toBeChecked()
+  })
+
+  it('starts an import with the selected latest mode', async () => {
+    const user = userEvent.setup()
+    mockedCompetitors.createCompetitor.mockResolvedValue(
+      makeCompetitor({ id: 9, instagramUsername: 'latestcreator' }),
+    )
+    mockedCompetitors.startImport.mockResolvedValue({ jobId: 15, status: 'queued' })
+    renderWithProviders(<ReelsPage />, { route: '/reels?import=competitor' })
+
+    await user.type(
+      await screen.findByLabelText('Instagram-аккаунт или ссылка'),
+      'latestcreator',
+    )
+    await user.click(screen.getByRole('radio', { name: /Последние 5/ }))
+    await user.click(screen.getByRole('button', { name: 'Добавить и импортировать' }))
+
+    await waitFor(() =>
+      expect(mockedCompetitors.startImport).toHaveBeenCalledWith(9, 'latest'),
+    )
+  })
+
+  it('shows category tabs', async () => {
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByText('Все')).toBeInTheDocument()
+    expect(screen.getByText('Тренды')).toBeInTheDocument()
+    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText('Продажи')).toBeInTheDocument()
+    expect(screen.getByText('Монтаж')).toBeInTheDocument()
+    expect(screen.getByText('Сценарии')).toBeInTheDocument()
   })
 })

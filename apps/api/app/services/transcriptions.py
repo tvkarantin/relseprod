@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import UTC, datetime
 
@@ -136,11 +137,9 @@ class TranscriptionService:
             t.dominant_language = result.dominant_language
             t.languages_json = result.languages
             t.confidence = result.confidence
-            t.words_json = [w.__dict__ for w in result.words]
-            t.utterances_json = [
-                {**u.__dict__, "words": [w.__dict__ for w in u.words]} for u in result.utterances
-            ]
-            t.paragraphs_json = [p.__dict__ for p in result.paragraphs]
+            t.words_json = [dataclasses.asdict(w) for w in result.words]
+            t.utterances_json = [dataclasses.asdict(u) for u in result.utterances]
+            t.paragraphs_json = [dataclasses.asdict(p) for p in result.paragraphs]
             t.provider_request_id = result.request_id
             t.provider_duration = result.duration
             t.error_code = None

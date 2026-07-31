@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
+import { NotificationProvider } from '@/components/notifications/NotificationProvider'
 
 /** Query client tuned for tests: no retries, no caching between tests. */
 export function createTestQueryClient(): QueryClient {
@@ -27,7 +28,9 @@ export function renderWithProviders(ui: ReactElement, options: WrapperOptions = 
     return (
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={[route]}>
-          <ToastProvider>{children}</ToastProvider>
+          <NotificationProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </NotificationProvider>
         </MemoryRouter>
       </QueryClientProvider>
     )

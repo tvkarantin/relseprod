@@ -8,6 +8,7 @@ import { createQueryClient } from './queryClient'
 import './styles.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
+import { NotificationProvider } from '@/components/notifications/NotificationProvider'
 
 const container = document.getElementById('root')
 if (!container) throw new Error('Root container #root not found')
@@ -16,9 +17,11 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={createQueryClient()}>
       <BrowserRouter>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <NotificationProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </NotificationProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

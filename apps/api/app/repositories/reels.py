@@ -76,6 +76,18 @@ class ReelRepository(BaseRepository[Reel]):
         )
         return self.db.scalars(stmt).first()
 
+    def identity_sets_for_competitor(self, competitor_id: int) -> tuple[set[str], set[str]]:
+        """Return stored shortcodes and Instagram ids for duplicate filtering."""
+        stmt = select(Reel.shortcode, Reel.instagram_id).where(Reel.competitor_id == competitor_id)
+        shortcodes: set[str] = set()
+        instagram_ids: set[str] = set()
+        for shortcode, instagram_id in self.db.execute(stmt):
+            if shortcode:
+                shortcodes.add(shortcode)
+            if instagram_id:
+                instagram_ids.add(instagram_id)
+        return shortcodes, instagram_ids
+
     def create(self, reel: Reel) -> Reel:
         """Insert a new reel."""
         return self.add(reel)

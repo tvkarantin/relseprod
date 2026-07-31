@@ -1,13 +1,13 @@
-import { Button } from './Button'
-
 interface PaginationProps {
   page: number
   pages: number
   total: number
   onChange: (page: number) => void
+  updatedAt?: string
+  perPage?: number
+  onPerPageChange?: (perPage: number) => void
 }
 
-/** Build a compact page list: 1 … 4 5 6 … 42 */
 function pageWindow(page: number, pages: number): (number | 'gap')[] {
   if (pages <= 7) return Array.from({ length: pages }, (_, index) => index + 1)
 
@@ -22,38 +22,80 @@ function pageWindow(page: number, pages: number): (number | 'gap')[] {
   return result
 }
 
-export function Pagination({ page, pages, total, onChange }: PaginationProps) {
+export function Pagination({
+  page,
+  pages,
+  total,
+  onChange,
+  updatedAt,
+  perPage = 8,
+  onPerPageChange,
+}: PaginationProps) {
   if (pages <= 1) return null
 
   return (
     <nav className="pagination" aria-label="Постраничная навигация">
-      <Button small disabled={page <= 1} onClick={() => onChange(page - 1)}>
-        ← Назад
-      </Button>
+      <div className="pagination-info">
+        Всего рилсов: <strong>{total}</strong>
+        {updatedAt ? (
+          <> &bull; Обновлено сегодня в {updatedAt}</>
+        ) : null}
+      </div>
 
-      {pageWindow(page, pages).map((item, index) =>
-        item === 'gap' ? (
-          <span key={`gap-${index}`} className="page-ellipsis" aria-hidden="true">
-            …
-          </span>
-        ) : (
-          <button
-            key={item}
-            type="button"
-            className={`page-button ${item === page ? 'active' : ''}`}
-            aria-current={item === page ? 'page' : undefined}
-            aria-label={`Страница ${item}`}
-            onClick={() => onChange(item)}
-          >
-            {item}
-          </button>
-        ),
-      )}
+      <div className="pagination-pages">
+        <button
+          type="button"
+          className="page-button-arrow"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+          aria-label="Предыдущая страница"
+        >
+          ‹
+        </button>
 
-      <Button small disabled={page >= pages} onClick={() => onChange(page + 1)}>
-        Вперёд →
-      </Button>
-      <span className="pagination-info">Всего: {total}</span>
+        {pageWindow(page, pages).map((item, index) =>
+          item === 'gap' ? (
+            <span key={`gap-${index}`} className="page-ellipsis" aria-hidden="true">
+              …
+            </span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              className={`page-button ${item === page ? 'active' : ''}`}
+              aria-current={item === page ? 'page' : undefined}
+              aria-label={`Страница ${item}`}
+              onClick={() => onChange(item)}
+            >
+              {item}
+            </button>
+          ),
+        )}
+
+        <button
+          type="button"
+          className="page-button-arrow"
+          disabled={page >= pages}
+          onClick={() => onChange(page + 1)}
+          aria-label="Следующая страница"
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="pagination-per-page">
+        На странице:
+        <select
+          className="select"
+          value={perPage}
+          onChange={(event) => onPerPageChange?.(Number(event.target.value))}
+          aria-label="Количество на странице"
+        >
+          <option value={8}>8</option>
+          <option value={20}>20</option>
+          <option value={40}>40</option>
+        </select>
+      </div>
     </nav>
   )
 }

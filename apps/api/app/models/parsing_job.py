@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, CreatedAtMixin
 from app.database.types import UTCDateTime
-from app.models.enums import ParsingJobStatus
+from app.models.enums import ParsingJobStatus, ReelImportMode
 
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
@@ -33,6 +33,19 @@ class ParsingJob(CreatedAtMixin, Base):
         nullable=False,
     )
     apify_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    import_mode: Mapped[ReelImportMode] = mapped_column(
+        SAEnum(
+            ReelImportMode,
+            name="reel_import_mode",
+            native_enum=False,
+            length=16,
+            validate_strings=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+        default=ReelImportMode.POPULAR,
+        server_default=ReelImportMode.POPULAR.value,
+    )
 
     status: Mapped[ParsingJobStatus] = mapped_column(
         SAEnum(

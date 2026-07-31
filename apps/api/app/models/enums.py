@@ -40,6 +40,13 @@ class ParsingJobStatus(StrEnum):
         return (cls.QUEUED, cls.RUNNING)
 
 
+class ReelImportMode(StrEnum):
+    """How a parsing job chooses reels from the Apify candidate pool."""
+
+    POPULAR = "popular"
+    LATEST = "latest"
+
+
 class TranscriptionStatus(StrEnum):
     """Lifecycle of a speech transcription task."""
 

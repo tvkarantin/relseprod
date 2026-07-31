@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.core.errors import ErrorCode
 from app.database.base import utcnow
-from app.models import Competitor, ParsingJob, ParsingJobStatus
+from app.models import Competitor, ParsingJob, ParsingJobStatus, ReelImportMode
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -56,6 +56,7 @@ def test_queued_job_is_returned(
     assert body["id"] == job.id
     assert body["competitorId"] == competitor.id
     assert body["status"] == "queued"
+    assert body["importMode"] == "popular"
     assert body["progress"] == 0
     assert body["reelsCreated"] == 0
     assert body["reelsUpdated"] == 0
@@ -97,6 +98,7 @@ def test_job_response_uses_camel_case_only(
         "id",
         "competitorId",
         "apifyRunId",
+        "importMode",
         "status",
         "progress",
         "reelsCreated",
@@ -156,6 +158,26 @@ def test_failed_job_can_be_retried(
     assert retry.status is ParsingJobStatus.QUEUED
     assert retry.progress == 0
     assert retry.error_message is None
+
+
+def test_retry_preserves_the_original_import_mode(
+    client: TestClient,
+    db_session: Session,
+    competitor: Competitor,
+    stub_background_tasks: list[tuple[Any, ...]],
+) -> None:
+    failed = make_job(
+        db_session,
+        competitor,
+        ParsingJobStatus.FAILED,
+        import_mode=ReelImportMode.LATEST,
+    )
+
+    retry_id = client.post(f"{JOBS}/{failed.id}/retry").json()["jobId"]
+
+    retry = db_session.get(ParsingJob, retry_id)
+    assert retry is not None
+    assert retry.import_mode is ReelImportMode.LATEST
 
 
 def test_retry_does_not_modify_the_failed_job(

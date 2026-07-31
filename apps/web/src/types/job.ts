@@ -1,9 +1,11 @@
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed'
+export type ReelImportMode = 'popular' | 'latest'
 
 export interface ParsingJob {
   id: number
   competitorId: number
   apifyRunId: string | null
+  importMode: ReelImportMode
   status: JobStatus
   progress: number
   reelsCreated: number

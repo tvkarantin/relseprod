@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 
 from app.database.base import utcnow
-from app.models.enums import ParsingJobStatus
+from app.models.enums import ParsingJobStatus, ReelImportMode
 from app.models.parsing_job import ParsingJob
 from app.repositories.base import BaseRepository
 
@@ -24,16 +24,24 @@ class ParsingJobRepository(BaseRepository[ParsingJob]):
         """Return a job by primary key, or ``None``."""
         return self.get(job_id)
 
-    def create(self, competitor_id: int) -> ParsingJob:
+    def create(
+        self,
+        competitor_id: int,
+        *,
+        import_mode: ReelImportMode = ReelImportMode.POPULAR,
+    ) -> ParsingJob:
         """Insert a new queued job for a competitor."""
-        return self.add(ParsingJob(competitor_id=competitor_id))
+        return self.add(ParsingJob(competitor_id=competitor_id, import_mode=import_mode))
 
     def create_retry(self, failed_job: ParsingJob) -> ParsingJob:
         """Create a fresh job replaying a failed one.
 
         The original job is left untouched so the failure stays auditable.
         """
-        return self.create(failed_job.competitor_id)
+        return self.create(
+            failed_job.competitor_id,
+            import_mode=failed_job.import_mode,
+        )
 
     def update_status(
         self,

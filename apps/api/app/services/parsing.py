@@ -21,13 +21,15 @@ from app.core.errors import (
     JobNotFoundError,
 )
 from app.database.base import utcnow
-from app.models.enums import CompetitorStatus, ParsingJobStatus
+from app.models.enums import CompetitorStatus, ParsingJobStatus, ReelImportMode
 from app.repositories.competitors import CompetitorRepository
 from app.repositories.jobs import ParsingJobRepository
+from app.repositories.reels import ReelRepository
 from app.services.apify import ApifyService
 from app.services.apify_input import build_actor_input
 from app.services.reel_importer import ImportResult, ReelImporter
 from app.services.reel_normalizer import normalize_apify_items
+from app.services.reel_selector import select_reels_for_import
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -74,7 +76,12 @@ class ParsingService:
 
     # ------------------------------------------------------------ scheduling
 
-    def create_job(self, competitor_id: int) -> ParsingJob:
+    def create_job(
+        self,
+        competitor_id: int,
+        *,
+        import_mode: ReelImportMode = ReelImportMode.POPULAR,
+    ) -> ParsingJob:
         """Queue an import for a competitor.
 
         Raises:
@@ -91,7 +98,7 @@ class ParsingService:
                 details={"competitorId": competitor.id, "jobId": active.id},
             )
 
-        job = self.jobs.create(competitor.id)
+        job = self.jobs.create(competitor.id, import_mode=import_mode)
         self.competitors.update_status(competitor, CompetitorStatus.QUEUED)
         self.session.commit()
         self.session.refresh(job)
@@ -242,7 +249,23 @@ class ParsingService:
         if skipped:
             logger.info("Job %s: normalizer skipped %s items", job.id, skipped)
 
-        result = self.importer.import_reels(self.session, competitor, normalized)
+        existing_shortcodes, existing_instagram_ids = ReelRepository(
+            self.session
+        ).identity_sets_for_competitor(competitor.id)
+        selected = select_reels_for_import(
+            normalized,
+            mode=job.import_mode,
+            excluded_shortcodes=existing_shortcodes,
+            excluded_instagram_ids=existing_instagram_ids,
+        )
+        logger.info(
+            "Job %s: selected %s reels for import from %s normalized candidates",
+            job.id,
+            len(selected),
+            len(normalized),
+        )
+
+        result = self.importer.import_reels(self.session, competitor, selected)
         result.skipped += skipped
 
         now = utcnow()

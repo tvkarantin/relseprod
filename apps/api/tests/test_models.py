@@ -17,6 +17,7 @@ from app.models import (
     ParsingJobStatus,
     Reel,
     ReelContent,
+    ReelImportMode,
 )
 from app.repositories import CompetitorRepository, ParsingJobRepository, ReelRepository
 
@@ -147,6 +148,7 @@ def test_create_parsing_job_applies_defaults(db_session: Session) -> None:
     db_session.flush()
 
     assert job.status is ParsingJobStatus.QUEUED
+    assert job.import_mode is ReelImportMode.POPULAR
     assert job.progress == 0
     assert job.reels_created == 0
     assert job.reels_updated == 0

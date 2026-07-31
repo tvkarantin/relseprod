@@ -9,7 +9,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from app.core.errors import ErrorCode
-from app.models import Competitor, ParsingJob, ParsingJobStatus, Reel, ReelContent
+from app.models import (
+    Competitor,
+    ParsingJob,
+    ParsingJobStatus,
+    Reel,
+    ReelContent,
+    ReelImportMode,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -243,6 +250,7 @@ def test_parse_returns_202_and_queues_a_job(
     job = db_session.get(ParsingJob, body["jobId"])
     assert job is not None
     assert job.status is ParsingJobStatus.QUEUED
+    assert job.import_mode is ReelImportMode.POPULAR
     assert job.progress == 0
     assert job.reels_created == 0
     assert job.reels_updated == 0
@@ -250,6 +258,35 @@ def test_parse_returns_202_and_queues_a_job(
     competitor = db_session.get(Competitor, created["id"])
     assert competitor is not None
     assert competitor.status.value == "queued"
+
+
+def test_parse_accepts_latest_import_mode(
+    client: TestClient,
+    db_session: Session,
+    stub_background_tasks: list[tuple[Any, ...]],
+) -> None:
+    created = client.post(BASE, json={"profile": "latestmode"}).json()
+
+    response = client.post(
+        f"{BASE}/{created['id']}/parse",
+        json={"importMode": "latest"},
+    )
+
+    assert response.status_code == 202
+    job = db_session.get(ParsingJob, response.json()["jobId"])
+    assert job is not None
+    assert job.import_mode is ReelImportMode.LATEST
+
+
+def test_parse_rejects_unknown_import_mode(client: TestClient) -> None:
+    created = client.post(BASE, json={"profile": "badmode"}).json()
+
+    response = client.post(
+        f"{BASE}/{created['id']}/parse",
+        json={"importMode": "random"},
+    )
+
+    assert response.status_code == 422
 
 
 def test_parse_schedules_exactly_one_background_task(

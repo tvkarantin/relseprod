@@ -153,7 +153,7 @@ def test_full_import_flow_creates_reels_and_completes_the_job(
         assert reel.content.content_status is ContentStatus.NEW
 
 
-def test_second_import_updates_without_creating_duplicates(
+def test_second_import_skips_existing_reels_and_imports_the_next_candidates(
     client: TestClient, db_session: Session, competitor_id: int
 ) -> None:
     first_job = client.post(f"{COMPETITORS}/{competitor_id}/parse").json()["jobId"]
@@ -170,7 +170,7 @@ def test_second_import_updates_without_creating_duplicates(
     reel.content.content_status = ContentStatus.READY
     db_session.commit()
 
-    # Second import: fresh metrics plus one brand-new reel.
+    # Second import: existing reels must not consume the five import slots.
     second_job = client.post(f"{COMPETITORS}/{competitor_id}/parse").json()["jobId"]
     updated_items = [
         dataset_item("AAA", videoPlayCount=99_999, likesCount=888, caption="Новая подпись"),
@@ -180,21 +180,21 @@ def test_second_import_updates_without_creating_duplicates(
     with make_apify(updated_items) as apify:
         result = run_import(db_session, second_job, apify)
 
-    assert (result.created, result.updated) == (1, 2)
+    assert (result.created, result.updated) == (1, 0)
 
     job = client.get(f"{JOBS}/{second_job}").json()
     assert job["reelsCreated"] == 1
-    assert job["reelsUpdated"] == 2
+    assert job["reelsUpdated"] == 0
 
     competitor = client.get(f"{COMPETITORS}/{competitor_id}").json()
     assert competitor["reelsCount"] == 3, "no duplicates were created"
 
     db_session.expire_all()
     refreshed = db_session.query(Reel).filter(Reel.shortcode == "AAA").one()
-    assert refreshed.views_count == 99_999
-    assert refreshed.likes_count == 888
-    assert refreshed.caption == "Новая подпись"
-    # The user's script survived the re-import.
+    assert refreshed.views_count == 1000
+    assert refreshed.likes_count == 100
+    assert refreshed.caption == "Подпись AAA"
+    # Existing external data and the user's script are untouched.
     assert refreshed.content.hook == "Мой хук"
     assert refreshed.content.script == "Мой сценарий"
     assert refreshed.content.cta == "Мой призыв"

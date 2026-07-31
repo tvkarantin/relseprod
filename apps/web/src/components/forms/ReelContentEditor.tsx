@@ -207,39 +207,44 @@ export const ReelContentEditor = forwardRef<ReelContentEditorHandle, ReelContent
             ) : null}
           </div>
 
-          <div className="field">
-            <label className="field-label" htmlFor={`notes-${reelId}`}>
-              <span>Заметки</span>
-              {counter('notes')}
-            </label>
-            <textarea
-              id={`notes-${reelId}`}
-              className="textarea"
-              rows={3}
-              placeholder="Идеи по монтажу, съёмке, референсы"
-              aria-invalid={errors.notes ? true : undefined}
-              aria-describedby={errors.notes ? `notes-${reelId}-error` : undefined}
-              {...register('notes')}
-            />
-            {errors.notes ? (
-              <p className="field-error" id={`notes-${reelId}-error`} role="alert">
-                {errors.notes.message}
-              </p>
-            ) : null}
-          </div>
+          <details className="editor-more">
+            <summary>Заметки и статус</summary>
+            <div className="editor-more-content">
+              <div className="field">
+                <label className="field-label" htmlFor={`notes-${reelId}`}>
+                  <span>Заметки</span>
+                  {counter('notes')}
+                </label>
+                <textarea
+                  id={`notes-${reelId}`}
+                  className="textarea"
+                  rows={3}
+                  placeholder="Идеи по монтажу, съёмке, референсы"
+                  aria-invalid={errors.notes ? true : undefined}
+                  aria-describedby={errors.notes ? `notes-${reelId}-error` : undefined}
+                  {...register('notes')}
+                />
+                {errors.notes ? (
+                  <p className="field-error" id={`notes-${reelId}-error`} role="alert">
+                    {errors.notes.message}
+                  </p>
+                ) : null}
+              </div>
 
-          <div className="field">
-            <label className="field-label" htmlFor={`status-${reelId}`}>
-              <span>Статус</span>
-            </label>
-            <select id={`status-${reelId}`} className="select" {...register('contentStatus')}>
-              {ALL_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {CONTENT_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="field">
+                <label className="field-label" htmlFor={`status-${reelId}`}>
+                  <span>Статус</span>
+                </label>
+                <select id={`status-${reelId}`} className="select" {...register('contentStatus')}>
+                  {ALL_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {CONTENT_STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
         </form>
       </section>
     )

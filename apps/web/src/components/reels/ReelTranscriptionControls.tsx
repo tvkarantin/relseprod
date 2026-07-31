@@ -97,70 +97,74 @@ export function ReelTranscriptionControls({
     retryMutation.isPending
 
   return (
-    <div className="surface" style={{ marginBottom: 14, padding: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, marginBottom: 4 }}>
-            Расшифровка речи
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted, #9ca3af)', margin: 0 }}>
+    <section className="workflow-card transcription-workflow-card">
+      <div className="workflow-card-copy">
+        <h2>Расшифровка речи</h2>
+        <div className={`workflow-status ${status === 'completed' ? 'is-success' : ''}`}>
+          <i className={status === 'failed' ? 'is-error' : isPending ? 'is-pending' : ''} />
             {!transcription && 'Получите точную расшифровку речи из видео'}
             {status === 'queued' && 'Задача поставлена в очередь'}
             {status === 'processing' && 'Deepgram распознаёт речь…'}
             {status === 'completed' && transcriptText !== '' && 'Расшифровка готова'}
             {status === 'completed' && transcriptText === '' && 'Речь в видео не обнаружена'}
             {status === 'failed' && (transcription?.errorMessage || 'Не удалось получить расшифровку')}
-          </p>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div className="workflow-actions">
           {!transcription && (
-            <Button
+            <button
+              type="button"
+              className="workflow-button workflow-button-primary"
               onClick={() => startMutation.mutate()}
               disabled={!videoUrl || isPending}
             >
               Расшифровать видео
-            </Button>
+            </button>
           )}
 
           {status === 'queued' && (
-            <Button disabled>В очереди…</Button>
+            <button type="button" className="workflow-button" disabled>В очереди…</button>
           )}
 
           {status === 'processing' && (
-            <Button disabled>Распознавание…</Button>
+            <button type="button" className="workflow-button" disabled>Распознавание…</button>
           )}
 
           {status === 'completed' && transcriptText !== '' && (
             <>
-              <Button small onClick={() => setShowModal(true)}>
-                Посмотреть
-              </Button>
-              <Button small onClick={() => handleCopy(transcriptText)}>
-                {copied ? 'Скопировано ✓' : 'Скопировать'}
-              </Button>
-              <Button small onClick={handleTransferClick}>
-                Перенести в основную часть
-              </Button>
+              <button type="button" className="workflow-button" onClick={() => setShowModal(true)}>
+                <span aria-hidden="true">◉</span> Посмотреть
+              </button>
+              <button type="button" className="workflow-button" onClick={() => handleCopy(transcriptText)}>
+                <span aria-hidden="true">▣</span> {copied ? 'Скопировано ✓' : 'Скопировать'}
+              </button>
+              <button type="button" className="workflow-button" onClick={handleTransferClick}>
+                <span aria-hidden="true">⇄</span> Перенести в основную часть
+              </button>
             </>
           )}
 
           {status === 'failed' && (
-            <Button onClick={() => retryMutation.mutate()} disabled={isPending}>
+            <button
+              type="button"
+              className="workflow-button workflow-button-primary"
+              onClick={() => retryMutation.mutate()}
+              disabled={isPending}
+            >
               Повторить
-            </Button>
+            </button>
           )}
-        </div>
       </div>
 
       {!videoUrl && !transcription && (
-        <p className="field-error" style={{ marginTop: 8 }}>
+        <p className="workflow-inline-error">
           Для этого рилса нет доступной ссылки на видео. Повторите импорт конкурента.
         </p>
       )}
 
       {copyError && (
-        <p className="field-error" style={{ marginTop: 8 }}>
+        <p className="workflow-inline-error">
           {copyError}
         </p>
       )}
@@ -173,8 +177,7 @@ export function ReelTranscriptionControls({
           onClick={() => setShowModal(false)}
         >
           <div
-            className="dialog surface"
-            style={{ maxWidth: 680, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}
+            className="dialog surface transcription-dialog"
             role="dialog"
             onClick={(e) => e.stopPropagation()}
           >
@@ -229,6 +232,6 @@ export function ReelTranscriptionControls({
           onCancel={() => setShowConfirmReplace(false)}
         />
       )}
-    </div>
+    </section>
   )
 }

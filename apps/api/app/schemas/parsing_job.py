@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from app.models.enums import ParsingJobStatus
+from app.models.enums import ParsingJobStatus, ReelImportMode
 from app.schemas.base import APIModel
 
 
@@ -16,6 +16,7 @@ class ParsingJobRead(APIModel):
     id: int
     competitor_id: int
     apify_run_id: str | None = Field(default=None, max_length=128)
+    import_mode: ReelImportMode
     status: ParsingJobStatus
     progress: int = Field(ge=0, le=100)
     reels_created: int = Field(ge=0)
@@ -31,6 +32,12 @@ class ParsingJobStart(APIModel):
 
     job_id: int = Field(gt=0)
     status: ParsingJobStatus
+
+
+class ParsingJobCreate(APIModel):
+    """Optional import preferences accepted when a job is queued."""
+
+    import_mode: ReelImportMode = ReelImportMode.POPULAR
 
 
 class ParsingJobList(APIModel):

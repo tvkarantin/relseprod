@@ -94,7 +94,7 @@ uvicorn app.main:app --reload --port 8000
 | `APIFY_API_TOKEN` | пусто | токен Apify, **обязателен для импорта** |
 | `APIFY_ACTOR_ID` | пусто | Actor в виде `owner/actor-name`, **обязателен для импорта** |
 | `APIFY_ACTOR_INPUT_STYLE` | `auto` | форма входа Actor: `auto` / `username` / `direct_urls` |
-| `APIFY_RESULTS_LIMIT` | `20` | лимит результатов парсинга |
+| `APIFY_RESULTS_LIMIT` | `20` | размер пула кандидатов; сохраняются 5 самых просматриваемых, при отсутствии метрик — самые свежие |
 | `APIFY_TIMEOUT_SECONDS` | `300` | таймаут запуска актора |
 | `APIFY_POLL_INTERVAL_SECONDS` | `3` | интервал опроса статуса |
 | `CORS_ORIGINS` | `http://localhost:4173` | список origin через запятую |

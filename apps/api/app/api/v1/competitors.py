@@ -12,7 +12,7 @@ from app.core.config import Settings, get_settings
 from app.repositories.jobs import ParsingJobRepository
 from app.schemas.common import ErrorResponse
 from app.schemas.competitor import CompetitorCreate, CompetitorRead
-from app.schemas.parsing_job import ParsingJobStart
+from app.schemas.parsing_job import ParsingJobCreate, ParsingJobStart
 from app.services.competitors import CompetitorService
 from app.services.parsing import ParsingService
 from app.tasks.parse_competitor import parse_competitor_job
@@ -131,6 +131,7 @@ def start_parsing(
     background_tasks: BackgroundTasks,
     request: Request,
     db: Annotated[Session, Depends(DbSession)],
+    payload: ParsingJobCreate | None = None,
 ) -> ParsingJobStart:
     """Queue an import and return immediately.
 
@@ -138,6 +139,10 @@ def start_parsing(
     the Actor to finish.
     """
     settings = _settings(request)
-    job = ParsingService(db, settings=settings).create_job(competitor_id)
+    import_mode = payload.import_mode if payload is not None else ParsingJobCreate().import_mode
+    job = ParsingService(db, settings=settings).create_job(
+        competitor_id,
+        import_mode=import_mode,
+    )
     background_tasks.add_task(parse_competitor_job, job.id, settings)
     return ParsingJobStart(job_id=job.id, status=job.status)

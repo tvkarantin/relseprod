@@ -1,4 +1,4 @@
-import { apiClient, buildQuery } from './client'
+import { API_URL, apiClient, buildQuery } from './client'
 
 import type { Page } from '@/types/api'
 import type {
@@ -41,6 +41,10 @@ export function fetchMyReels(query: MyReelsQuery, signal?: AbortSignal): Promise
 
 export function fetchReel(id: number, signal?: AbortSignal): Promise<Reel> {
   return apiClient.get<Reel>(`/reels/${id}`, signal)
+}
+
+export function getReelThumbnailUrl(id: number): string {
+  return `${API_URL}/reels/${id}/thumbnail`
 }
 
 export interface ReelContentPayload {

@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import { FilePenLine, Search, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { queryKeys } from '@/api/queryKeys'
 import { fetchMyReels } from '@/api/reels'
-import { EmptyState, ErrorState, ReelCardSkeletons } from '@/components/feedback/States'
+import { ReelsEmptyState } from '@/components/feedback/ReelsEmptyState'
+import { ErrorState, ReelCardSkeletons } from '@/components/feedback/States'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ReelCard } from '@/components/reels/ReelCard'
 import { Pagination } from '@/components/ui/Pagination'
@@ -134,15 +136,36 @@ export function MyReelsPage() {
       ) : reelsQuery.isError ? (
         <ErrorState error={reelsQuery.error} onRetry={() => void reelsQuery.refetch()} />
       ) : !page || page.items.length === 0 ? (
-        <EmptyState
-          icon="✎"
-          title="Здесь пока пусто"
-          description="Откройте любой рилс в библиотеке, напишите сценарий и смените статус — он появится в этом разделе."
+        <ReelsEmptyState
+          description={
+            urlSearch
+              ? 'По вашему запросу рилсы не найдены. Измените поиск или выберите другой статус.'
+              : urlStatus
+                ? `В статусе «${CONTENT_STATUS_LABELS[urlStatus]}» пока нет рилсов. Выберите ролик в библиотеке и смените его статус.`
+                : 'Откройте любой рилс в библиотеке, напишите сценарий и смените статус — он появится в этом разделе.'
+          }
           action={
-            <Link to="/reels" className="button button-primary">
-              Открыть библиотеку
+            <Link to="/reels" className="button button-lime reels-empty-cta">
+              Открыть библиотеку <span aria-hidden="true">→</span>
             </Link>
           }
+          steps={[
+            {
+              icon: <Search size={20} />,
+              title: 'Найдите',
+              description: 'Ищите вдохновляющие рилсы в библиотеке.',
+            },
+            {
+              icon: <FilePenLine size={20} />,
+              title: 'Создайте',
+              description: 'Напишите сценарий, добавьте хук и идею.',
+            },
+            {
+              icon: <Send size={20} />,
+              title: 'Публикуйте',
+              description: 'Смените статус и отслеживайте результат.',
+            },
+          ]}
         />
       ) : (
         <>
