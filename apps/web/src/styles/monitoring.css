@@ -154,6 +154,25 @@
   width: 100%;
 }
 
+.monitoring-included-channels {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.monitoring-included-channels > span {
+  color: var(--monitoring-red);
+  font-size: 8px;
+}
+
+.monitoring-included-channels strong {
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+
 .monitoring-channel-list {
   display: grid;
   gap: 7px;
@@ -311,6 +330,20 @@
   font-size: 10px;
 }
 
+.monitoring-topic-select > .monitoring-topic-channels {
+  display: inline-flex;
+  width: auto;
+  min-height: 22px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 0 8px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.08);
+  color: #93c5fd;
+  font-size: 9px;
+}
+
 .monitoring-topic-score {
   display: inline-flex !important;
   padding: 4px 7px;
@@ -410,6 +443,37 @@
 .monitoring-muted {
   color: var(--muted);
   font-size: 11px;
+}
+
+.monitoring-result-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.monitoring-result-tabs {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 12, 7, 0.64);
+}
+
+.monitoring-result-tabs button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.monitoring-result-tabs button.active {
+  background: var(--lime);
+  color: #11160c;
 }
 
 .monitoring-video-grid {
@@ -514,6 +578,13 @@
   flex: 1;
 }
 
+.monitoring-video-actions .monitoring-gallery-added {
+  border-color: rgba(163, 230, 53, 0.36);
+  background: var(--lime-soft);
+  color: var(--lime);
+  opacity: 1;
+}
+
 .monitoring-empty,
 .monitoring-skeleton {
   display: grid;
@@ -590,5 +661,10 @@
   .monitoring-section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .monitoring-result-controls {
+    width: 100%;
+    justify-content: space-between;
   }
 }

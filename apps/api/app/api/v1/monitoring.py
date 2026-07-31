@@ -17,7 +17,7 @@ from fastapi import (
     status,
 )
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
@@ -84,7 +84,7 @@ class ChannelPayload(BaseModel):
     url: str = Field(min_length=3, max_length=500)
 
 
-def topic_read(topic: MonitoringTopic) -> dict[str, Any]:
+def topic_read(topic: MonitoringTopic, included_channels_count: int = 0) -> dict[str, Any]:
     return {
         "id": topic.id,
         "name": topic.name,
@@ -103,6 +103,7 @@ def topic_read(topic: MonitoringTopic) -> dict[str, Any]:
         "runError": topic.run_error,
         "runStartedAt": topic.run_started_at,
         "runFinishedAt": topic.run_finished_at,
+        "includedChannelsCount": included_channels_count,
         "createdAt": topic.created_at,
         "updatedAt": topic.updated_at,
     }
@@ -149,8 +150,14 @@ def video_read(video: MonitoredVideo) -> dict[str, Any]:
 def list_topics(
     db: Annotated[Session, Depends(DbSession)], user_id: Annotated[str, Depends(user_scope)]
 ) -> list[dict[str, Any]]:
+    included_channels_count = db.scalar(
+        select(func.count(MonitoredChannel.id)).where(
+            MonitoredChannel.user_id == user_id,
+            MonitoredChannel.is_active.is_(True),
+        )
+    ) or 0
     return [
-        topic_read(item)
+        topic_read(item, included_channels_count)
         for item in db.scalars(
             select(MonitoringTopic)
             .where(MonitoringTopic.user_id == user_id)
@@ -169,7 +176,13 @@ def create_topic(
     db.add(topic)
     db.commit()
     db.refresh(topic)
-    return topic_read(topic)
+    included_channels_count = db.scalar(
+        select(func.count(MonitoredChannel.id)).where(
+            MonitoredChannel.user_id == user_id,
+            MonitoredChannel.is_active.is_(True),
+        )
+    ) or 0
+    return topic_read(topic, included_channels_count)
 
 
 @router.patch("/topics/{topic_id}")
@@ -190,7 +203,13 @@ def update_topic(
         setattr(topic, key, value)
     db.commit()
     db.refresh(topic)
-    return topic_read(topic)
+    included_channels_count = db.scalar(
+        select(func.count(MonitoredChannel.id)).where(
+            MonitoredChannel.user_id == user_id,
+            MonitoredChannel.is_active.is_(True),
+        )
+    ) or 0
+    return topic_read(topic, included_channels_count)
 
 
 @router.delete("/topics/{topic_id}", status_code=204)
@@ -425,6 +444,40 @@ def ignore_video(
     user_id: Annotated[str, Depends(user_scope)],
 ) -> dict[str, Any]:
     return _set_video_status(video_id, "ignored", db, user_id)
+
+
+@router.delete("/videos/{video_id}", status_code=204)
+def delete_video(
+    video_id: int,
+    db: Annotated[Session, Depends(DbSession)],
+    user_id: Annotated[str, Depends(user_scope)],
+) -> None:
+    video = db.scalar(
+        select(MonitoredVideo)
+        .join(TopicVideo)
+        .join(MonitoringTopic)
+        .where(MonitoredVideo.id == video_id, MonitoringTopic.user_id == user_id)
+    )
+    if not video:
+        raise HTTPException(404, "Видео не найдено")
+
+    user_topic_ids = select(MonitoringTopic.id).where(MonitoringTopic.user_id == user_id)
+    links = db.scalars(
+        select(TopicVideo).where(
+            TopicVideo.video_id == video_id,
+            TopicVideo.topic_id.in_(user_topic_ids),
+        )
+    ).all()
+    for link in links:
+        db.delete(link)
+    db.flush()
+
+    remaining_link = db.scalar(
+        select(TopicVideo.id).where(TopicVideo.video_id == video_id).limit(1)
+    )
+    if remaining_link is None:
+        db.delete(video)
+    db.commit()
 
 
 def _video_model_values(data: dict[str, Any]) -> dict[str, Any]:

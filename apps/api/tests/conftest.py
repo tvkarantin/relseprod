@@ -30,7 +30,19 @@ from app.core.config import API_DIR, Settings
 from app.database.base import Base
 from app.database.session import enable_sqlite_foreign_keys, register_unicode_lower
 from app.main import create_app
-from app.models import Competitor, ParsingJob, Reel, ReelContent, ReelTranscription
+from app.models import (
+    Competitor,
+    MonitoredChannel,
+    MonitoredVideo,
+    MonitoringTopic,
+    ParsingJob,
+    Reel,
+    ReelContent,
+    ReelTranscription,
+    TopicVideo,
+    VideoStatisticsSnapshot,
+    YouTubeQuotaLog,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
@@ -39,7 +51,19 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
 # Child tables first so foreign keys are never violated.
-CLEANUP_ORDER = (ReelContent, ReelTranscription, Reel, ParsingJob, Competitor)
+CLEANUP_ORDER = (
+    VideoStatisticsSnapshot,
+    TopicVideo,
+    MonitoredVideo,
+    MonitoredChannel,
+    MonitoringTopic,
+    YouTubeQuotaLog,
+    ReelContent,
+    ReelTranscription,
+    Reel,
+    ParsingJob,
+    Competitor,
+)
 
 
 @pytest.fixture(scope="session")

@@ -40,6 +40,7 @@ export function YouTubeMonitoringPage() {
   const [negativeKeywords, setNegativeKeywords] = useState('')
   const [channelUrl, setChannelUrl] = useState('')
   const [selectedTopicId, setSelectedTopicId] = useState<number | undefined>()
+  const [galleryOnly, setGalleryOnly] = useState(false)
   const [notice, setNotice] = useState('')
 
   const topicsQuery = useQuery({
@@ -99,6 +100,7 @@ export function YouTubeMonitoringPage() {
       setChannelUrl('')
       setNotice(`Канал «${channel.channelTitle}» добавлен`)
       await queryClient.invalidateQueries({ queryKey: monitoringKeys.channels })
+      await queryClient.invalidateQueries({ queryKey: monitoringKeys.topics })
     },
   })
 
@@ -107,6 +109,7 @@ export function YouTubeMonitoringPage() {
     onSuccess: async () => {
       setNotice('Канал удалён из мониторинга')
       await queryClient.invalidateQueries({ queryKey: monitoringKeys.channels })
+      await queryClient.invalidateQueries({ queryKey: monitoringKeys.topics })
     },
   })
 
@@ -118,10 +121,18 @@ export function YouTubeMonitoringPage() {
     },
   })
 
-  const videoAction = useMutation({
-    mutationFn: ({ id, action }: { id: number; action: 'save' | 'ignore' }) =>
-      action === 'save' ? monitoringApi.saveVideo(id) : monitoringApi.ignoreVideo(id),
+  const addToGallery = useMutation({
+    mutationFn: monitoringApi.saveVideo,
     onSuccess: async () => {
+      setNotice('Видео добавлено в галерею')
+      await queryClient.invalidateQueries({ queryKey: ['monitoring', 'videos'] })
+    },
+  })
+
+  const deleteVideo = useMutation({
+    mutationFn: monitoringApi.deleteVideo,
+    onSuccess: async () => {
+      setNotice('Видео удалено')
       await queryClient.invalidateQueries({ queryKey: ['monitoring', 'videos'] })
     },
   })
@@ -134,13 +145,25 @@ export function YouTubeMonitoringPage() {
     addChannel.error,
     deleteChannel.error,
     runTopic.error,
-    videoAction.error,
+    addToGallery.error,
+    deleteVideo.error,
   ].find(Boolean)
 
   const selectedTopic = useMemo(
     () => topicsQuery.data?.find((topic) => topic.id === selectedTopicId),
     [selectedTopicId, topicsQuery.data],
   )
+  const displayedVideos = useMemo(
+    () =>
+      galleryOnly
+        ? (videosQuery.data ?? []).filter((video) => video.status === 'saved')
+        : (videosQuery.data ?? []),
+    [galleryOnly, videosQuery.data],
+  )
+
+  function requestVideoDelete(id: number) {
+    deleteVideo.mutate(id)
+  }
 
   function submitTopic(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -238,6 +261,13 @@ export function YouTubeMonitoringPage() {
           >
             {createTopic.isPending ? 'Создаём…' : 'Добавить тему'}
           </button>
+          <p className="monitoring-included-channels">
+            <span aria-hidden="true">▶</span>
+            В проверку войдут все активные каналы: {' '}
+            <strong>
+              {(channelsQuery.data ?? []).filter((channel) => channel.isActive).length}
+            </strong>
+          </p>
         </form>
 
         <form className="monitoring-panel" onSubmit={submitChannel}>
@@ -331,6 +361,9 @@ export function YouTubeMonitoringPage() {
                 <span className="monitoring-topic-score">порог {topic.minimumScore}</span>
                 <strong>{topic.name}</strong>
                 <small>{topic.keywords.join(' · ')}</small>
+                <span className="monitoring-topic-channels">
+                  Каналов в проверке: {topic.includedChannelsCount}
+                </span>
                 <span>Последняя проверка: {formatDate(topic.lastCheckedAt)}</span>
               </button>
               {topic.runStatus !== 'idle' ? (
@@ -396,17 +429,39 @@ export function YouTubeMonitoringPage() {
           <div>
             <span className="monitoring-eyebrow">Сигналы роста</span>
             <h2 id="monitoring-results-title">
-              {selectedTopic ? selectedTopic.name : 'Все найденные видео'}
+              {galleryOnly
+                ? 'Галерея'
+                : selectedTopic
+                  ? selectedTopic.name
+                  : 'Все найденные видео'}
             </h2>
           </div>
-          <span className="monitoring-result-count">
-            {videosQuery.isFetching ? 'Обновляем…' : `${videosQuery.data?.length ?? 0} результатов`}
-          </span>
+          <div className="monitoring-result-controls">
+            <div className="monitoring-result-tabs" aria-label="Фильтр видео">
+              <button
+                type="button"
+                className={!galleryOnly ? 'active' : ''}
+                onClick={() => setGalleryOnly(false)}
+              >
+                Все
+              </button>
+              <button
+                type="button"
+                className={galleryOnly ? 'active' : ''}
+                onClick={() => setGalleryOnly(true)}
+              >
+                Галерея
+              </button>
+            </div>
+            <span className="monitoring-result-count">
+              {videosQuery.isFetching ? 'Обновляем…' : `${displayedVideos.length} результатов`}
+            </span>
+          </div>
         </div>
 
-        {videosQuery.data?.length ? (
+        {displayedVideos.length ? (
           <div className="monitoring-video-grid">
-            {videosQuery.data.map((video) => (
+            {displayedVideos.map((video) => (
               <article className="monitoring-video-card" key={video.id}>
                 <a
                   className="monitoring-video-cover"
@@ -429,20 +484,22 @@ export function YouTubeMonitoringPage() {
                   <p>{video.channelTitle}</p>
                   <div className="monitoring-video-actions">
                     <button
-                      className="button button-small"
+                      className={`button button-small ${
+                        video.status === 'saved' ? 'monitoring-gallery-added' : ''
+                      }`}
                       type="button"
-                      disabled={videoAction.isPending}
-                      onClick={() => videoAction.mutate({ id: video.id, action: 'save' })}
+                      disabled={addToGallery.isPending || video.status === 'saved'}
+                      onClick={() => addToGallery.mutate(video.id)}
                     >
-                      {video.status === 'saved' ? 'Сохранено' : 'Сохранить'}
+                      {video.status === 'saved' ? 'В галерее' : 'В галерею'}
                     </button>
                     <button
                       className="button button-small button-danger"
                       type="button"
-                      disabled={videoAction.isPending}
-                      onClick={() => videoAction.mutate({ id: video.id, action: 'ignore' })}
+                      disabled={deleteVideo.isPending}
+                      onClick={() => requestVideoDelete(video.id)}
                     >
-                      Скрыть
+                      Удалить
                     </button>
                   </div>
                 </div>
@@ -452,8 +509,12 @@ export function YouTubeMonitoringPage() {
         ) : (
           <div className="monitoring-empty">
             <span>▶</span>
-            <h3>Пока нет найденных видео</h3>
-            <p>Создайте тему и нажмите «Проверить сейчас» — результаты появятся здесь.</p>
+            <h3>{galleryOnly ? 'Галерея пока пуста' : 'Пока нет найденных видео'}</h3>
+            <p>
+              {galleryOnly
+                ? 'Нажмите «В галерею» на понравившемся видео.'
+                : 'Создайте тему и нажмите «Проверить сейчас» — результаты появятся здесь.'}
+            </p>
           </div>
         )}
       </section>

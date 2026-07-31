@@ -18,6 +18,7 @@ export interface MonitoringTopic {
   runError: string | null
   runStartedAt: string | null
   runFinishedAt: string | null
+  includedChannelsCount: number
 }
 
 export interface MonitoredChannel {
@@ -99,4 +100,7 @@ export const monitoringApi = {
 
   ignoreVideo: (id: number) =>
     apiClient.post<MonitoredVideo>(`/monitoring/videos/${id}/ignore`),
+
+  deleteVideo: (id: number) =>
+    apiClient.delete<void>(`/monitoring/videos/${id}`),
 }
