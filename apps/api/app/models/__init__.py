@@ -18,6 +18,14 @@ from app.models.reel import Reel
 from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_content import ReelContent
 from app.models.reel_transcription import ReelTranscription
+from app.models.monitoring import (
+    MonitoredChannel,
+    MonitoredVideo,
+    MonitoringTopic,
+    TopicVideo,
+    VideoStatisticsSnapshot,
+    YouTubeQuotaLog,
+)
 
 __all__ = [
     "Base",

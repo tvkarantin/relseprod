@@ -7,6 +7,7 @@ import { useNotifications } from '@/components/notifications/notificationContext
 const NAV_ITEMS = [
   { to: '/', label: 'Обзор', end: true },
   { to: '/reels', label: 'Библиотека' },
+  { to: '/youtube-monitoring', label: 'YouTube мониторинг' },
   { to: '/my-reels', label: 'Мои рилсы' },
 ] as const
 

@@ -8,6 +8,7 @@ import { MyReelsPage } from '@/pages/MyReelsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ReelDetailsPage } from '@/pages/ReelDetailsPage'
 import { ReelsPage } from '@/pages/ReelsPage'
+import { YouTubeMonitoringPage } from '@/pages/YouTubeMonitoringPage'
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
         <Route index element={<DashboardPage />} />
         <Route path="competitors" element={<CompetitorsPage />} />
         <Route path="reels" element={<ReelsPage />} />
+        <Route path="youtube-monitoring" element={<YouTubeMonitoringPage />} />
         <Route path="reels/:reelId" element={<ReelDetailsPage />} />
         <Route path="my-reels" element={<MyReelsPage />} />
         <Route path="ai-dashboard" element={<AiDashboardPage />} />
