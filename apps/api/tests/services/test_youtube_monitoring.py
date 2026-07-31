@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.api.v1.monitoring import _video_model_values
 from app.services.youtube_monitoring import (
     calculate_final_score,
     category_for_score,
@@ -44,3 +45,37 @@ def test_short_heuristic_and_keyword_filter():
 def test_invalid_url():
     with pytest.raises(ValueError):
         parse_youtube_url("https://example.com/channel")
+
+
+def test_youtube_payload_is_translated_for_the_database():
+    published = datetime.now(UTC)
+
+    assert _video_model_values(
+        {
+            "externalId": "video-1",
+            "channelId": "channel-1",
+            "channelTitle": "Creator",
+            "thumbnailUrl": "https://example.com/cover.jpg",
+            "publishedAt": published,
+            "durationSeconds": 42,
+            "contentType": "short",
+            "viewCount": 100,
+            "likeCount": 12,
+            "commentCount": 3,
+            "title": "AI tools",
+            "url": "https://youtube.com/watch?v=video-1",
+        }
+    ) == {
+        "external_id": "video-1",
+        "channel_id": "channel-1",
+        "channel_title": "Creator",
+        "thumbnail_url": "https://example.com/cover.jpg",
+        "published_at": published,
+        "duration_seconds": 42,
+        "content_type": "short",
+        "view_count": 100,
+        "like_count": 12,
+        "comment_count": 3,
+        "title": "AI tools",
+        "url": "https://youtube.com/watch?v=video-1",
+    }

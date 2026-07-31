@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   monitoringApi,
@@ -34,6 +34,7 @@ function formatDate(value: string | null | undefined): string {
 
 export function YouTubeMonitoringPage() {
   const queryClient = useQueryClient()
+  const finishedRunsRef = useRef(new Map<number, string>())
   const [topicName, setTopicName] = useState('')
   const [keywords, setKeywords] = useState('')
   const [negativeKeywords, setNegativeKeywords] = useState('')
@@ -44,6 +45,11 @@ export function YouTubeMonitoringPage() {
   const topicsQuery = useQuery({
     queryKey: monitoringKeys.topics,
     queryFn: ({ signal }) => monitoringApi.topics(signal),
+    refetchInterval: (query) =>
+      query.state.data?.some((topic) => ['queued', 'running'].includes(topic.runStatus))
+        ? 1000
+        : false,
+    refetchIntervalInBackground: true,
   })
   const channelsQuery = useQuery({
     queryKey: monitoringKeys.channels,
@@ -63,6 +69,17 @@ export function YouTubeMonitoringPage() {
       setSelectedTopicId(undefined)
     }
   }, [selectedTopicId, topicsQuery.data])
+
+  useEffect(() => {
+    for (const topic of topicsQuery.data ?? []) {
+      if (!topic.runFinishedAt || !['completed', 'failed'].includes(topic.runStatus)) continue
+      if (finishedRunsRef.current.get(topic.id) === topic.runFinishedAt) continue
+      finishedRunsRef.current.set(topic.id, topic.runFinishedAt)
+      if (topic.runStatus === 'completed') {
+        void queryClient.invalidateQueries({ queryKey: ['monitoring', 'videos'] })
+      }
+    }
+  }, [queryClient, topicsQuery.data])
 
   const createTopic = useMutation({
     mutationFn: (payload: CreateTopicPayload) => monitoringApi.createTopic(payload),
@@ -95,13 +112,9 @@ export function YouTubeMonitoringPage() {
 
   const runTopic = useMutation({
     mutationFn: monitoringApi.runTopic,
-    onSuccess: (_result, topicId) => {
-      setNotice('Проверка запущена. Новые видео появятся после ответа YouTube.')
-      window.setTimeout(() => {
-        void queryClient.invalidateQueries({ queryKey: monitoringKeys.topics })
-        void queryClient.invalidateQueries({ queryKey: monitoringKeys.videos(topicId) })
-        void queryClient.invalidateQueries({ queryKey: monitoringKeys.videos() })
-      }, 1800)
+    onSuccess: async () => {
+      setNotice('Проверка запущена. Ход выполнения отображается на карточке темы.')
+      await queryClient.invalidateQueries({ queryKey: monitoringKeys.topics })
     },
   })
 
@@ -301,7 +314,13 @@ export function YouTubeMonitoringPage() {
           {topicsQuery.isLoading ? <div className="monitoring-skeleton">Загрузка тем…</div> : null}
           {topicsQuery.data?.map((topic: MonitoringTopic) => (
             <article
-              className={`monitoring-topic-card ${selectedTopicId === topic.id ? 'active' : ''}`}
+              className={[
+                'monitoring-topic-card',
+                selectedTopicId === topic.id ? 'active' : '',
+                ['queued', 'running'].includes(topic.runStatus) ? 'is-running' : '',
+                topic.runStatus === 'failed' ? 'is-failed' : '',
+                topic.runStatus === 'completed' ? 'is-completed' : '',
+              ].filter(Boolean).join(' ')}
               key={topic.id}
             >
               <button
@@ -314,15 +333,52 @@ export function YouTubeMonitoringPage() {
                 <small>{topic.keywords.join(' · ')}</small>
                 <span>Последняя проверка: {formatDate(topic.lastCheckedAt)}</span>
               </button>
+              {topic.runStatus !== 'idle' ? (
+                <div className="monitoring-run-progress">
+                  <div className="monitoring-run-progress-head">
+                    <span>
+                      {topic.runStatus === 'failed'
+                        ? 'Ошибка'
+                        : topic.runStatus === 'completed'
+                          ? 'Завершено'
+                          : topic.runMessage ?? 'Выполняется'}
+                    </span>
+                    <strong>{topic.runProgress}%</strong>
+                  </div>
+                  <div
+                    className="monitoring-progress-track"
+                    role="progressbar"
+                    aria-label={`Прогресс проверки темы ${topic.name}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={topic.runProgress}
+                  >
+                    <span style={{ width: `${topic.runProgress}%` }} />
+                  </div>
+                  {topic.runStatus === 'failed' ? (
+                    <small className="monitoring-run-error">
+                      {topic.runError ?? topic.runMessage ?? 'Проверка завершилась с ошибкой'}
+                    </small>
+                  ) : (
+                    <small>{topic.runMessage}</small>
+                  )}
+                </div>
+              ) : null}
               <button
                 className="button button-primary button-small"
                 type="button"
-                disabled={runTopic.isPending}
+                disabled={
+                  runTopic.isPending || ['queued', 'running'].includes(topic.runStatus)
+                }
                 onClick={() => runTopic.mutate(topic.id)}
               >
-                {runTopic.isPending && runTopic.variables === topic.id
-                  ? 'Запуск…'
-                  : 'Проверить сейчас'}
+                {['queued', 'running'].includes(topic.runStatus)
+                  ? 'Проверка идёт…'
+                  : runTopic.isPending && runTopic.variables === topic.id
+                    ? 'Запуск…'
+                    : topic.runStatus === 'failed'
+                      ? 'Повторить проверку'
+                      : 'Проверить сейчас'}
               </button>
             </article>
           ))}

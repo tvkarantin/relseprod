@@ -28,6 +28,13 @@ class MonitoringTopic(TimestampMixin, Base):
     minimum_score: Mapped[int] = mapped_column(Integer, default=70, server_default="70")
     check_interval_hours: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     last_checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    run_status: Mapped[str] = mapped_column(String(16), default="idle", server_default="idle")
+    run_stage: Mapped[str] = mapped_column(String(32), default="idle", server_default="idle")
+    run_progress: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    run_message: Mapped[str | None] = mapped_column(String(500))
+    run_error: Mapped[str | None] = mapped_column(Text)
+    run_started_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    run_finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
     channels: Mapped[list[MonitoredChannel]] = relationship(
         back_populates="topic", cascade="all, delete-orphan"

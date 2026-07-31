@@ -11,6 +11,13 @@ export interface MonitoringTopic {
   isActive: boolean
   checkIntervalHours: number
   lastCheckedAt: string | null
+  runStatus: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
+  runStage: 'idle' | 'queued' | 'searching' | 'channels' | 'processing' | 'completed' | 'failed'
+  runProgress: number
+  runMessage: string | null
+  runError: string | null
+  runStartedAt: string | null
+  runFinishedAt: string | null
 }
 
 export interface MonitoredChannel {

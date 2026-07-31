@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -39,6 +40,20 @@ from app.services.youtube_monitoring import (
 )
 
 router = APIRouter(prefix="/monitoring", tags=["youtube-monitoring"])
+logger = logging.getLogger(__name__)
+
+VIDEO_FIELD_MAP = {
+    "externalId": "external_id",
+    "thumbnailUrl": "thumbnail_url",
+    "publishedAt": "published_at",
+    "durationSeconds": "duration_seconds",
+    "contentType": "content_type",
+    "viewCount": "view_count",
+    "likeCount": "like_count",
+    "commentCount": "comment_count",
+    "channelId": "channel_id",
+    "channelTitle": "channel_title",
+}
 
 
 def user_scope(x_user_id: Annotated[str | None, Header()] = None) -> str:
@@ -81,6 +96,13 @@ def topic_read(topic: MonitoringTopic) -> dict[str, Any]:
         "isActive": topic.is_active,
         "checkIntervalHours": topic.check_interval_hours,
         "lastCheckedAt": topic.last_checked_at,
+        "runStatus": topic.run_status,
+        "runStage": topic.run_stage,
+        "runProgress": topic.run_progress,
+        "runMessage": topic.run_message,
+        "runError": topic.run_error,
+        "runStartedAt": topic.run_started_at,
+        "runFinishedAt": topic.run_finished_at,
         "createdAt": topic.created_at,
         "updatedAt": topic.updated_at,
     }
@@ -405,6 +427,31 @@ def ignore_video(
     return _set_video_status(video_id, "ignored", db, user_id)
 
 
+def _video_model_values(data: dict[str, Any]) -> dict[str, Any]:
+    """Translate the YouTube service payload into SQLAlchemy attribute names."""
+
+    return {VIDEO_FIELD_MAP.get(key, key): value for key, value in data.items()}
+
+
+def _set_run_state(
+    topic: MonitoringTopic,
+    *,
+    status_value: str,
+    stage: str,
+    progress: int,
+    message: str,
+    error: str | None = None,
+    finished: bool = False,
+) -> None:
+    topic.run_status = status_value
+    topic.run_stage = stage
+    topic.run_progress = max(0, min(100, progress))
+    topic.run_message = message
+    topic.run_error = error
+    if finished:
+        topic.run_finished_at = datetime.now(UTC)
+
+
 def run_topic(topic_id: int, user_id: str, settings: Settings) -> None:
     from app.database.session import session_scope
 
@@ -418,105 +465,178 @@ def run_topic(topic_id: int, user_id: str, settings: Settings) -> None:
         )
         if not topic:
             return
-        service = YouTubeMonitoringService(settings)
+
         try:
             after = topic.last_checked_at
-            videos = service.searchVideosByKeywords(
-                topic.keywords, after, topic.language, topic.region_code
+            _set_run_state(
+                topic,
+                status_value="running",
+                stage="searching",
+                progress=12,
+                message="Ищем свежие видео по ключевым словам",
             )
-            channels = db.scalars(
-                select(MonitoredChannel).where(
-                    MonitoredChannel.user_id == user_id, MonitoredChannel.is_active.is_(True)
+            db.commit()
+
+            service = YouTubeMonitoringService(settings)
+            try:
+                videos = service.searchVideosByKeywords(
+                    topic.keywords, after, topic.language, topic.region_code
                 )
-            ).all()
-            for channel in channels:
-                videos.extend(
-                    service.getLatestChannelVideos(
-                        channel.channel_id, channel.uploads_playlist_id, after
+                _set_run_state(
+                    topic,
+                    status_value="running",
+                    stage="channels",
+                    progress=34,
+                    message="Проверяем добавленные YouTube-каналы",
+                )
+                db.commit()
+
+                channels = db.scalars(
+                    select(MonitoredChannel).where(
+                        MonitoredChannel.user_id == user_id,
+                        MonitoredChannel.is_active.is_(True),
+                    )
+                ).all()
+                for channel_index, channel in enumerate(channels, start=1):
+                    videos.extend(
+                        service.getLatestChannelVideos(
+                            channel.channel_id, channel.uploads_playlist_id, after
+                        )
+                    )
+                    channel_progress = 34 + round(channel_index / max(len(channels), 1) * 10)
+                    _set_run_state(
+                        topic,
+                        status_value="running",
+                        stage="channels",
+                        progress=channel_progress,
+                        message=f"Проверено каналов: {channel_index} из {len(channels)}",
+                    )
+                    db.commit()
+            finally:
+                service.close()
+
+            unique: dict[str, dict[str, Any]] = {
+                item["externalId"]: item for item in videos if item.get("externalId")
+            }
+            total = len(unique)
+            _set_run_state(
+                topic,
+                status_value="running",
+                stage="processing",
+                progress=46,
+                message=f"Обрабатываем найденные видео: 0 из {total}",
+            )
+            db.commit()
+
+            for video_index, data in enumerate(unique.values(), start=1):
+                video = db.scalar(
+                    select(MonitoredVideo).where(
+                        MonitoredVideo.platform == "youtube",
+                        MonitoredVideo.external_id == data["externalId"],
                     )
                 )
-        finally:
-            service.close()
-        unique: dict[str, dict[str, Any]] = {item["externalId"]: item for item in videos}
-        for data in unique.values():
-            video = db.scalar(
-                select(MonitoredVideo).where(
-                    MonitoredVideo.platform == "youtube",
-                    MonitoredVideo.external_id == data["externalId"],
+                model_values = _video_model_values(data)
+                if not video:
+                    video = MonitoredVideo(platform="youtube", **model_values)
+                    db.add(video)
+                    db.flush()
+                else:
+                    for key, value in model_values.items():
+                        setattr(video, key, value)
+
+                video.views_per_hour = views_per_hour(video.view_count, video.published_at)
+                video.engagement_rate = engagement_rate(
+                    video.like_count, video.comment_count, video.view_count
                 )
-            )
-            if not video:
-                video = MonitoredVideo(platform="youtube", **data)
-                db.add(video)
-                db.flush()
-            else:
-                for key, value in data.items():
-                    setattr(
-                        video,
-                        {
-                            "externalId": "external_id",
-                            "thumbnailUrl": "thumbnail_url",
-                            "publishedAt": "published_at",
-                            "durationSeconds": "duration_seconds",
-                            "contentType": "content_type",
-                            "viewCount": "view_count",
-                            "likeCount": "like_count",
-                            "commentCount": "comment_count",
-                            "channelId": "channel_id",
-                            "channelTitle": "channel_title",
-                        }.get(key, key),
-                        value,
+                analysis = fallback_analysis(
+                    video.title, video.description or "", topic.keywords, topic.negative_keywords
+                )
+                video.relevance_score = analysis["relevanceScore"]
+                video.ai_score = analysis["aiScore"]
+                video.why_it_works = analysis["whyItWorks"]
+                video.recommendation = analysis["recommendation"]
+                video.velocity_score = min(
+                    100, (video.views_per_hour or 0) / max(1, video.view_count / 1000) * 10
+                )
+                video.engagement_score = min(100, (video.engagement_rate or 0) * 20)
+                video.competitor_score = (
+                    80
+                    if any(channel.channel_id == video.channel_id for channel in channels)
+                    else 35
+                )
+                video.final_score = calculate_final_score(
+                    video.relevance_score,
+                    video.velocity_score,
+                    video.engagement_score,
+                    video.competitor_score,
+                    video.ai_score,
+                )
+                video.category = category_for_score(video.final_score)
+                video.status = "recommended" if video.final_score >= 85 else "analyzed"
+                db.add(
+                    VideoStatisticsSnapshot(
+                        video_id=video.id,
+                        view_count=video.view_count,
+                        like_count=video.like_count,
+                        comment_count=video.comment_count,
                     )
-            video.views_per_hour = views_per_hour(video.view_count, video.published_at)
-            video.engagement_rate = engagement_rate(
-                video.like_count, video.comment_count, video.view_count
+                )
+                link = db.scalar(
+                    select(TopicVideo).where(
+                        TopicVideo.topic_id == topic.id, TopicVideo.video_id == video.id
+                    )
+                )
+                if not link:
+                    link = TopicVideo(topic_id=topic.id, video_id=video.id)
+                    db.add(link)
+                    db.flush()
+                if (
+                    video.final_score is not None
+                    and video.final_score >= topic.minimum_score
+                    and link.notified_at is None
+                ):
+                    link.notified_at = datetime.now(UTC)
+
+                progress = 46 + round(video_index / max(total, 1) * 48)
+                _set_run_state(
+                    topic,
+                    status_value="running",
+                    stage="processing",
+                    progress=progress,
+                    message=f"Обработано видео: {video_index} из {total}",
+                )
+                db.commit()
+
+            topic.last_checked_at = datetime.now(UTC)
+            _set_run_state(
+                topic,
+                status_value="completed",
+                stage="completed",
+                progress=100,
+                message=f"Готово: обработано {total} видео",
+                finished=True,
             )
-            analysis = fallback_analysis(
-                video.title, video.description or "", topic.keywords, topic.negative_keywords
-            )
-            video.relevance_score = analysis["relevanceScore"]
-            video.ai_score = analysis["aiScore"]
-            video.velocity_score = min(
-                100, (video.views_per_hour or 0) / max(1, video.view_count / 1000) * 10
-            )
-            video.engagement_score = min(100, (video.engagement_rate or 0) * 20)
-            video.competitor_score = (
-                80 if any(c.channel_id == video.channel_id for c in channels) else 35
-            )
-            video.final_score = calculate_final_score(
-                video.relevance_score,
-                video.velocity_score,
-                video.engagement_score,
-                video.competitor_score,
-                video.ai_score,
-            )
-            video.category = category_for_score(video.final_score)
-            video.status = "recommended" if video.final_score >= 85 else "analyzed"
-            db.add(
-                VideoStatisticsSnapshot(
-                    video_id=video.id,
-                    view_count=video.view_count,
-                    like_count=video.like_count,
-                    comment_count=video.comment_count,
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            failed_topic = db.scalar(
+                select(MonitoringTopic).where(
+                    MonitoringTopic.id == topic_id,
+                    MonitoringTopic.user_id == user_id,
                 )
             )
-            link = db.scalar(
-                select(TopicVideo).where(
-                    TopicVideo.topic_id == topic.id, TopicVideo.video_id == video.id
+            if failed_topic:
+                _set_run_state(
+                    failed_topic,
+                    status_value="failed",
+                    stage="failed",
+                    progress=failed_topic.run_progress,
+                    message="Проверка остановлена из-за ошибки",
+                    error=str(exc)[:2000],
+                    finished=True,
                 )
-            )
-            if not link:
-                link = TopicVideo(topic_id=topic.id, video_id=video.id)
-                db.add(link)
-                db.flush()
-            # The association is the notification idempotency key: one alert per topic/video.
-            if (
-                video.final_score is not None
-                and video.final_score >= topic.minimum_score
-                and link.notified_at is None
-            ):
-                link.notified_at = datetime.now(UTC)
-        topic.last_checked_at = datetime.now(UTC)
+                db.commit()
+            logger.exception("YouTube monitoring run failed for topic %s", topic_id)
 
 
 @router.post("/topics/{topic_id}/run", status_code=202)
@@ -534,6 +654,17 @@ def run_topic_endpoint(
     )
     if not topic:
         raise HTTPException(404, "Тема мониторинга не найдена")
+    if topic.run_status in {"queued", "running"}:
+        return {"status": topic.run_status, "message": "Проверка уже выполняется"}
+
+    topic.run_status = "queued"
+    topic.run_stage = "queued"
+    topic.run_progress = 5
+    topic.run_message = "Проверка поставлена в очередь"
+    topic.run_error = None
+    topic.run_started_at = datetime.now(UTC)
+    topic.run_finished_at = None
+    db.commit()
     settings = getattr(request.app.state, "settings", None) or get_settings()
     background_tasks.add_task(run_topic, topic_id, user_id, settings)
     return {"status": "queued", "message": "Проверка поставлена в очередь"}
