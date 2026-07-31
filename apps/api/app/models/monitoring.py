@@ -27,6 +27,12 @@ class MonitoringTopic(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     minimum_score: Mapped[int] = mapped_column(Integer, default=70, server_default="70")
     check_interval_hours: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
+    content_filter: Mapped[str] = mapped_column(
+        String(16), default="all", server_default="all"
+    )
+    min_view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    published_within_days: Mapped[int | None] = mapped_column(Integer)
+    sort_by: Mapped[str] = mapped_column(String(16), default="score", server_default="score")
     last_checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     run_status: Mapped[str] = mapped_column(String(16), default="idle", server_default="idle")
     run_stage: Mapped[str] = mapped_column(String(32), default="idle", server_default="idle")

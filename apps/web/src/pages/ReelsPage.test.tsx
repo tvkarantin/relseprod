@@ -6,15 +6,18 @@ import { ReelsPage } from './ReelsPage'
 
 import { ApiError } from '@/api/client'
 import * as competitorsApi from '@/api/competitors'
+import { monitoringApi } from '@/api/monitoring'
 import * as reelsApi from '@/api/reels'
 import { makeCompetitor, makeReel, page } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/utils'
 
 vi.mock('@/api/reels')
 vi.mock('@/api/competitors')
+vi.mock('@/api/monitoring')
 
 const mockedReels = vi.mocked(reelsApi)
 const mockedCompetitors = vi.mocked(competitorsApi)
+const mockedMonitoring = vi.mocked(monitoringApi)
 
 beforeEach(() => {
   mockedCompetitors.fetchCompetitors.mockResolvedValue([
@@ -22,6 +25,7 @@ beforeEach(() => {
     makeCompetitor({ id: 2, instagramUsername: 'nasa' }),
   ])
   mockedReels.fetchReels.mockResolvedValue(page([]))
+  mockedMonitoring.libraryVideos.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -64,6 +68,43 @@ describe('ReelsPage', () => {
     expect(within(card).getByText(/@example/)).toBeInTheDocument()
     expect(screen.getByTitle('Просмотры')).toHaveTextContent('1,2 млн')
     expect(screen.getByTitle('Лайки')).toHaveTextContent('5 тыс.')
+  })
+
+  it('shows videos transferred from monitoring in the main library', async () => {
+    mockedMonitoring.libraryVideos.mockResolvedValue([
+      {
+        id: 7,
+        externalId: 'youtube-7',
+        platform: 'youtube',
+        url: 'https://youtube.com/watch?v=youtube-7',
+        title: 'Видео из мониторинга',
+        description: 'AI workflow',
+        channelId: 'channel-7',
+        channelTitle: 'YouTube автор',
+        thumbnailUrl: 'https://img.youtube.com/vi/youtube-7/hqdefault.jpg',
+        publishedAt: '2026-07-31T08:00:00Z',
+        durationSeconds: 45,
+        contentType: 'video',
+        viewCount: 12000,
+        likeCount: 800,
+        commentCount: 30,
+        viewsPerHour: 100,
+        engagementRate: 6.9,
+        finalScore: 91,
+        category: 'viral',
+        status: 'saved',
+        recommendation: null,
+      },
+    ])
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+
+    expect(await screen.findByText('Из YouTube-мониторинга')).toBeInTheDocument()
+    expect(screen.getByText('Видео из мониторинга')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Открыть видео на YouTube/ })).toHaveAttribute(
+      'href',
+      'https://youtube.com/watch?v=youtube-7',
+    )
   })
 
   it('renders an em dash instead of a fake zero for unknown metrics', async () => {

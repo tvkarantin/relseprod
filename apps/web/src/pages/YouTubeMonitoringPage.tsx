@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import {
   monitoringApi,
   type CreateTopicPayload,
+  type MonitoredVideo,
   type MonitoringTopic,
+  type TopicContentFilter,
+  type TopicSort,
 } from '@/api/monitoring'
 import { formatNumber } from '@/utils/format'
 
@@ -12,6 +16,20 @@ const monitoringKeys = {
   topics: ['monitoring', 'topics'] as const,
   channels: ['monitoring', 'channels'] as const,
   videos: (topicId?: number) => ['monitoring', 'videos', topicId ?? 'all'] as const,
+}
+
+const CONTENT_FILTER_LABELS: Record<TopicContentFilter, string> = {
+  all: 'Все форматы',
+  shorts: 'Только Shorts',
+  videos: 'Горизонтальные видео',
+  animation: 'Анимация',
+}
+
+const SORT_LABELS: Record<TopicSort, string> = {
+  score: 'По рейтингу',
+  views: 'Сначала популярные',
+  recent: 'Сначала новые',
+  velocity: 'Быстрорастущие',
 }
 
 function splitWords(value: string): string[] {
@@ -38,9 +56,12 @@ export function YouTubeMonitoringPage() {
   const [topicName, setTopicName] = useState('')
   const [keywords, setKeywords] = useState('')
   const [negativeKeywords, setNegativeKeywords] = useState('')
+  const [contentFilter, setContentFilter] = useState<TopicContentFilter>('all')
+  const [minViewCount, setMinViewCount] = useState(0)
+  const [publishedWithinDays, setPublishedWithinDays] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState<TopicSort>('score')
   const [channelUrl, setChannelUrl] = useState('')
   const [selectedTopicId, setSelectedTopicId] = useState<number | undefined>()
-  const [galleryOnly, setGalleryOnly] = useState(false)
   const [notice, setNotice] = useState('')
 
   const topicsQuery = useQuery({
@@ -88,6 +109,10 @@ export function YouTubeMonitoringPage() {
       setTopicName('')
       setKeywords('')
       setNegativeKeywords('')
+      setContentFilter('all')
+      setMinViewCount(0)
+      setPublishedWithinDays(null)
+      setSortBy('score')
       setSelectedTopicId(topic.id)
       setNotice(`Тема «${topic.name}» создана`)
       await queryClient.invalidateQueries({ queryKey: monitoringKeys.topics })
@@ -121,10 +146,16 @@ export function YouTubeMonitoringPage() {
     },
   })
 
-  const addToGallery = useMutation({
-    mutationFn: monitoringApi.saveVideo,
-    onSuccess: async () => {
-      setNotice('Видео добавлено в галерею')
+  const addToLibrary = useMutation({
+    mutationFn: (videoId: number) => monitoringApi.addToLibrary(videoId),
+    onSuccess: async (_, videoId) => {
+      queryClient.setQueriesData(
+        { queryKey: ['monitoring', 'videos'] },
+        (videos: MonitoredVideo[] | undefined) =>
+          videos?.filter((video) => video.id !== videoId),
+      )
+      setNotice('Видео перенесено в основную библиотеку')
+      await queryClient.invalidateQueries({ queryKey: ['monitoring', 'library'] })
       await queryClient.invalidateQueries({ queryKey: ['monitoring', 'videos'] })
     },
   })
@@ -145,7 +176,7 @@ export function YouTubeMonitoringPage() {
     addChannel.error,
     deleteChannel.error,
     runTopic.error,
-    addToGallery.error,
+    addToLibrary.error,
     deleteVideo.error,
   ].find(Boolean)
 
@@ -153,13 +184,7 @@ export function YouTubeMonitoringPage() {
     () => topicsQuery.data?.find((topic) => topic.id === selectedTopicId),
     [selectedTopicId, topicsQuery.data],
   )
-  const displayedVideos = useMemo(
-    () =>
-      galleryOnly
-        ? (videosQuery.data ?? []).filter((video) => video.status === 'saved')
-        : (videosQuery.data ?? []),
-    [galleryOnly, videosQuery.data],
-  )
+  const displayedVideos = videosQuery.data ?? []
 
   function requestVideoDelete(id: number) {
     deleteVideo.mutate(id)
@@ -178,6 +203,10 @@ export function YouTubeMonitoringPage() {
       minimumScore: 70,
       isActive: true,
       checkIntervalHours: 3,
+      contentFilter,
+      minViewCount,
+      publishedWithinDays,
+      sortBy,
     })
   }
 
@@ -254,6 +283,68 @@ export function YouTubeMonitoringPage() {
               placeholder="стрим, музыка"
             />
           </label>
+          <div className="monitoring-filter-grid">
+            <label className="field">
+              <span className="field-label">Формат видео</span>
+              <select
+                className="input"
+                value={contentFilter}
+                onChange={(event) =>
+                  setContentFilter(event.target.value as TopicContentFilter)
+                }
+              >
+                <option value="all">Все форматы</option>
+                <option value="shorts">Только Shorts / вертикальные</option>
+                <option value="videos">Горизонтальные видео</option>
+                <option value="animation">Анимация</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Период публикации</span>
+              <select
+                className="input"
+                value={publishedWithinDays ?? ''}
+                onChange={(event) =>
+                  setPublishedWithinDays(
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+              >
+                <option value="">Без ограничения</option>
+                <option value="1">Последние 24 часа</option>
+                <option value="7">Последние 7 дней</option>
+                <option value="30">Последние 30 дней</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Минимум просмотров</span>
+              <select
+                className="input"
+                value={minViewCount}
+                onChange={(event) => setMinViewCount(Number(event.target.value))}
+              >
+                <option value="0">Любое количество</option>
+                <option value="1000">От 1 000</option>
+                <option value="10000">От 10 000</option>
+                <option value="50000">От 50 000</option>
+                <option value="100000">От 100 000</option>
+                <option value="1000000">От 1 000 000</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Сортировка</span>
+              <select
+                className="input"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as TopicSort)}
+              >
+                <option value="score">По рейтингу</option>
+                <option value="views">Сначала популярные</option>
+                <option value="recent">Сначала новые</option>
+                <option value="velocity">Быстрорастущие</option>
+              </select>
+            </label>
+          </div>
           <button
             className="button button-lime"
             type="submit"
@@ -364,6 +455,20 @@ export function YouTubeMonitoringPage() {
                 <span className="monitoring-topic-channels">
                   Каналов в проверке: {topic.includedChannelsCount}
                 </span>
+                <span className="monitoring-topic-filters">
+                  <i>{CONTENT_FILTER_LABELS[topic.contentFilter]}</i>
+                  <i>
+                    {topic.minViewCount > 0
+                      ? `от ${formatNumber(topic.minViewCount)} просмотров`
+                      : 'любые просмотры'}
+                  </i>
+                  <i>
+                    {topic.publishedWithinDays
+                      ? `за ${topic.publishedWithinDays} дн.`
+                      : 'любой период'}
+                  </i>
+                  <i>{SORT_LABELS[topic.sortBy]}</i>
+                </span>
                 <span>Последняя проверка: {formatDate(topic.lastCheckedAt)}</span>
               </button>
               {topic.runStatus !== 'idle' ? (
@@ -429,30 +534,13 @@ export function YouTubeMonitoringPage() {
           <div>
             <span className="monitoring-eyebrow">Сигналы роста</span>
             <h2 id="monitoring-results-title">
-              {galleryOnly
-                ? 'Галерея'
-                : selectedTopic
-                  ? selectedTopic.name
-                  : 'Все найденные видео'}
+              {selectedTopic ? selectedTopic.name : 'Все найденные видео'}
             </h2>
           </div>
           <div className="monitoring-result-controls">
-            <div className="monitoring-result-tabs" aria-label="Фильтр видео">
-              <button
-                type="button"
-                className={!galleryOnly ? 'active' : ''}
-                onClick={() => setGalleryOnly(false)}
-              >
-                Все
-              </button>
-              <button
-                type="button"
-                className={galleryOnly ? 'active' : ''}
-                onClick={() => setGalleryOnly(true)}
-              >
-                Галерея
-              </button>
-            </div>
+            <Link className="button button-small" to="/reels">
+              Открыть библиотеку →
+            </Link>
             <span className="monitoring-result-count">
               {videosQuery.isFetching ? 'Обновляем…' : `${displayedVideos.length} результатов`}
             </span>
@@ -484,14 +572,14 @@ export function YouTubeMonitoringPage() {
                   <p>{video.channelTitle}</p>
                   <div className="monitoring-video-actions">
                     <button
-                      className={`button button-small ${
-                        video.status === 'saved' ? 'monitoring-gallery-added' : ''
-                      }`}
+                      className="button button-small"
                       type="button"
-                      disabled={addToGallery.isPending || video.status === 'saved'}
-                      onClick={() => addToGallery.mutate(video.id)}
+                      disabled={addToLibrary.isPending}
+                      onClick={() => addToLibrary.mutate(video.id)}
                     >
-                      {video.status === 'saved' ? 'В галерее' : 'В галерею'}
+                      {addToLibrary.isPending && addToLibrary.variables === video.id
+                        ? 'Переносим…'
+                        : 'В библиотеку'}
                     </button>
                     <button
                       className="button button-small button-danger"
@@ -509,12 +597,8 @@ export function YouTubeMonitoringPage() {
         ) : (
           <div className="monitoring-empty">
             <span>▶</span>
-            <h3>{galleryOnly ? 'Галерея пока пуста' : 'Пока нет найденных видео'}</h3>
-            <p>
-              {galleryOnly
-                ? 'Нажмите «В галерею» на понравившемся видео.'
-                : 'Создайте тему и нажмите «Проверить сейчас» — результаты появятся здесь.'}
-            </p>
+            <h3>Пока нет найденных видео</h3>
+            <p>Создайте тему и нажмите «Проверить сейчас» — результаты появятся здесь.</p>
           </div>
         )}
       </section>

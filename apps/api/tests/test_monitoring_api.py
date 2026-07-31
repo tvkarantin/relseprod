@@ -1,10 +1,11 @@
-"""API coverage for YouTube monitoring gallery actions."""
+"""API coverage for YouTube monitoring library actions."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from app.api.v1.monitoring import _filter_topic_videos
 from app.models import (
     MonitoredChannel,
     MonitoredVideo,
@@ -51,13 +52,119 @@ def make_monitored_video(db: Session) -> MonitoredVideo:
     return video
 
 
-def test_video_can_be_added_to_gallery(client: TestClient, db_session: Session) -> None:
+def test_topic_video_filters_apply_format_views_period_and_sorting() -> None:
+    now = datetime(2026, 7, 31, 12, tzinfo=UTC)
+    topic = MonitoringTopic(
+        user_id="local-user",
+        name="Popular Shorts",
+        keywords=["AI"],
+        negative_keywords=[],
+        content_filter="shorts",
+        min_view_count=10_000,
+        published_within_days=1,
+        sort_by="views",
+    )
+    videos = [
+        {
+            "id": "short-low",
+            "title": "Short with too few views",
+            "contentType": "short",
+            "viewCount": 9_999,
+            "publishedAt": now - timedelta(hours=2),
+        },
+        {
+            "id": "regular",
+            "title": "Popular horizontal video",
+            "contentType": "video",
+            "viewCount": 100_000,
+            "publishedAt": now - timedelta(hours=3),
+        },
+        {
+            "id": "short-older",
+            "title": "Older Short",
+            "contentType": "short",
+            "viewCount": 80_000,
+            "publishedAt": now - timedelta(days=2),
+        },
+        {
+            "id": "short-a",
+            "title": "Recent Short",
+            "contentType": "short",
+            "viewCount": 20_000,
+            "publishedAt": now - timedelta(hours=1),
+        },
+        {
+            "id": "short-b",
+            "title": "Most viewed recent Short",
+            "contentType": "short",
+            "viewCount": 50_000,
+            "publishedAt": now - timedelta(hours=6),
+        },
+    ]
+
+    filtered = _filter_topic_videos(videos, topic, now)
+
+    assert [video["id"] for video in filtered] == ["short-b", "short-a"]
+
+
+def test_animation_filter_uses_title_and_description_keywords() -> None:
+    topic = MonitoringTopic(
+        user_id="local-user",
+        name="Animation",
+        keywords=["AI"],
+        negative_keywords=[],
+        content_filter="animation",
+    )
+    videos = [
+        {
+            "id": "animation-title",
+            "title": "3D animation breakdown",
+            "description": "",
+            "contentType": "video",
+            "viewCount": 100,
+            "publishedAt": datetime.now(UTC),
+        },
+        {
+            "id": "animation-description",
+            "title": "How it was made",
+            "description": "Моушн-дизайн для рекламы",
+            "contentType": "video",
+            "viewCount": 100,
+            "publishedAt": datetime.now(UTC),
+        },
+        {
+            "id": "regular",
+            "title": "Camera review",
+            "description": "A regular horizontal video",
+            "contentType": "video",
+            "viewCount": 100,
+            "publishedAt": datetime.now(UTC),
+        },
+    ]
+
+    filtered = _filter_topic_videos(videos, topic)
+
+    assert [video["id"] for video in filtered] == [
+        "animation-title",
+        "animation-description",
+    ]
+
+
+def test_video_moves_from_discovered_results_to_library(
+    client: TestClient, db_session: Session
+) -> None:
     video = make_monitored_video(db_session)
 
-    response = client.post(f"/api/v1/monitoring/videos/{video.id}/save")
+    before = client.get("/api/v1/monitoring/videos")
+    response = client.post(f"/api/v1/monitoring/videos/{video.id}/library")
+    discovered = client.get("/api/v1/monitoring/videos")
+    library = client.get("/api/v1/monitoring/videos?scope=library")
 
+    assert [item["id"] for item in before.json()] == [video.id]
     assert response.status_code == 200
     assert response.json()["status"] == "saved"
+    assert discovered.json() == []
+    assert [item["id"] for item in library.json()] == [video.id]
     db_session.refresh(video)
     assert video.status == "saved"
 

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
-from typing import Annotated, Any
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Any, Literal
 
 from fastapi import (
     APIRouter,
@@ -55,6 +55,18 @@ VIDEO_FIELD_MAP = {
     "channelTitle": "channel_title",
 }
 
+ANIMATION_KEYWORDS = (
+    "animation",
+    "animated",
+    "anime",
+    "cartoon",
+    "motion design",
+    "3d animation",
+    "анимац",
+    "мульт",
+    "моушн",
+)
+
 
 def user_scope(x_user_id: Annotated[str | None, Header()] = None) -> str:
     return (x_user_id or "local-user").strip()[:128] or "local-user"
@@ -69,6 +81,10 @@ class TopicPayload(BaseModel):
     minimum_score: int = Field(default=70, ge=0, le=100)
     is_active: bool = True
     check_interval_hours: int = Field(default=3, ge=1, le=24)
+    content_filter: str = Field(default="all", pattern="^(all|shorts|videos|animation)$")
+    min_view_count: int = Field(default=0, ge=0, le=2_000_000_000)
+    published_within_days: int | None = Field(default=None, ge=1, le=365)
+    sort_by: str = Field(default="score", pattern="^(score|views|recent|velocity)$")
 
     @field_validator("keywords", "negative_keywords")
     @classmethod
@@ -95,6 +111,10 @@ def topic_read(topic: MonitoringTopic, included_channels_count: int = 0) -> dict
         "minimumScore": topic.minimum_score,
         "isActive": topic.is_active,
         "checkIntervalHours": topic.check_interval_hours,
+        "contentFilter": topic.content_filter,
+        "minViewCount": topic.min_view_count,
+        "publishedWithinDays": topic.published_within_days,
+        "sortBy": topic.sort_by,
         "lastCheckedAt": topic.last_checked_at,
         "runStatus": topic.run_status,
         "runStage": topic.run_stage,
@@ -350,6 +370,11 @@ def list_videos(
     topic_id: int | None = Query(default=None),
     content_type: str | None = None,
     minimum_score: float | None = None,
+    scope: Literal["discovered", "library", "all"] = Query(default="discovered"),
+    sort_by: str | None = Query(
+        default=None,
+        pattern="^(score|views|recent|velocity)$",
+    ),
 ) -> list[dict[str, Any]]:
     query = (
         select(MonitoredVideo)
@@ -357,14 +382,42 @@ def list_videos(
         .join(MonitoringTopic)
         .where(MonitoringTopic.user_id == user_id)
         .distinct()
-        .order_by(MonitoredVideo.final_score.desc().nullslast(), MonitoredVideo.published_at.desc())
     )
     if topic_id:
         query = query.where(TopicVideo.topic_id == topic_id)
+        if sort_by is None:
+            sort_by = db.scalar(
+                select(MonitoringTopic.sort_by).where(
+                    MonitoringTopic.id == topic_id,
+                    MonitoringTopic.user_id == user_id,
+                )
+            )
     if content_type:
         query = query.where(MonitoredVideo.content_type == content_type)
     if minimum_score is not None:
         query = query.where(MonitoredVideo.final_score >= minimum_score)
+    if scope == "library":
+        query = query.where(MonitoredVideo.status == "saved")
+    elif scope == "discovered":
+        query = query.where(MonitoredVideo.status != "saved")
+
+    if sort_by == "views":
+        query = query.order_by(
+            MonitoredVideo.view_count.desc(),
+            MonitoredVideo.published_at.desc(),
+        )
+    elif sort_by == "recent":
+        query = query.order_by(MonitoredVideo.published_at.desc())
+    elif sort_by == "velocity":
+        query = query.order_by(
+            MonitoredVideo.views_per_hour.desc().nullslast(),
+            MonitoredVideo.published_at.desc(),
+        )
+    else:
+        query = query.order_by(
+            MonitoredVideo.final_score.desc().nullslast(),
+            MonitoredVideo.published_at.desc(),
+        )
     return [video_read(item) for item in db.scalars(query).all()]
 
 
@@ -405,13 +458,23 @@ def update_status(
     return video_read(video)
 
 
-@router.post("/videos/{video_id}/save")
-def save_video(
+@router.post("/videos/{video_id}/library")
+def add_video_to_library(
     video_id: int,
     db: Annotated[Session, Depends(DbSession)],
     user_id: Annotated[str, Depends(user_scope)],
 ) -> dict[str, Any]:
     return _set_video_status(video_id, "saved", db, user_id)
+
+
+@router.post("/videos/{video_id}/save", include_in_schema=False)
+def save_video(
+    video_id: int,
+    db: Annotated[Session, Depends(DbSession)],
+    user_id: Annotated[str, Depends(user_scope)],
+) -> dict[str, Any]:
+    """Backward-compatible alias for clients using the former gallery action."""
+    return add_video_to_library(video_id, db, user_id)
 
 
 @router.post("/videos/{video_id}/required")
@@ -486,6 +549,65 @@ def _video_model_values(data: dict[str, Any]) -> dict[str, Any]:
     return {VIDEO_FIELD_MAP.get(key, key): value for key, value in data.items()}
 
 
+def _is_animation_video(data: dict[str, Any]) -> bool:
+    text = f"{data.get('title', '')} {data.get('description', '')}".lower()
+    return any(keyword in text for keyword in ANIMATION_KEYWORDS)
+
+
+def _filter_topic_videos(
+    videos: list[dict[str, Any]],
+    topic: MonitoringTopic,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Apply the topic's format, age and popularity settings to YouTube results."""
+
+    now = now or datetime.now(UTC)
+    content_filter = topic.content_filter or "all"
+    min_view_count = topic.min_view_count or 0
+    sort_by = topic.sort_by or "score"
+    published_after = (
+        now - timedelta(days=topic.published_within_days)
+        if topic.published_within_days
+        else None
+    )
+    filtered: list[dict[str, Any]] = []
+    for video in videos:
+        if int(video.get("viewCount") or 0) < min_view_count:
+            continue
+        if content_filter == "shorts" and video.get("contentType") != "short":
+            continue
+        if content_filter == "videos" and video.get("contentType") != "video":
+            continue
+        if content_filter == "animation" and not _is_animation_video(video):
+            continue
+        published_at = video.get("publishedAt")
+        if (
+            published_after is not None
+            and isinstance(published_at, datetime)
+            and published_at < published_after
+        ):
+            continue
+        filtered.append(video)
+
+    if sort_by == "views":
+        filtered.sort(key=lambda item: int(item.get("viewCount") or 0), reverse=True)
+    elif sort_by == "recent":
+        filtered.sort(
+            key=lambda item: item.get("publishedAt") or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+    elif sort_by == "velocity":
+        filtered.sort(
+            key=lambda item: views_per_hour(
+                int(item.get("viewCount") or 0),
+                item.get("publishedAt") or now,
+                now,
+            ),
+            reverse=True,
+        )
+    return filtered
+
+
 def _set_run_state(
     topic: MonitoringTopic,
     *,
@@ -521,6 +643,9 @@ def run_topic(topic_id: int, user_id: str, settings: Settings) -> None:
 
         try:
             after = topic.last_checked_at
+            if topic.published_within_days:
+                period_start = datetime.now(UTC) - timedelta(days=topic.published_within_days)
+                after = max(after, period_start) if after else period_start
             _set_run_state(
                 topic,
                 status_value="running",
@@ -571,17 +696,19 @@ def run_topic(topic_id: int, user_id: str, settings: Settings) -> None:
             unique: dict[str, dict[str, Any]] = {
                 item["externalId"]: item for item in videos if item.get("externalId")
             }
-            total = len(unique)
+            raw_total = len(unique)
+            filtered_videos = _filter_topic_videos(list(unique.values()), topic)
+            total = len(filtered_videos)
             _set_run_state(
                 topic,
                 status_value="running",
                 stage="processing",
                 progress=46,
-                message=f"Обрабатываем найденные видео: 0 из {total}",
+                message=f"Под фильтры подошло видео: {total} из {raw_total}",
             )
             db.commit()
 
-            for video_index, data in enumerate(unique.values(), start=1):
+            for video_index, data in enumerate(filtered_videos, start=1):
                 video = db.scalar(
                     select(MonitoredVideo).where(
                         MonitoredVideo.platform == "youtube",
@@ -625,7 +752,8 @@ def run_topic(topic_id: int, user_id: str, settings: Settings) -> None:
                     video.ai_score,
                 )
                 video.category = category_for_score(video.final_score)
-                video.status = "recommended" if video.final_score >= 85 else "analyzed"
+                if video.status != "saved":
+                    video.status = "recommended" if video.final_score >= 85 else "analyzed"
                 db.add(
                     VideoStatisticsSnapshot(
                         video_id=video.id,

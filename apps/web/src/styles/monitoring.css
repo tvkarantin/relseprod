@@ -150,6 +150,16 @@
   border-color: rgba(163, 230, 53, 0.6);
 }
 
+.monitoring-panel select.input {
+  cursor: pointer;
+}
+
+.monitoring-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+
 .monitoring-panel .button-lime {
   width: 100%;
 }
@@ -344,6 +354,24 @@
   font-size: 9px;
 }
 
+.monitoring-topic-select > .monitoring-topic-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.monitoring-topic-filters i {
+  padding: 3px 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  font-size: 8px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
 .monitoring-topic-score {
   display: inline-flex !important;
   padding: 4px 7px;
@@ -451,31 +479,6 @@
   gap: 12px;
 }
 
-.monitoring-result-tabs {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(8, 12, 7, 0.64);
-}
-
-.monitoring-result-tabs button {
-  min-height: 28px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.monitoring-result-tabs button.active {
-  background: var(--lime);
-  color: #11160c;
-}
-
 .monitoring-video-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -578,11 +581,38 @@
   flex: 1;
 }
 
-.monitoring-video-actions .monitoring-gallery-added {
-  border-color: rgba(163, 230, 53, 0.36);
-  background: var(--lime-soft);
-  color: var(--lime);
-  opacity: 1;
+.library-youtube-section {
+  margin: 4px 0 24px;
+}
+
+.library-youtube-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.library-youtube-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.library-youtube-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.library-youtube-count {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.library-youtube-open {
+  display: flex;
+  width: 100%;
 }
 
 .monitoring-empty,
@@ -650,7 +680,8 @@
 @media (max-width: 720px) {
   .monitoring-setup-grid,
   .monitoring-topic-grid,
-  .monitoring-video-grid {
+  .monitoring-video-grid,
+  .monitoring-filter-grid {
     grid-template-columns: 1fr;
   }
 

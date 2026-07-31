@@ -1,5 +1,8 @@
 import { apiClient, buildQuery } from './client'
 
+export type TopicContentFilter = 'all' | 'shorts' | 'videos' | 'animation'
+export type TopicSort = 'score' | 'views' | 'recent' | 'velocity'
+
 export interface MonitoringTopic {
   id: number
   name: string
@@ -10,6 +13,10 @@ export interface MonitoringTopic {
   minimumScore: number
   isActive: boolean
   checkIntervalHours: number
+  contentFilter: TopicContentFilter
+  minViewCount: number
+  publishedWithinDays: number | null
+  sortBy: TopicSort
   lastCheckedAt: string | null
   runStatus: 'idle' | 'queued' | 'running' | 'completed' | 'failed'
   runStage: 'idle' | 'queued' | 'searching' | 'channels' | 'processing' | 'completed' | 'failed'
@@ -35,13 +42,21 @@ export interface MonitoredChannel {
 export interface MonitoredVideo {
   id: number
   externalId: string
+  platform: string
   url: string
   title: string
+  description: string | null
+  channelId: string
   channelTitle: string
   thumbnailUrl: string | null
   publishedAt: string
+  durationSeconds: number | null
   contentType: string
   viewCount: number
+  likeCount: number | null
+  commentCount: number | null
+  viewsPerHour: number | null
+  engagementRate: number | null
   finalScore: number | null
   category: string
   status: string
@@ -57,6 +72,10 @@ export interface CreateTopicPayload {
   minimumScore: number
   isActive: boolean
   checkIntervalHours: number
+  contentFilter: TopicContentFilter
+  minViewCount: number
+  publishedWithinDays: number | null
+  sortBy: TopicSort
 }
 
 export const monitoringApi = {
@@ -73,6 +92,10 @@ export const monitoringApi = {
       minimum_score: payload.minimumScore,
       is_active: payload.isActive,
       check_interval_hours: payload.checkIntervalHours,
+      content_filter: payload.contentFilter,
+      min_view_count: payload.minViewCount,
+      published_within_days: payload.publishedWithinDays,
+      sort_by: payload.sortBy,
     }),
 
   runTopic: (topicId: number) =>
@@ -91,12 +114,18 @@ export const monitoringApi = {
 
   videos: (topicId?: number, signal?: AbortSignal) =>
     apiClient.get<MonitoredVideo[]>(
-      `/monitoring/videos${buildQuery({ topic_id: topicId })}`,
+      `/monitoring/videos${buildQuery({ topic_id: topicId, scope: 'discovered' })}`,
       signal,
     ),
 
-  saveVideo: (id: number) =>
-    apiClient.post<MonitoredVideo>(`/monitoring/videos/${id}/save`),
+  libraryVideos: (signal?: AbortSignal) =>
+    apiClient.get<MonitoredVideo[]>(
+      `/monitoring/videos${buildQuery({ scope: 'library' })}`,
+      signal,
+    ),
+
+  addToLibrary: (id: number) =>
+    apiClient.post<MonitoredVideo>(`/monitoring/videos/${id}/library`),
 
   ignoreVideo: (id: number) =>
     apiClient.post<MonitoredVideo>(`/monitoring/videos/${id}/ignore`),
