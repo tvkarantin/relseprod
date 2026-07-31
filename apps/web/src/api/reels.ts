@@ -8,9 +8,12 @@ import type {
   ReelContentSaved,
 } from '@/types/reel'
 
+export type ReelSort = 'views' | 'likes' | 'date'
+
 export interface ReelsQuery {
   competitorId?: number | null
   search?: string
+  sort?: ReelSort
   page?: number
   limit?: number
 }
@@ -19,6 +22,7 @@ export function fetchReels(query: ReelsQuery, signal?: AbortSignal): Promise<Pag
   const search = buildQuery({
     competitor_id: query.competitorId ?? null,
     search: query.search,
+    sort: query.sort,
     page: query.page,
     limit: query.limit,
   })
@@ -60,6 +64,14 @@ export function saveReelContent(
   payload: ReelContentPayload,
 ): Promise<ReelContentSaved> {
   return apiClient.put<ReelContentSaved>(`/reels/${id}/content`, payload)
+}
+
+export function takeReelToWork(id: number): Promise<ReelContentSaved> {
+  return apiClient.post<ReelContentSaved>(`/reels/${id}/take-to-work`)
+}
+
+export function deleteReel(id: number): Promise<void> {
+  return apiClient.delete<void>(`/reels/${id}`)
 }
 
 export function fetchDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary> {

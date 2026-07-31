@@ -7,6 +7,7 @@ import { fetchCompetitors } from '@/api/competitors'
 import { monitoringApi } from '@/api/monitoring'
 import { queryKeys } from '@/api/queryKeys'
 import { fetchReels } from '@/api/reels'
+import type { ReelSort } from '@/api/reels'
 import { ImportCompetitorDialog } from '@/components/competitors/ImportCompetitorDialog'
 import { ReelsEmptyState } from '@/components/feedback/ReelsEmptyState'
 import { ErrorState, ReelCardSkeletons } from '@/components/feedback/States'
@@ -20,6 +21,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 const DEFAULT_PAGE_SIZE = 8
 const PAGE_SIZES = [8, 20, 40] as const
 const SEARCH_DEBOUNCE_MS = 400
+const REEL_SORTS: readonly ReelSort[] = ['views', 'likes', 'date']
 
 const CATEGORIES = [
   { key: 'all', label: 'Все' },
@@ -51,7 +53,11 @@ export function ReelsPage() {
   const urlSearch = searchParams.get('search') ?? ''
   const urlCompetitorId = Number(searchParams.get('competitor_id')) || null
   const urlPage = Math.max(1, Number(searchParams.get('page')) || 1)
-  const urlSort = searchParams.get('sort') ?? 'views'
+  const requestedSort = searchParams.get('sort')
+  const urlSort: ReelSort =
+    requestedSort && REEL_SORTS.includes(requestedSort as ReelSort)
+      ? (requestedSort as ReelSort)
+      : 'views'
   const urlCategory = (searchParams.get('category') ?? 'all') as CategoryKey
   const urlView = (searchParams.get('view') ?? 'grid') as 'grid' | 'list'
   const requestedPageSize = Number(searchParams.get('limit'))
@@ -105,7 +111,13 @@ export function ReelsPage() {
     queryFn: ({ signal }) => fetchCompetitors(signal),
   })
 
-  const query = { competitorId: urlCompetitorId, search: urlSearch, page: urlPage, limit: pageSize }
+  const query = {
+    competitorId: urlCompetitorId,
+    search: urlSearch,
+    sort: urlSort,
+    page: urlPage,
+    limit: pageSize,
+  }
   const reelsQuery = useQuery({
     queryKey: queryKeys.reels.list(query),
     queryFn: ({ signal }) => fetchReels(query, signal),

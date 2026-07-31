@@ -10,7 +10,7 @@ from app.core.errors import ReelNotFoundError
 from app.models.enums import ContentStatus
 from app.repositories.competitors import CompetitorRepository
 from app.repositories.jobs import ParsingJobRepository
-from app.repositories.reels import ReelRepository
+from app.repositories.reels import ReelRepository, ReelSort
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -43,6 +43,7 @@ class ReelLibraryService:
         *,
         competitor_id: int | None = None,
         search: str | None = None,
+        sort: ReelSort = "date",
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[Reel], int, int]:
@@ -50,10 +51,20 @@ class ReelLibraryService:
 
         A page beyond the last one yields an empty list rather than an error.
         """
-        total = self.reels.count_filtered(competitor_id=competitor_id, search=search)
+        library_statuses = (ContentStatus.NEW,)
+        total = self.reels.count_filtered(
+            competitor_id=competitor_id,
+            search=search,
+            content_statuses=library_statuses,
+        )
         pages = math.ceil(total / limit) if total else 0
         items = self.reels.list_paginated(
-            competitor_id=competitor_id, search=search, page=page, limit=limit
+            competitor_id=competitor_id,
+            search=search,
+            content_statuses=library_statuses,
+            sort=sort,
+            page=page,
+            limit=limit,
         )
         return items, total, pages
 
@@ -90,6 +101,34 @@ class ReelLibraryService:
             if reel is None:  # pragma: no cover - deleted concurrently
                 raise ReelNotFoundError(details={"reelId": reel_id})
         return reel
+
+    def take_to_work(self, reel_id: int) -> ReelContent:
+        """Move a library reel into the user's workflow.
+
+        The action is idempotent: an already progressing reel keeps its current
+        stage instead of being reset to the beginning.
+        """
+        reel = self.reels.get_details_by_id(reel_id)
+        if reel is None:
+            raise ReelNotFoundError(details={"reelId": reel_id})
+
+        content = self.reels.get_or_create_content(reel)
+        if content.content_status == ContentStatus.NEW:
+            self.reels.update_content(content, {"content_status": ContentStatus.IDEA})
+        self.session.commit()
+        self.session.refresh(content)
+        logger.info("Reel moved to work: reel_id=%s status=%s", reel_id, content.content_status)
+        return content
+
+    def delete_reel(self, reel_id: int) -> None:
+        """Permanently remove a rejected reel and its dependent rows."""
+        reel = self.reels.get_details_by_id(reel_id)
+        if reel is None:
+            raise ReelNotFoundError(details={"reelId": reel_id})
+
+        self.reels.delete(reel)
+        self.session.commit()
+        logger.info("Rejected reel deleted: reel_id=%s", reel_id)
 
 
 class ReelContentService:

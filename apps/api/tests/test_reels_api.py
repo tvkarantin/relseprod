@@ -89,7 +89,7 @@ def test_library_returns_reels_with_competitor_and_content(
         comments_count=5,
         duration=28.5,
         published_at=datetime(2026, 7, 20, 10, 0, tzinfo=UTC),
-        content={"hook": "Мой хук", "content_status": ContentStatus.SCRIPT},
+        content={"hook": "Мой хук", "content_status": ContentStatus.NEW},
     )
 
     body = client.get(REELS).json()
@@ -106,7 +106,7 @@ def test_library_returns_reels_with_competitor_and_content(
         "profileUrl": "https://www.instagram.com/libowner/",
     }
     assert item["content"]["hook"] == "Мой хук"
-    assert item["content"]["contentStatus"] == "script"
+    assert item["content"]["contentStatus"] == "new"
     assert item["content"]["script"] == ""
 
 
@@ -122,6 +122,47 @@ def test_reels_are_ordered_by_published_at_desc_with_nulls_last(
     codes = [item["shortcode"] for item in client.get(REELS).json()["items"]]
 
     assert codes == ["NEW", "MID", "OLD", "NONE"]
+
+
+def test_reels_are_sorted_by_global_views_before_pagination(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    other = make_competitor(db_session, "otherowner")
+    make_reel(db_session, competitor, "AUTHOR_A_TOP", views_count=9_000)
+    make_reel(db_session, competitor, "AUTHOR_A_LOW", views_count=100)
+    make_reel(db_session, other, "AUTHOR_B_TOP", views_count=12_000)
+    make_reel(db_session, other, "AUTHOR_B_MID", views_count=5_000)
+
+    first = client.get(REELS, params={"sort": "views", "page": 1, "limit": 2}).json()
+    second = client.get(REELS, params={"sort": "views", "page": 2, "limit": 2}).json()
+
+    assert [item["shortcode"] for item in first["items"]] == [
+        "AUTHOR_B_TOP",
+        "AUTHOR_A_TOP",
+    ]
+    assert [item["shortcode"] for item in second["items"]] == [
+        "AUTHOR_B_MID",
+        "AUTHOR_A_LOW",
+    ]
+
+
+def test_reels_can_be_sorted_globally_by_likes(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    other = make_competitor(db_session, "otherowner")
+    make_reel(db_session, competitor, "MOST_VIEWS", views_count=50_000, likes_count=100)
+    make_reel(db_session, other, "MOST_LIKES", views_count=1_000, likes_count=2_000)
+
+    body = client.get(REELS, params={"sort": "likes"}).json()
+
+    assert [item["shortcode"] for item in body["items"]] == ["MOST_LIKES", "MOST_VIEWS"]
+
+
+def test_unknown_library_sort_is_rejected(client: TestClient) -> None:
+    response = client.get(REELS, params={"sort": "author_popularity"})
+
+    assert response.status_code == 422
+    assert error_code(response) == ErrorCode.VALIDATION_ERROR.value
 
 
 def test_pagination_splits_results_and_reports_totals(
@@ -509,6 +550,41 @@ def test_user_script_survives_a_reimport(
     assert body["content"]["hook"] == "Мой хук"
     assert body["content"]["script"] == "Мой сценарий"
     assert body["content"]["contentStatus"] == "ready"
+
+
+def test_take_to_work_moves_reel_from_library_to_my_reels(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    reel = make_reel(
+        db_session,
+        competitor,
+        "TAKE_TO_WORK",
+        content={"content_status": ContentStatus.NEW},
+    )
+
+    response = client.post(f"{REELS}/{reel.id}/take-to-work")
+
+    assert response.status_code == 200
+    assert response.json()["contentStatus"] == "idea"
+    assert client.get(REELS).json()["total"] == 0
+    my_reels = client.get(MY_REELS).json()
+    assert my_reels["total"] == 1
+    assert my_reels["items"][0]["shortcode"] == "TAKE_TO_WORK"
+    assert my_reels["items"][0]["content"]["contentStatus"] == "idea"
+
+
+def test_not_suitable_deletes_reel_and_related_content(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    reel = make_reel(db_session, competitor, "REJECT")
+    reel_id = reel.id
+
+    response = client.delete(f"{REELS}/{reel_id}")
+
+    assert response.status_code == 204
+    db_session.expire_all()
+    assert db_session.get(Reel, reel_id) is None
+    assert client.get(f"{REELS}/{reel_id}").status_code == 404
 
 
 # ------------------------------------------------------------------- my reels

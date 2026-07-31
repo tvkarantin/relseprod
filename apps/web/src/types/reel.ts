@@ -15,11 +15,11 @@ export const WORKING_STATUSES: readonly ContentStatus[] = [
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   new: 'Новый',
-  idea: 'Идея',
+  idea: 'В работе',
   script: 'Сценарий',
-  ready: 'Готов',
-  published: 'Опубликован',
-  archived: 'В архиве',
+  ready: 'Готово',
+  published: 'Опубликовано',
+  archived: 'Архив',
 }
 
 export interface ReelContent {

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import DbSession
 from app.models.enums import ContentStatus
 from app.models.reel import Reel
+from app.repositories.reels import ReelSort
 from app.schemas.analysis import ReelAnalysisSummary
 from app.schemas.common import ErrorResponse
 from app.schemas.reel import ReelPage, ReelView
@@ -25,6 +26,7 @@ PageParam = Annotated[int, Query(ge=1, description="Номер страницы"
 LimitParam = Annotated[int, Query(ge=1, le=100, description="Размер страницы")]
 SearchParam = Annotated[str | None, Query(max_length=200, description="Поиск по тексту и автору")]
 CompetitorIdParam = Annotated[int | None, Query(gt=0, description="Фильтр по конкуренту")]
+SortParam = Annotated[ReelSort, Query(description="Сортировка библиотеки")]
 
 MY_REELS_STATUSES = ", ".join(status.value for status in WORKING_STATUSES)
 
@@ -98,15 +100,21 @@ def list_reels(
     db: Annotated[Session, Depends(DbSession)],
     competitor_id: CompetitorIdParam = None,
     search: SearchParam = None,
+    sort: SortParam = "date",
     page: PageParam = 1,
     limit: LimitParam = 20,
 ) -> ReelPage:
     """Return one page of the library.
 
-    Order is fixed (newest published first); there is no ``sort`` parameter.
+    Popularity sorting is global across every matching competitor and is
+    applied before pagination.
     """
     items, total, pages = ReelLibraryService(db).list_reels(
-        competitor_id=competitor_id, search=search, page=page, limit=limit
+        competitor_id=competitor_id,
+        search=search,
+        sort=sort,
+        page=page,
+        limit=limit,
     )
     return ReelPage(
         items=[_to_view(reel) for reel in items],
@@ -183,6 +191,44 @@ def get_reel(
 ) -> ReelView:
     """Return one reel with its competitor and editor content."""
     return _to_view(ReelLibraryService(db).get_reel(reel_id))
+
+
+@router.post(
+    "/{reel_id}/take-to-work",
+    response_model=ReelContentSaved,
+    summary="Взять рилс в работу",
+    responses={404: {"model": ErrorResponse, "description": "Рилс не найден"}},
+)
+def take_reel_to_work(
+    reel_id: ReelId,
+    db: Annotated[Session, Depends(DbSession)],
+) -> ReelContentSaved:
+    """Move a library reel into “My reels” with the initial working status."""
+    content = ReelLibraryService(db).take_to_work(reel_id)
+    return ReelContentSaved(
+        reel_id=reel_id,
+        hook=content.hook or "",
+        script=content.script or "",
+        cta=content.cta or "",
+        notes=content.notes or "",
+        content_status=content.content_status,
+        updated_at=content.updated_at,
+    )
+
+
+@router.delete(
+    "/{reel_id}",
+    status_code=204,
+    summary="Удалить неподошедший рилс",
+    responses={404: {"model": ErrorResponse, "description": "Рилс не найден"}},
+)
+def delete_reel(
+    reel_id: ReelId,
+    db: Annotated[Session, Depends(DbSession)],
+) -> Response:
+    """Delete a rejected reel from the library without an extra dialog."""
+    ReelLibraryService(db).delete_reel(reel_id)
+    return Response(status_code=204)
 
 
 @router.put(

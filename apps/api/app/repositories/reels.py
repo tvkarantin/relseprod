@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
@@ -25,6 +25,9 @@ USER_CONTENT_FIELDS: frozenset[str] = frozenset(
     {"hook", "script", "cta", "notes", "content_status"}
 )
 """Fields of ``reel_content`` the user owns."""
+
+ReelSort = Literal["views", "likes", "date"]
+"""Supported global sort orders for the reels library."""
 
 
 def escape_like(term: str) -> str:
@@ -168,37 +171,73 @@ class ReelRepository(BaseRepository[Reel]):
         *,
         competitor_id: int | None = None,
         search: str | None = None,
+        content_statuses: Sequence[ContentStatus] | None = None,
+        sort: ReelSort = "date",
         page: int = 1,
         limit: int = 20,
     ) -> list[Reel]:
         """Return one page of the library.
 
-        Order is fixed: ``published_at DESC NULLS LAST``, then ``created_at
-        DESC``, then ``id DESC``. SQLite has no ``NULLS LAST``, so the null
-        check is expressed as an explicit sort key.
+        Sorting is applied to the complete filtered result before pagination,
+        so popularity is compared globally rather than within one competitor
+        or one already-fetched page. SQLite has no ``NULLS LAST``, so null
+        checks are expressed as explicit sort keys.
         """
-        stmt = (
-            self._library_query(competitor_id=competitor_id, search=search)
-            .options(
-                joinedload(Reel.competitor),
-                joinedload(Reel.content),
-                joinedload(Reel.transcription),
-                joinedload(Reel.analysis),
+        stmt = self._library_query(
+            competitor_id=competitor_id,
+            search=search,
+            content_statuses=content_statuses,
+        ).options(
+            joinedload(Reel.competitor),
+            joinedload(Reel.content),
+            joinedload(Reel.transcription),
+            joinedload(Reel.analysis),
+        )
+
+        if sort == "views":
+            stmt = stmt.order_by(
+                Reel.views_count.is_(None).asc(),
+                Reel.views_count.desc(),
+                Reel.likes_count.is_(None).asc(),
+                Reel.likes_count.desc(),
+                Reel.published_at.is_(None).asc(),
+                Reel.published_at.desc(),
+                Reel.id.desc(),
             )
-            .order_by(
+        elif sort == "likes":
+            stmt = stmt.order_by(
+                Reel.likes_count.is_(None).asc(),
+                Reel.likes_count.desc(),
+                Reel.views_count.is_(None).asc(),
+                Reel.views_count.desc(),
+                Reel.published_at.is_(None).asc(),
+                Reel.published_at.desc(),
+                Reel.id.desc(),
+            )
+        else:
+            stmt = stmt.order_by(
                 Reel.published_at.is_(None).asc(),
                 Reel.published_at.desc(),
                 Reel.created_at.desc(),
                 Reel.id.desc(),
             )
-            .limit(limit)
-            .offset(max(0, (page - 1) * limit))
-        )
+
+        stmt = stmt.limit(limit).offset(max(0, (page - 1) * limit))
         return list(self.db.scalars(stmt).unique())
 
-    def count_filtered(self, *, competitor_id: int | None = None, search: str | None = None) -> int:
+    def count_filtered(
+        self,
+        *,
+        competitor_id: int | None = None,
+        search: str | None = None,
+        content_statuses: Sequence[ContentStatus] | None = None,
+    ) -> int:
         """Count reels matching the same filters as :meth:`list_paginated`."""
-        stmt = self._library_query(competitor_id=competitor_id, search=search)
+        stmt = self._library_query(
+            competitor_id=competitor_id,
+            search=search,
+            content_statuses=content_statuses,
+        )
         return self.db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
 
     def search(self, term: str, *, limit: int = 20) -> list[Reel]:

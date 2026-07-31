@@ -178,7 +178,29 @@ describe('ReelsPage', () => {
 
     await waitFor(() =>
       expect(mockedReels.fetchReels).toHaveBeenCalledWith(
-        { competitorId: 2, search: 'test', page: 2, limit: 8 },
+        { competitorId: 2, search: 'test', sort: 'views', page: 2, limit: 8 },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('requests global popularity sorting from the server', async () => {
+    const user = userEvent.setup()
+    mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
+
+    renderWithProviders(<ReelsPage />, { route: '/reels' })
+    await screen.findByText('Как снимать рилсы')
+
+    expect(mockedReels.fetchReels).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'views' }),
+      expect.anything(),
+    )
+
+    await user.selectOptions(screen.getByLabelText('Сортировка'), 'likes')
+
+    await waitFor(() =>
+      expect(mockedReels.fetchReels).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'likes', page: 1 }),
         expect.anything(),
       ),
     )

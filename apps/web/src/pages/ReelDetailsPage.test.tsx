@@ -34,6 +34,8 @@ function savedResponse(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockedReels.fetchReel.mockResolvedValue(makeReel())
   mockedReels.saveReelContent.mockResolvedValue(savedResponse())
+  mockedReels.takeReelToWork.mockResolvedValue(savedResponse({ contentStatus: 'idea' }))
+  mockedReels.deleteReel.mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -121,6 +123,38 @@ describe('ReelDetailsPage — rendering', () => {
     renderWithProviders(<ReelDetailsPage />, { route: '/reels/1' })
 
     expect(await screen.findByText('Рилс не найден')).toBeInTheDocument()
+  })
+
+  it('moves a new reel to work from the header', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ReelDetailsPage />, { route: '/reels/1' })
+
+    await user.click(await screen.findByRole('button', { name: 'Взять в работу' }))
+
+    await waitFor(() => expect(mockedReels.takeReelToWork).toHaveBeenCalledWith(1))
+    expect(screen.getByText('Рилс перенесён в «Мои рилсы»')).toBeInTheDocument()
+  })
+
+  it('deletes a rejected reel without a confirmation dialog', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ReelDetailsPage />, { route: '/reels/1' })
+
+    await user.click(await screen.findByRole('button', { name: 'Не подошёл' }))
+
+    await waitFor(() => expect(mockedReels.deleteReel).toHaveBeenCalledWith(1))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Рилс удалён из библиотеки')).toBeInTheDocument()
+  })
+
+  it('shows the workflow tag for a reel already in work', async () => {
+    mockedReels.fetchReel.mockResolvedValue(
+      makeReel({ content: makeContent({ contentStatus: 'script' }) }),
+    )
+    renderWithProviders(<ReelDetailsPage />, { route: '/reels/1' })
+
+    await screen.findByLabelText(/Хук/)
+    expect(document.querySelector('.reel-detail-status')).toHaveTextContent('Сценарий')
+    expect(screen.queryByRole('button', { name: 'Взять в работу' })).not.toBeInTheDocument()
   })
 })
 

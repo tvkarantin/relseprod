@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ReelThumbnail } from './ReelThumbnail'
 
 import { getReelThumbnailUrl } from '@/api/reels'
-import type { Reel } from '@/types/reel'
+import { CONTENT_STATUS_LABELS, type Reel } from '@/types/reel'
 import { formatCompactNumber, formatDate, formatDuration, truncate } from '@/utils/format'
 
 type Category = 'ai' | 'growth' | 'editing' | 'script' | 'analytics' | 'errors' | 'sales' | 'default'
@@ -90,9 +90,15 @@ export function ReelCard({ reel, viewMode = 'grid' }: { reel: Reel; viewMode?: '
 
         <div className="reel-footer">
           <div className="reel-footer-left">
-            <span className={`category-badge cat-${category}`}>
-              {CATEGORY_LABELS[category]}
-            </span>
+            {reel.content.contentStatus === 'new' ? (
+              <span className={`category-badge cat-${category}`}>
+                {CATEGORY_LABELS[category]}
+              </span>
+            ) : (
+              <span className={`content-badge content-${reel.content.contentStatus}`}>
+                {CONTENT_STATUS_LABELS[reel.content.contentStatus]}
+              </span>
+            )}
           </div>
           <button type="button" className="reel-menu-btn" aria-label="Ещё">
             •••

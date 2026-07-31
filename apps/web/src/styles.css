@@ -3666,6 +3666,9 @@ body::before {
 .reel-detail-actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -3683,6 +3686,46 @@ body::before {
   color: #eff7c7;
   border-color: rgba(205, 230, 141, 0.38);
   background: rgba(202, 225, 145, 0.09);
+}
+
+.reel-detail-decisions {
+  display: inline-flex;
+  gap: 8px;
+  padding-right: 10px;
+  border-right: 1px solid rgba(205, 218, 195, 0.12);
+}
+
+.reel-detail-actions .reel-decision-take {
+  color: #15180f;
+  border-color: transparent;
+  background: linear-gradient(180deg, #f3f78f, #e6ed75);
+  font-weight: 700;
+}
+
+.reel-detail-actions .reel-decision-take:hover:not(:disabled) {
+  color: #11140c;
+  border-color: transparent;
+  background: linear-gradient(180deg, #fbfba6, #edf582);
+}
+
+.reel-detail-actions .reel-decision-reject {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.22);
+  background: rgba(248, 113, 113, 0.055);
+}
+
+.reel-detail-actions .reel-decision-reject:hover:not(:disabled) {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.11);
+}
+
+.reel-detail-status {
+  min-height: 30px;
+  padding-inline: 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .reel-details-page .reel-details {
@@ -4172,6 +4215,14 @@ body::before {
 
   .reel-detail-actions {
     width: 100%;
+    justify-content: flex-start;
+  }
+
+  .reel-detail-decisions {
+    width: 100%;
+    padding: 0 0 10px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(205, 218, 195, 0.12);
   }
 
   .reel-detail-actions .button {
