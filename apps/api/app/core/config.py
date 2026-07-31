@@ -45,6 +45,10 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./data/relseprod.db"
 
+    youtube_api_key: str = ""
+    youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
+    youtube_monitoring_enabled: bool = True
+
     apify_api_token: str = ""
     apify_actor_id: str = ""
     apify_actor_input_style: str = "auto"

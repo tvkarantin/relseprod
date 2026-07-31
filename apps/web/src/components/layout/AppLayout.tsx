@@ -9,6 +9,7 @@ const NAV_SECTIONS = [
       { to: '/', label: 'Обзор', icon: '⌂', end: true },
       { to: '/competitors', label: 'Конкуренты', icon: '◎' },
       { to: '/reels', label: 'Библиотека рилсов', icon: '▦' },
+      { to: '/youtube-monitoring', label: 'YouTube мониторинг', icon: '▶' },
       { to: '/my-reels', label: 'Мои рилсы', icon: '✎' },
     ],
   },

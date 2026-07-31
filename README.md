@@ -152,3 +152,10 @@ npm run build
 - видео и обложки не скачиваются, хранятся только ссылки Instagram, которые
   со временем перестают открываться;
 - нет AI-рерайта, транскрибации и публикации в Instagram.
+
+## YouTube Monitoring
+
+MVP мониторинга YouTube находится в `/youtube-monitoring` и использует только
+официальный YouTube Data API v3. Инструкция по Google Cloud, API key, миграциям,
+cron, квоте и ограничениям: [`docs/youtube-monitoring.md`](docs/youtube-monitoring.md).
+Добавьте `YOUTUBE_API_KEY` в `apps/api/.env`; ключ не передаётся frontend.
