@@ -88,6 +88,12 @@ def engine(settings: Settings) -> Generator[Engine, None, None]:
         "parsing_jobs",
         "reel_transcriptions",
         "reel_analyses",
+        "monitoring_topics",
+        "monitored_channels",
+        "monitored_videos",
+        "monitoring_topic_videos",
+        "video_statistics_snapshots",
+        "youtube_quota_logs",
     }
 
     yield test_engine

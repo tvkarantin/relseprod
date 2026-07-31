@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { App } from './App'
 import { createQueryClient } from './queryClient'
 import './styles.css'
+import './styles/monitoring.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 
