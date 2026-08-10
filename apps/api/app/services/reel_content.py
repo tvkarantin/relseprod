@@ -11,6 +11,7 @@ from app.models.enums import ContentStatus
 from app.repositories.competitors import CompetitorRepository
 from app.repositories.jobs import ParsingJobRepository
 from app.repositories.reels import ReelRepository, ReelSort
+from app.services.viral_scoring import calculate_viral_scores
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -25,6 +26,8 @@ WORKING_STATUSES: tuple[ContentStatus, ...] = (
     ContentStatus.IDEA,
     ContentStatus.SCRIPT,
     ContentStatus.READY,
+    ContentStatus.FILMED,
+    ContentStatus.EDITING,
     ContentStatus.PUBLISHED,
     ContentStatus.ARCHIVED,
 )
@@ -58,14 +61,38 @@ class ReelLibraryService:
             content_statuses=library_statuses,
         )
         pages = math.ceil(total / limit) if total else 0
-        items = self.reels.list_paginated(
-            competitor_id=competitor_id,
-            search=search,
-            content_statuses=library_statuses,
-            sort=sort,
-            page=page,
-            limit=limit,
-        )
+        if sort == "viral":
+            candidates = self.reels.list_paginated(
+                competitor_id=competitor_id,
+                search=search,
+                content_statuses=library_statuses,
+                sort="date",
+                page=1,
+                limit=max(total, 1),
+            )
+            scores = calculate_viral_scores(self.session, candidates)
+            candidates.sort(
+                key=lambda reel: (
+                    int(scores.get(reel.id, {}).get("score", 0)),
+                    reel.views_count or 0,
+                ),
+                reverse=True,
+            )
+            start = max(0, (page - 1) * limit)
+            items = candidates[start : start + limit]
+        else:
+            items = self.reels.list_paginated(
+                competitor_id=competitor_id,
+                search=search,
+                content_statuses=library_statuses,
+                sort=sort,
+                page=page,
+                limit=limit,
+            )
+            scores = calculate_viral_scores(self.session, items)
+
+        for reel in items:
+            reel.viral_score = scores.get(reel.id)  # type: ignore[attr-defined]
         return items, total, pages
 
     def list_my_reels(
@@ -118,6 +145,19 @@ class ReelLibraryService:
         self.session.commit()
         self.session.refresh(content)
         logger.info("Reel moved to work: reel_id=%s status=%s", reel_id, content.content_status)
+        return content
+
+    def skip_reel(self, reel_id: int) -> ReelContent:
+        """Hide an irrelevant reel without deleting imported evidence."""
+        reel = self.reels.get_details_by_id(reel_id)
+        if reel is None:
+            raise ReelNotFoundError(details={"reelId": reel_id})
+
+        content = self.reels.get_or_create_content(reel)
+        self.reels.update_content(content, {"content_status": ContentStatus.SKIPPED})
+        self.session.commit()
+        self.session.refresh(content)
+        logger.info("Reel skipped: reel_id=%s", reel_id)
         return content
 
     def delete_reel(self, reel_id: int) -> None:

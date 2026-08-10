@@ -24,6 +24,8 @@ const ALL_STATUSES: ContentStatus[] = [
   'idea',
   'script',
   'ready',
+  'filmed',
+  'editing',
   'published',
   'archived',
 ]

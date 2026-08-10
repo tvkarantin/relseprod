@@ -1,192 +1,368 @@
-import { useQuery } from '@tanstack/react-query'
-import { FilePenLine, Search, Send } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  ArrowRight,
+  Download,
+  Eye,
+  GripVertical,
+  MoveRight,
+  Sparkles,
+} from 'lucide-react'
+import { useMemo, useState, type DragEvent } from 'react'
+import { Link } from 'react-router-dom'
 
+import { getReelThumbnailUrl, fetchAllMyReels, saveReelContent } from '@/api/reels'
 import { queryKeys } from '@/api/queryKeys'
-import { fetchMyReels } from '@/api/reels'
-import { ReelsEmptyState } from '@/components/feedback/ReelsEmptyState'
-import { ErrorState, ReelCardSkeletons } from '@/components/feedback/States'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { ReelCard } from '@/components/reels/ReelCard'
-import { Pagination } from '@/components/ui/Pagination'
-import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { CONTENT_STATUS_LABELS, WORKING_STATUSES, type ContentStatus } from '@/types/reel'
+import { ErrorState } from '@/components/feedback/States'
+import { useToast } from '@/components/feedback/toastContext'
+import { ReelThumbnail } from '@/components/reels/ReelThumbnail'
+import type { ContentStatus, Reel } from '@/types/reel'
+import { buildContentPlanCsv } from '@/utils/contentPlan'
+import { formatCompactNumber, formatDate, truncate } from '@/utils/format'
 
-const PAGE_SIZE = 20
-const SEARCH_DEBOUNCE_MS = 400
+type BoardStatus = 'idea' | 'script' | 'filmed' | 'editing' | 'published'
 
-function parseStatus(value: string | null): ContentStatus | null {
-  return value && (WORKING_STATUSES as readonly string[]).includes(value)
-    ? (value as ContentStatus)
-    : null
+interface BoardColumn {
+  status: BoardStatus
+  title: string
+  description: string
+}
+
+interface MoveReelInput {
+  reel: Reel
+  status: BoardStatus
+}
+
+const BOARD_COLUMNS: readonly BoardColumn[] = [
+  { status: 'idea', title: 'Доработка', description: 'Нужно довести сценарий' },
+  { status: 'script', title: 'Готово', description: 'Можно ставить камеру' },
+  { status: 'filmed', title: 'Снято', description: 'Материал уже записан' },
+  { status: 'editing', title: 'В монтаже', description: 'Ролик собирается' },
+  { status: 'published', title: 'Выложено', description: 'Опубликовано и настроено' },
+]
+
+const COLUMN_BY_STATUS = new Map(BOARD_COLUMNS.map((column) => [column.status, column]))
+
+function toBoardStatus(status: ContentStatus): BoardStatus | null {
+  if (status === 'ready') return 'script'
+  if (status === 'archived') return 'published'
+  return COLUMN_BY_STATUS.has(status as BoardStatus) ? (status as BoardStatus) : null
+}
+
+function reelTitle(reel: Reel): string {
+  return reel.content.hook || reel.caption || `Рилс #${reel.id}`
+}
+
+function downloadContentPlan(reels: Reel[]): void {
+  const csv = `\uFEFF${buildContentPlanCsv(reels)}`
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `reels-content-plan-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
+function ContentPlanSkeleton() {
+  return (
+    <div className="content-plan-board is-loading" aria-label="Загрузка контент-плана">
+      {BOARD_COLUMNS.map((column) => (
+        <section className="content-plan-column" key={column.status}>
+          <div className="content-plan-column-head">
+            <span className="skeleton-line skeleton-title" />
+            <span className="skeleton-line skeleton-copy" />
+          </div>
+          <div className="content-plan-column-body">
+            <div className="content-plan-card-skeleton" />
+            <div className="content-plan-card-skeleton is-short" />
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+interface ContentPlanCardProps {
+  reel: Reel
+  stage: BoardStatus
+  isMoving: boolean
+  onDragStart: (event: DragEvent<HTMLElement>, reelId: number) => void
+  onDragEnd: () => void
+  onMove: (reel: Reel, status: BoardStatus) => void
+}
+
+function ContentPlanCard({
+  reel,
+  stage,
+  isMoving,
+  onDragStart,
+  onDragEnd,
+  onMove,
+}: ContentPlanCardProps) {
+  const title = reelTitle(reel)
+  const scriptPreview = reel.content.script || reel.caption || 'Добавьте детали сценария'
+
+  return (
+    <article
+      className={`content-plan-card${isMoving ? ' is-moving' : ''}`}
+      draggable={!isMoving}
+      onDragStart={(event) => onDragStart(event, reel.id)}
+      onDragEnd={onDragEnd}
+      aria-label={`Карточка: ${title}`}
+    >
+      <div className="content-plan-card-media">
+        <Link to={`/reels/${reel.id}`} aria-label={`Открыть рилс: ${title}`}>
+          <ReelThumbnail
+            src={reel.thumbnailUrl ? getReelThumbnailUrl(reel.id) : null}
+            videoSrc={reel.videoUrl}
+            alt={title}
+          />
+        </Link>
+        <span className="content-plan-drag-handle" aria-hidden="true">
+          <GripVertical size={15} />
+        </span>
+      </div>
+
+      <div className="content-plan-card-copy">
+        <Link to={`/reels/${reel.id}`} className="content-plan-card-title">
+          {truncate(title, 72)}
+        </Link>
+        <p>{truncate(scriptPreview, 96)}</p>
+      </div>
+
+      <div className="content-plan-card-meta">
+        <span>@{reel.competitor.instagramUsername}</span>
+        <span title="Просмотры"><Eye size={12} /> {formatCompactNumber(reel.viewsCount)}</span>
+        <span>{formatDate(reel.publishedAt)}</span>
+      </div>
+
+      <label className="content-plan-stage-select">
+        <span className="visually-hidden">Переместить «{title}» на этап</span>
+        <MoveRight size={13} aria-hidden="true" />
+        <select
+          value={stage}
+          disabled={isMoving}
+          onChange={(event) => onMove(reel, event.target.value as BoardStatus)}
+        >
+          {BOARD_COLUMNS.map((column) => (
+            <option value={column.status} key={column.status}>
+              {column.title}
+            </option>
+          ))}
+        </select>
+      </label>
+    </article>
+  )
 }
 
 export function MyReelsPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const [draggedReelId, setDraggedReelId] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<BoardStatus | null>(null)
 
-  const urlSearch = searchParams.get('search') ?? ''
-  const urlStatus = parseStatus(searchParams.get('content_status'))
-  const urlPage = Math.max(1, Number(searchParams.get('page')) || 1)
-
-  const [searchInput, setSearchInput] = useState(urlSearch)
-  const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS)
-
-  useEffect(() => setSearchInput(urlSearch), [urlSearch])
-
-  useEffect(() => {
-    if (debouncedSearch === urlSearch) return
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (debouncedSearch.trim()) next.set('search', debouncedSearch.trim())
-        else next.delete('search')
-        next.delete('page')
-        return next
-      },
-      { replace: true },
-    )
-  }, [debouncedSearch, urlSearch, setSearchParams])
-
-  const updateParams = (mutate: (params: URLSearchParams) => void) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current)
-      mutate(next)
-      return next
-    })
-  }
-
-  const query = {
-    contentStatus: urlStatus,
-    search: urlSearch,
-    page: urlPage,
-    limit: PAGE_SIZE,
-  }
   const reelsQuery = useQuery({
-    queryKey: queryKeys.reels.my(query),
-    queryFn: ({ signal }) => fetchMyReels(query, signal),
-    placeholderData: (previous) => previous,
+    queryKey: queryKeys.reels.contentPlan(),
+    queryFn: ({ signal }) => fetchAllMyReels(signal),
   })
 
-  const page = reelsQuery.data
+  const moveReel = useMutation({
+    mutationFn: ({ reel, status }: MoveReelInput) =>
+      saveReelContent(reel.id, {
+        hook: reel.content.hook,
+        script: reel.content.script,
+        cta: reel.content.cta,
+        notes: reel.content.notes,
+        contentStatus: status,
+      }),
+    onMutate: async ({ reel, status }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.reels.contentPlan() })
+      const previous = queryClient.getQueryData<Reel[]>(queryKeys.reels.contentPlan())
+      queryClient.setQueryData<Reel[]>(
+        queryKeys.reels.contentPlan(),
+        (items = []) =>
+          items.map((item) =>
+            item.id === reel.id
+              ? { ...item, content: { ...item.content, contentStatus: status } }
+              : item,
+          ),
+      )
+      return { previous }
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.reels.contentPlan(), context.previous)
+      }
+      toast.error(error instanceof Error ? error.message : 'Не удалось переместить рилс')
+    },
+    onSuccess: (saved, { reel, status }) => {
+      queryClient.setQueryData<Reel[]>(
+        queryKeys.reels.contentPlan(),
+        (items = []) =>
+          items.map((item) =>
+            item.id === reel.id
+              ? {
+                  ...item,
+                  content: {
+                    ...item.content,
+                    contentStatus: saved.contentStatus,
+                    updatedAt: saved.updatedAt,
+                  },
+                }
+              : item,
+          ),
+      )
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reels.details(reel.id) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary() })
+      toast.success(`Рилс перемещён: ${COLUMN_BY_STATUS.get(status)?.title}`)
+    },
+  })
+
+  const reels = useMemo(() => reelsQuery.data ?? [], [reelsQuery.data])
+  const reelsByColumn = useMemo(() => {
+    const result = new Map<BoardStatus, Reel[]>(
+      BOARD_COLUMNS.map((column) => [column.status, []]),
+    )
+    for (const reel of reels) {
+      const status = toBoardStatus(reel.content.contentStatus)
+      if (status) result.get(status)?.push(reel)
+    }
+    return result
+  }, [reels])
+
+  const requestMove = (reel: Reel, status: BoardStatus) => {
+    if (toBoardStatus(reel.content.contentStatus) === status) return
+    moveReel.mutate({ reel, status })
+  }
+
+  const handleDragStart = (event: DragEvent<HTMLElement>, reelId: number) => {
+    setDraggedReelId(reelId)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(reelId))
+  }
+
+  const handleDragEnd = () => {
+    setDraggedReelId(null)
+    setDropTarget(null)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLElement>, status: BoardStatus) => {
+    event.preventDefault()
+    const transferredId = Number(event.dataTransfer.getData('text/plain'))
+    const reelId = draggedReelId ?? (Number.isFinite(transferredId) ? transferredId : null)
+    const reel = reels.find((item) => item.id === reelId)
+    if (reel) requestMove(reel, status)
+    handleDragEnd()
+  }
 
   return (
-    <div className="page-content">
-      <PageHeader
-        title="Мои рилсы"
-        description="Ролики, для которых вы начали готовить сценарий"
-      />
-
-      <div className="tabs" role="tablist" aria-label="Фильтр по статусу">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={urlStatus === null}
-          className={`tab ${urlStatus === null ? 'active' : ''}`}
-          onClick={() =>
-            updateParams((params) => {
-              params.delete('content_status')
-              params.delete('page')
-            })
-          }
-        >
-          Все
-        </button>
-        {WORKING_STATUSES.map((status) => (
-          <button
-            key={status}
-            type="button"
-            role="tab"
-            aria-selected={urlStatus === status}
-            className={`tab ${urlStatus === status ? 'active' : ''}`}
-            onClick={() =>
-              updateParams((params) => {
-                params.set('content_status', status)
-                params.delete('page')
-              })
-            }
-          >
-            {CONTENT_STATUS_LABELS[status]}
-          </button>
-        ))}
-      </div>
-
-      <div className="filters-row">
-        <div className="search-box">
-          <label className="visually-hidden" htmlFor="my-reels-search">
-            Поиск по моим рилсам
-          </label>
-          <span className="search-icon" aria-hidden="true">
-            ⌕
+    <div className="page-content content-plan-page">
+      <header className="content-plan-header">
+        <div className="content-plan-heading">
+          <span className="content-plan-eyebrow">Мои рилсы · производство</span>
+          <h1>Контент-план</h1>
+          <p>Весь путь рилса — от доработки сценария до публикации.</p>
+          <span className="content-plan-hint">
+            <GripVertical size={13} aria-hidden="true" />
+            Перетаскивайте карточки между этапами или меняйте статус внутри карточки
           </span>
-          <input
-            id="my-reels-search"
-            type="search"
-            className="input"
-            placeholder="Поиск по сценарию, хуку и описанию"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            maxLength={200}
-          />
         </div>
-      </div>
+        <div className="content-plan-actions">
+          <Link className="button button-lime" to="/reels">
+            <Sparkles size={15} aria-hidden="true" />
+            Разобрать идеи
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+          <button
+            className="button content-plan-export"
+            type="button"
+            disabled={reels.length === 0}
+            onClick={() => downloadContentPlan(reels)}
+          >
+            <Download size={15} aria-hidden="true" />
+            Экспорт CSV
+          </button>
+        </div>
+      </header>
 
       {reelsQuery.isLoading ? (
-        <ReelCardSkeletons count={4} />
+        <ContentPlanSkeleton />
       ) : reelsQuery.isError ? (
         <ErrorState error={reelsQuery.error} onRetry={() => void reelsQuery.refetch()} />
-      ) : !page || page.items.length === 0 ? (
-        <ReelsEmptyState
-          description={
-            urlSearch
-              ? 'По вашему запросу рилсы не найдены. Измените поиск или выберите другой статус.'
-              : urlStatus
-                ? `В статусе «${CONTENT_STATUS_LABELS[urlStatus]}» пока нет рилсов. Выберите ролик в библиотеке и смените его статус.`
-                : 'Откройте любой рилс в библиотеке, напишите сценарий и смените статус — он появится в этом разделе.'
-          }
-          action={
-            <Link to="/reels" className="button button-lime reels-empty-cta">
-              Открыть библиотеку <span aria-hidden="true">→</span>
-            </Link>
-          }
-          steps={[
-            {
-              icon: <Search size={20} />,
-              title: 'Найдите',
-              description: 'Ищите вдохновляющие рилсы в библиотеке.',
-            },
-            {
-              icon: <FilePenLine size={20} />,
-              title: 'Создайте',
-              description: 'Напишите сценарий, добавьте хук и идею.',
-            },
-            {
-              icon: <Send size={20} />,
-              title: 'Публикуйте',
-              description: 'Смените статус и отслеживайте результат.',
-            },
-          ]}
-        />
       ) : (
-        <>
-          <div className="reels-grid">
-            {page.items.map((reel) => (
-              <ReelCard key={reel.id} reel={reel} />
-            ))}
+        <div className="content-plan-board-wrap">
+          <div className="content-plan-board" aria-label="Этапы контент-плана">
+            {BOARD_COLUMNS.map((column) => {
+              const columnReels = reelsByColumn.get(column.status) ?? []
+              const isDropTarget = dropTarget === column.status
+              return (
+                <section
+                  className={`content-plan-column${isDropTarget ? ' is-drop-target' : ''}`}
+                  key={column.status}
+                  aria-label={`Этап «${column.title}»`}
+                  onDragEnter={(event) => {
+                    event.preventDefault()
+                    setDropTarget(column.status)
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setDropTarget(null)
+                    }
+                  }}
+                  onDrop={(event) => handleDrop(event, column.status)}
+                >
+                  <div className="content-plan-column-head">
+                    <div>
+                      <h2>{column.title}</h2>
+                      <span className="content-plan-count">{columnReels.length}</span>
+                    </div>
+                    <p>{column.description}</p>
+                  </div>
+
+                  <div className="content-plan-column-body">
+                    {columnReels.length === 0 ? (
+                      <div className="content-plan-empty">
+                        <span aria-hidden="true">+</span>
+                        <p>Перетащите рилс сюда</p>
+                      </div>
+                    ) : (
+                      columnReels.map((reel) => (
+                        <ContentPlanCard
+                          key={reel.id}
+                          reel={reel}
+                          stage={column.status}
+                          isMoving={moveReel.isPending && moveReel.variables?.reel.id === reel.id}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                          onMove={requestMove}
+                        />
+                      ))
+                    )}
+                  </div>
+                </section>
+              )
+            })}
           </div>
-          <Pagination
-            page={page.page}
-            pages={page.pages}
-            total={page.total}
-            onChange={(next) =>
-              updateParams((params) => {
-                if (next <= 1) params.delete('page')
-                else params.set('page', String(next))
-              })
-            }
-          />
-        </>
+        </div>
       )}
+
+      {!reelsQuery.isLoading && !reelsQuery.isError && reels.length === 0 ? (
+        <div className="content-plan-first-step">
+          <div>
+            <strong>Контент-план пока пуст</strong>
+            <span>Возьмите первый референс из библиотеки — он появится в «Доработке».</span>
+          </div>
+          <Link to="/reels" className="button">
+            Открыть библиотеку <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      ) : null}
     </div>
   )
 }

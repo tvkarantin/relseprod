@@ -12,8 +12,11 @@ export const contentStatusSchema = z.enum([
   'idea',
   'script',
   'ready',
+  'filmed',
+  'editing',
   'published',
   'archived',
+  'skipped',
 ])
 
 /**

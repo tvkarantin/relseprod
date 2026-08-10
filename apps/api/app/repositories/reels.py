@@ -26,7 +26,7 @@ USER_CONTENT_FIELDS: frozenset[str] = frozenset(
 )
 """Fields of ``reel_content`` the user owns."""
 
-ReelSort = Literal["views", "likes", "date"]
+ReelSort = Literal["viral", "views", "likes", "date"]
 """Supported global sort orders for the reels library."""
 
 

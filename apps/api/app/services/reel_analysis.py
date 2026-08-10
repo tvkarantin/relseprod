@@ -6,10 +6,9 @@ import hashlib
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.errors import (
@@ -24,19 +23,29 @@ from app.core.errors import (
 from app.models.enums import ReelAnalysisStatus, TranscriptionStatus
 from app.models.reel import Reel
 from app.models.reel_analysis import ReelAnalysis
-from app.services.openrouter import OpenRouterAnalysisResult
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.services.openrouter import OpenRouterAnalysisResult
 
 logger = logging.getLogger(__name__)
 
 
-def _compute_input_hash(transcript: str, utterances: list[dict[str, Any]]) -> str:
+def _compute_input_hash(
+    transcript: str,
+    utterances: list[dict[str, Any]],
+    creator_profile: dict[str, Any] | None = None,
+) -> str:
     """Compute a stable hash of the input data."""
-    data = {"t": transcript, "u": utterances}
+    data = {"t": transcript, "u": utterances, "profile": creator_profile or {}}
     encoded = json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _calculate_segment_timecodes(segment: Any, utterances: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _calculate_segment_timecodes(
+    segment: Any, utterances: list[dict[str, Any]]
+) -> dict[str, Any] | None:
     if not segment:
         return None
 
@@ -72,7 +81,11 @@ class ReelAnalysisService:
         stmt = select(ReelAnalysis).where(ReelAnalysis.reel_id == reel_id)
         return self.session.scalars(stmt).first()
 
-    def create_or_retry_analysis(self, reel_id: int) -> ReelAnalysis:
+    def create_or_retry_analysis(
+        self,
+        reel_id: int,
+        creator_profile: dict[str, Any] | None = None,
+    ) -> ReelAnalysis:
         # 1. Verify Reel
         reel = self.session.get(Reel, reel_id)
         if not reel:
@@ -112,7 +125,11 @@ class ReelAnalysisService:
                 }
             ]
 
-        input_hash = _compute_input_hash(transcription.transcript, normalized_utterances)
+        input_hash = _compute_input_hash(
+            transcription.transcript,
+            normalized_utterances,
+            creator_profile,
+        )
 
         # 3. Check existing analysis
         analysis = self.get_analysis_by_reel(reel_id)
@@ -124,13 +141,15 @@ class ReelAnalysisService:
                 analysis.status == ReelAnalysisStatus.COMPLETED
                 and analysis.input_hash == input_hash
             ):
-                raise InvalidAnalysisStateError("Анализ уже успешно завершен для этой транскрибации")
+                raise InvalidAnalysisStateError(
+                    "Анализ уже успешно завершен для этой транскрибации"
+                )
 
             # If failed, or completed but input changed, we reset it
             analysis.status = ReelAnalysisStatus.QUEUED
             analysis.transcription_id = transcription.id
             analysis.requested_model = self.settings.openrouter_model
-            analysis.prompt_version = "v1"
+            analysis.prompt_version = "v2-personalized"
             analysis.input_hash = input_hash
             analysis.error_code = None
             analysis.error_message = None
@@ -141,7 +160,7 @@ class ReelAnalysisService:
                 transcription_id=transcription.id,
                 status=ReelAnalysisStatus.QUEUED,
                 requested_model=self.settings.openrouter_model,
-                prompt_version="v1",
+                prompt_version="v2-personalized",
                 input_hash=input_hash,
             )
             self.session.add(analysis)
@@ -161,7 +180,12 @@ class ReelAnalysisService:
         self.session.commit()
 
     def save_result(
-        self, analysis_id: int, result: OpenRouterAnalysisResult, utterances: list[dict[str, Any]]
+        self,
+        analysis_id: int,
+        result: OpenRouterAnalysisResult,
+        utterances: list[dict[str, Any]],
+        *,
+        apply_to_content: bool = False,
     ) -> None:
         analysis = self.session.get(ReelAnalysis, analysis_id)
         if not analysis:
@@ -186,7 +210,9 @@ class ReelAnalysisService:
         hook_dict = _calculate_segment_timecodes(result.hook, utterances)
         analysis.hook_json = hook_dict
 
-        main_part_list_raw = [_calculate_segment_timecodes(seg, utterances) for seg in result.main_part]
+        main_part_list_raw = [
+            _calculate_segment_timecodes(seg, utterances) for seg in result.main_part
+        ]
         main_part_clean: list[dict[str, Any]] = [x for x in main_part_list_raw if x is not None]
         analysis.main_part_json = main_part_clean
 
@@ -208,7 +234,49 @@ class ReelAnalysisService:
 
         analysis.suggested_script = "\n\n".join(script_parts)
 
+        if apply_to_content:
+            from app.models.enums import ContentStatus
+            from app.repositories.reels import ReelRepository
+
+            reel = self.session.get(Reel, analysis.reel_id)
+            if reel is not None:
+                content = ReelRepository(self.session).get_or_create_content(reel)
+                ReelRepository(self.session).update_content(
+                    content,
+                    {
+                        "hook": analysis.suggested_hook or "",
+                        "script": analysis.suggested_script or "",
+                        "cta": analysis.suggested_cta or "",
+                        "content_status": ContentStatus.SCRIPT,
+                    },
+                )
+
         self.session.commit()
+
+    def apply_existing_result_to_content(self, reel_id: int) -> bool:
+        """Apply an already completed analysis when an identical request is retried."""
+        from app.models.enums import ContentStatus, ReelAnalysisStatus
+        from app.repositories.reels import ReelRepository
+
+        analysis = self.get_analysis_by_reel(reel_id)
+        if analysis is None or analysis.status != ReelAnalysisStatus.COMPLETED:
+            return False
+        reel = self.session.get(Reel, reel_id)
+        if reel is None:
+            return False
+        repository = ReelRepository(self.session)
+        content = repository.get_or_create_content(reel)
+        repository.update_content(
+            content,
+            {
+                "hook": analysis.suggested_hook or "",
+                "script": analysis.suggested_script or "",
+                "cta": analysis.suggested_cta or "",
+                "content_status": ContentStatus.SCRIPT,
+            },
+        )
+        self.session.commit()
+        return True
 
     def mark_failed(self, analysis_id: int, error_code: str, error_message: str) -> None:
         analysis = self.session.get(ReelAnalysis, analysis_id)

@@ -3,10 +3,12 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useNotifications } from '@/components/notifications/notificationContext'
+import { CreatorProfileDialog } from '@/components/profile/CreatorProfileDialog'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Обзор', end: true },
-  { to: '/reels', label: 'Библиотека' },
+  { to: '/dashboard', label: 'Обзор', end: true },
+  { to: '/ideas', label: 'Для вас' },
+  { to: '/library', label: 'Библиотека' },
   { to: '/youtube-monitoring', label: 'YouTube мониторинг' },
   { to: '/my-reels', label: 'Мои рилсы' },
 ] as const
@@ -23,6 +25,7 @@ function IconBell() {
 export function AppLayout() {
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [isNotificationsOpen, setNotificationsOpen] = useState(false)
+  const [isProfileOpen, setProfileOpen] = useState(false)
   const notificationAnchorRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { notifications } = useNotifications()
@@ -102,18 +105,19 @@ export function AppLayout() {
               <NotificationPanel onClose={() => setNotificationsOpen(false)} />
             ) : null}
           </div>
-          <div className="top-nav-avatar">
+          <button type="button" className="top-nav-avatar" onClick={() => setProfileOpen(true)} aria-label="Настроить мой стиль">
             <img
               src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85"
               alt="Аватар пользователя"
             />
-          </div>
+          </button>
         </div>
       </header>
 
-      <main className={`main-view ${location.pathname === '/' ? 'main-view-dashboard' : ''}`}>
+      <main className={`main-view ${location.pathname === '/dashboard' ? 'main-view-dashboard' : ''}`}>
         <Outlet />
       </main>
+      {isProfileOpen ? <CreatorProfileDialog onClose={() => setProfileOpen(false)} /> : null}
     </div>
   )
 }

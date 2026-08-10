@@ -13,11 +13,6 @@ from app.models.enums import (
     ReelImportMode,
     TranscriptionStatus,
 )
-from app.models.parsing_job import ParsingJob
-from app.models.reel import Reel
-from app.models.reel_analysis import ReelAnalysis
-from app.models.reel_content import ReelContent
-from app.models.reel_transcription import ReelTranscription
 from app.models.monitoring import (
     MonitoredChannel,
     MonitoredVideo,
@@ -26,12 +21,20 @@ from app.models.monitoring import (
     VideoStatisticsSnapshot,
     YouTubeQuotaLog,
 )
+from app.models.parsing_job import ParsingJob
+from app.models.reel import Reel
+from app.models.reel_analysis import ReelAnalysis
+from app.models.reel_content import ReelContent
+from app.models.reel_transcription import ReelTranscription
 
 __all__ = [
     "Base",
     "Competitor",
     "CompetitorStatus",
     "ContentStatus",
+    "MonitoredChannel",
+    "MonitoredVideo",
+    "MonitoringTopic",
     "ParsingJob",
     "ParsingJobStatus",
     "Reel",
@@ -39,5 +42,8 @@ __all__ = [
     "ReelContent",
     "ReelImportMode",
     "ReelTranscription",
+    "TopicVideo",
     "TranscriptionStatus",
+    "VideoStatisticsSnapshot",
+    "YouTubeQuotaLog",
 ]

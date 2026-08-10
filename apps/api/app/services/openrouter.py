@@ -67,7 +67,9 @@ SYSTEM_PROMPT_V1 = """Ты — профессиональный редактор
 2. Переведи всю речь на естественный русский язык.
 3. Сохрани смысл, факты, имена, числа, названия продуктов и призывы.
 4. Не добавляй новую информацию.
-5. Не улучшай и не переписывай сценарий сверх перевода.
+5. Используй creatorProfile как обязательный редакционный бриф: перепиши hook, mainPart,
+   conclusion и cta под нишу, аудиторию, продукт, тон, длину и манеру обращения автора.
+   Не копируй формулировки дословно, но сохрани работающую идею и фактический смысл.
 6. Раздели речь на реальные смысловые части:
    - hook;
    - mainPart;
@@ -77,7 +79,7 @@ SYSTEM_PROMPT_V1 = """Ты — профессиональный редактор
 8. Не считай первую фразу хуком автоматически.
 9. Не считай последнюю фразу CTA автоматически.
 10. CTA существует только при явном призыве совершить действие.
-11. Для каждого блока верни индексы исходных utterances.
+11. Для каждого адаптированного блока верни индексы исходных utterances, на которых он основан.
 12. Не придумывай индексы.
 13. Не возвращай числовые таймкоды.
 14. Не возвращай markdown.
@@ -255,6 +257,7 @@ class OpenRouterService:
         utterances: list[dict[str, Any]],
         detected_language: str | None,
         duration: float | None,
+        creator_profile: dict[str, Any] | None = None,
     ) -> OpenRouterAnalysisResult:
         self.ensure_configured()
 
@@ -265,6 +268,7 @@ class OpenRouterService:
             "detectedLanguage": detected_language,
             "duration": duration,
             "utterances": utterances,
+            "creatorProfile": creator_profile or {},
         }
         import json
 
@@ -282,7 +286,12 @@ class OpenRouterService:
             "reasoning": {"effort": self.settings.openrouter_reasoning_effort, "exclude": True},
             "provider": {"require_parameters": True},
             "response_format": {
-                "type": "json_object",
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "reel_analysis",
+                    "strict": True,
+                    "schema": JSON_SCHEMA,
+                },
             },
         }
 
@@ -301,7 +310,7 @@ class OpenRouterService:
                 return self._parse_and_validate(response, utterances)
             except OpenRouterInvalidResponseError as exc:
                 if attempt < retries:
-                    # Retry logic: append assistant's invalid response and an error correction prompt
+                    # Append the invalid response and an error correction prompt.
 
                     payload = dict(payload)  # copy
                     messages = list(payload.get("messages", []))
@@ -311,7 +320,10 @@ class OpenRouterService:
                     messages.append(
                         {
                             "role": "user",
-                            "content": f"Твой предыдущий ответ содержал ошибку: {exc.message}. Пожалуйста, исправь её и верни строго валидный JSON.",
+                            "content": (
+                                "Твой предыдущий ответ содержал ошибку: "
+                                f"{exc.message}. Исправь её и верни строго валидный JSON."
+                            ),
                         }
                     )
                     payload["messages"] = messages

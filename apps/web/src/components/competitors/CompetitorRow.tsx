@@ -67,7 +67,7 @@ export function CompetitorRow({
 
         <div className="row-actions">
           {competitor.reelsCount > 0 ? (
-            <Link to={`/reels?competitor_id=${competitor.id}`} className="button button-small">
+            <Link to={`/library?competitor_id=${competitor.id}`} className="button button-small">
               Рилсы
             </Link>
           ) : null}

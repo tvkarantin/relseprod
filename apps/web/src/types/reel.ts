@@ -2,13 +2,24 @@ import type { CompetitorBrief } from './competitor'
 import type { TranscriptionSummary } from './transcription'
 import type { ReelAnalysisSummary } from './analysis'
 
-export type ContentStatus = 'new' | 'idea' | 'script' | 'ready' | 'published' | 'archived'
+export type ContentStatus =
+  | 'new'
+  | 'idea'
+  | 'script'
+  | 'ready'
+  | 'filmed'
+  | 'editing'
+  | 'published'
+  | 'archived'
+  | 'skipped'
 
 /** Statuses that mean the user started working on a reel. */
 export const WORKING_STATUSES: readonly ContentStatus[] = [
   'idea',
   'script',
   'ready',
+  'filmed',
+  'editing',
   'published',
   'archived',
 ]
@@ -18,8 +29,11 @@ export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   idea: 'В работе',
   script: 'Сценарий',
   ready: 'Готово',
+  filmed: 'Снято',
+  editing: 'В монтаже',
   published: 'Опубликовано',
   archived: 'Архив',
+  skipped: 'Не интересно',
 }
 
 export interface ReelContent {
@@ -49,6 +63,15 @@ export interface Reel {
   content: ReelContent
   transcription?: TranscriptionSummary | null
   analysis?: ReelAnalysisSummary | null
+  viralScore?: {
+    score: number
+    label: string
+    primaryReason: string
+    reasons: string[]
+    viewMultiplier: number
+    engagementRate: number
+    viewsPerHour: number
+  } | null
 }
 
 export interface ReelContentSaved {

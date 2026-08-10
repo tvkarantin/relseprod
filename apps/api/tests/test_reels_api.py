@@ -451,7 +451,10 @@ def test_editor_preserves_line_breaks_and_indentation(
     assert body["script"] == script
 
 
-@pytest.mark.parametrize("status", ["new", "idea", "script", "ready", "published", "archived"])
+@pytest.mark.parametrize(
+    "status",
+    ["new", "idea", "script", "ready", "filmed", "editing", "published", "archived"],
+)
 def test_all_content_statuses_are_accepted(
     client: TestClient, db_session: Session, competitor: Competitor, status: str
 ) -> None:
@@ -585,6 +588,99 @@ def test_not_suitable_deletes_reel_and_related_content(
     db_session.expire_all()
     assert db_session.get(Reel, reel_id) is None
     assert client.get(f"{REELS}/{reel_id}").status_code == 404
+
+
+def test_viral_sort_explains_performance_relative_to_author(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    now = datetime.now(UTC)
+    make_reel(
+        db_session,
+        competitor,
+        "USUAL_1",
+        views_count=900,
+        likes_count=35,
+        comments_count=3,
+        published_at=now - timedelta(days=30),
+    )
+    make_reel(
+        db_session,
+        competitor,
+        "USUAL_2",
+        views_count=1100,
+        likes_count=44,
+        comments_count=4,
+        published_at=now - timedelta(days=20),
+    )
+    make_reel(
+        db_session,
+        competitor,
+        "BREAKOUT",
+        views_count=5200,
+        likes_count=410,
+        comments_count=72,
+        published_at=now - timedelta(hours=18),
+    )
+
+    body = client.get(REELS, params={"sort": "viral", "limit": 1}).json()
+
+    assert body["items"][0]["shortcode"] == "BREAKOUT"
+    viral = body["items"][0]["viralScore"]
+    assert viral["score"] >= 70
+    assert "выше обычных просмотров автора" in viral["primaryReason"]
+    assert viral["viewMultiplier"] >= 5
+
+
+def test_skip_hides_reel_without_deleting_source_data(
+    client: TestClient, db_session: Session, competitor: Competitor
+) -> None:
+    reel = make_reel(db_session, competitor, "SKIP_ME")
+
+    response = client.post(f"{REELS}/{reel.id}/skip")
+
+    assert response.status_code == 200
+    assert response.json()["contentStatus"] == "skipped"
+    assert client.get(REELS).json()["total"] == 0
+    db_session.expire_all()
+    assert db_session.get(Reel, reel.id) is not None
+
+
+def test_adapt_starts_the_complete_background_pipeline(
+    client: TestClient,
+    db_session: Session,
+    competitor: Competitor,
+    stub_background_tasks: list[tuple[Any, ...]],
+) -> None:
+    reel = make_reel(
+        db_session,
+        competitor,
+        "ADAPT_ME",
+        video_url="https://cdn.example.com/reel.mp4",
+    )
+
+    response = client.post(
+        f"{REELS}/{reel.id}/adapt",
+        json={
+            "niche": "Маркетинг",
+            "targetAudience": "Основатели B2B",
+            "product": "Консалтинг",
+            "toneOfVoice": "Спокойно и конкретно",
+            "videoLengthSeconds": 45,
+            "addressForm": "вы",
+            "profanity": "Без мата",
+            "expertise": "Практик",
+            "favoriteCtas": ["Сохраните разбор"],
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json()["contentStatus"] == "idea"
+    assert response.json()["transcriptionStatus"] == "queued"
+    assert len(stub_background_tasks) == 1
+    task, args, _kwargs = stub_background_tasks[0]
+    assert task.__name__ == "prepare_reel_task"
+    assert args[0] == reel.id
+    assert args[2]["target_audience"] == "Основатели B2B"
 
 
 # ------------------------------------------------------------------- my reels

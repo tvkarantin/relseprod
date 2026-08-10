@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { queryKeys } from '@/api/queryKeys'
 import {
@@ -20,9 +20,45 @@ import type { ReelContentFormValues } from '@/schemas/reelContent'
 import { CONTENT_STATUS_LABELS, type Reel } from '@/types/reel'
 import { getErrorMessage } from '@/utils/errors'
 import { formatDateTime, formatDuration, formatNumber, truncate } from '@/utils/format'
+import { useReelAnalysisPolling } from '@/hooks/useReelAnalysisPolling'
+import { useTranscriptionPolling } from '@/hooks/useTranscriptionPolling'
+
+function AutomaticPreparationStatus({ reelId }: { reelId: number }) {
+  const transcription = useTranscriptionPolling(reelId, { waitForCreation: true }).transcription
+  const analysis = useReelAnalysisPolling(reelId, { waitForCreation: true }).analysis
+
+  const transcriptionDone = transcription?.status === 'completed'
+  const analysisDone = analysis?.status === 'completed'
+  const failed = transcription?.status === 'failed' || analysis?.status === 'failed'
+
+  return (
+    <section className={`automatic-preparation ${analysisDone ? 'is-complete' : ''} ${failed ? 'is-failed' : ''}`} aria-live="polite">
+      <div className="automatic-preparation-head">
+        <div>
+          <span className="eyebrow">Автоматическая подготовка</span>
+          <h2>{analysisDone ? 'Первая версия сценария готова' : failed ? 'Подготовка остановилась' : 'AI адаптирует ролик под ваш стиль'}</h2>
+        </div>
+        {!analysisDone && !failed ? <span className="preparation-pulse" aria-hidden="true" /> : null}
+      </div>
+      <ol className="preparation-steps">
+        <li className={transcriptionDone ? 'done' : transcription?.status === 'failed' ? 'failed' : 'active'}>
+          <i /> <span>Расшифровка речи</span>
+        </li>
+        <li className={analysisDone ? 'done' : transcriptionDone ? 'active' : ''}>
+          <i /> <span>Перевод и структура</span>
+        </li>
+        <li className={analysisDone ? 'done' : analysis?.status === 'processing' ? 'active' : ''}>
+          <i /> <span>Адаптация под профиль</span>
+        </li>
+      </ol>
+      {failed ? <p>{transcription?.errorMessage || analysis?.errorMessage || 'Не удалось подготовить сценарий. Попробуйте снова из ленты идей.'}</p> : null}
+    </section>
+  )
+}
 
 export function ReelDetailsPage() {
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const reelId = Number(params.reelId)
   const queryClient = useQueryClient()
   const editorRef = useRef<ReelContentEditorHandle>(null)
@@ -82,7 +118,7 @@ export function ReelDetailsPage() {
       queryClient.removeQueries({ queryKey: queryKeys.reels.details(reelId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary() })
-      navigate('/reels')
+      navigate('/ideas')
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   })
@@ -141,6 +177,7 @@ export function ReelDetailsPage() {
   }
 
   const reel = reelQuery.data
+  const isAutomaticPreparation = searchParams.get('preparing') === '1'
   const title = reel.caption ? truncate(reel.caption, 60) : `Рилс @${reel.competitor.instagramUsername}`
 
   return (
@@ -177,8 +214,8 @@ export function ReelDetailsPage() {
                 {CONTENT_STATUS_LABELS[reel.content.contentStatus]}
               </span>
             )}
-            <Link to="/reels" className="button">
-              ← К библиотеке
+            <Link to="/ideas" className="button">
+              ← К идеям
             </Link>
             {reel.originalUrl ? (
               <a
@@ -213,24 +250,30 @@ export function ReelDetailsPage() {
         </aside>
 
         <section className="reel-detail-workflow" aria-label="Обработка и сценарий">
-          <ReelTranscriptionControls
-            reelId={reel.id}
-            videoUrl={reel.videoUrl}
-            initialTranscription={reel.transcription}
-            onApplyScript={handleApplyScript}
-            getCurrentScript={handleGetCurrentScript}
-          />
-          <ReelAnalysisControls
-            reelId={reel.id}
-            transcription={reel.transcription}
-            onApplyScript={handleApplyAnalysis}
-            getCurrentValues={handleGetCurrentValues}
-            initialValues={{
-              hook: reel.content.hook,
-              script: reel.content.script,
-              cta: reel.content.cta,
-            }}
-          />
+          {isAutomaticPreparation ? (
+            <AutomaticPreparationStatus reelId={reel.id} />
+          ) : (
+            <>
+              <ReelTranscriptionControls
+                reelId={reel.id}
+                videoUrl={reel.videoUrl}
+                initialTranscription={reel.transcription}
+                onApplyScript={handleApplyScript}
+                getCurrentScript={handleGetCurrentScript}
+              />
+              <ReelAnalysisControls
+                reelId={reel.id}
+                transcription={reel.transcription}
+                onApplyScript={handleApplyAnalysis}
+                getCurrentValues={handleGetCurrentValues}
+                initialValues={{
+                  hook: reel.content.hook,
+                  script: reel.content.script,
+                  cta: reel.content.cta,
+                }}
+              />
+            </>
+          )}
           {/* Remounting on reelId resets the editor when navigating between reels. */}
           <ReelContentEditor
             ref={editorRef}

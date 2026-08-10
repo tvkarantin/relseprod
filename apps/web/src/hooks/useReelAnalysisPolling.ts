@@ -19,10 +19,11 @@ export function useReelAnalysisPolling(
   options: {
     onCompleted?: (analysis: ReelAnalysisView) => void
     onFailed?: (analysis: ReelAnalysisView) => void
+    waitForCreation?: boolean
   } = {},
 ): ReelAnalysisPollingResult {
   const queryClient = useQueryClient()
-  const { onCompleted, onFailed } = options
+  const { onCompleted, onFailed, waitForCreation = false } = options
   const notifiedRef = useRef<number | null>(null)
 
   const query = useQuery({
@@ -31,7 +32,7 @@ export function useReelAnalysisPolling(
     enabled: Number.isFinite(reelId) && reelId > 0,
     refetchInterval: (q) => {
       const data = q.state.data as ReelAnalysisView | null | undefined
-      if (!data) return false
+      if (!data) return waitForCreation ? POLL_INTERVAL_MS : false
       return data.status === 'queued' || data.status === 'processing' ? POLL_INTERVAL_MS : false
     },
     refetchIntervalInBackground: true,

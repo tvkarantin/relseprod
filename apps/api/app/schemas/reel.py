@@ -14,6 +14,39 @@ from app.schemas.reel_content import ReelContentRead, ReelContentView
 from app.schemas.transcription import TranscriptionSummary
 
 
+class ViralScore(APIModel):
+    """Explainable ranking signal shown to the user."""
+
+    score: int = Field(ge=0, le=100)
+    label: str
+    primary_reason: str
+    reasons: list[str]
+    view_multiplier: float = Field(ge=0)
+    engagement_rate: float = Field(ge=0)
+    views_per_hour: float = Field(ge=0)
+
+
+class CreatorProfile(APIModel):
+    """Personal style constraints used by the automatic rewrite."""
+
+    niche: str = Field(default="", max_length=200)
+    target_audience: str = Field(default="", max_length=500)
+    product: str = Field(default="", max_length=500)
+    tone_of_voice: str = Field(default="Спокойный и уверенный", max_length=500)
+    video_length_seconds: int = Field(default=45, ge=10, le=300)
+    address_form: str = Field(default="ты", pattern="^(ты|вы)$")
+    profanity: str = Field(default="без мата", max_length=100)
+    expertise: str = Field(default="практик", max_length=300)
+    favorite_ctas: list[str] = Field(default_factory=list, max_length=10)
+
+
+class AdaptationStarted(APIModel):
+    reel_id: int
+    content_status: str
+    transcription_status: str | None = None
+    message: str
+
+
 class ReelBase(APIModel):
     """Fields shared by reel payloads."""
 
@@ -59,6 +92,7 @@ class ReelView(ReelBase):
     content: ReelContentView
     transcription: TranscriptionSummary | None = None
     analysis: ReelAnalysisSummary | None = None
+    viral_score: ViralScore | None = None
 
 
 class ReelPage(APIModel):

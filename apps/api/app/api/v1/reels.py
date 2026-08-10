@@ -4,20 +4,24 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
-from app.models.enums import ContentStatus
+from app.core.config import Settings, get_settings
+from app.core.errors import ReelVideoUnavailableError
+from app.models.enums import ContentStatus, TranscriptionStatus
 from app.models.reel import Reel
 from app.repositories.reels import ReelSort
 from app.schemas.analysis import ReelAnalysisSummary
 from app.schemas.common import ErrorResponse
-from app.schemas.reel import ReelPage, ReelView
+from app.schemas.reel import AdaptationStarted, CreatorProfile, ReelPage, ReelView, ViralScore
 from app.schemas.reel_content import ReelContentSaved, ReelContentView, ReelContentWrite
 from app.schemas.transcription import TranscriptionSummary
 from app.services.reel_content import WORKING_STATUSES, ReelContentService, ReelLibraryService
 from app.services.reel_media import ReelThumbnailFetchError, fetch_reel_thumbnail
+from app.services.transcriptions import TranscriptionService
+from app.tasks.prepare_reel import prepare_reel_task
 
 router = APIRouter(prefix="/reels", tags=["reels"])
 
@@ -63,6 +67,8 @@ def _to_view(reel: Reel) -> ReelView:
         if a
         else None
     )
+    raw_viral_score = getattr(reel, "viral_score", None)
+    viral_score = ViralScore(**raw_viral_score) if raw_viral_score else None
     return ReelView(
         id=reel.id,
         competitor=reel.competitor,  # type: ignore[arg-type]
@@ -88,6 +94,7 @@ def _to_view(reel: Reel) -> ReelView:
         ),
         transcription=transcription_summary,
         analysis=analysis_summary,
+        viral_score=viral_score,
     )
 
 
@@ -213,6 +220,66 @@ def take_reel_to_work(
         notes=content.notes or "",
         content_status=content.content_status,
         updated_at=content.updated_at,
+    )
+
+
+@router.post(
+    "/{reel_id}/skip",
+    response_model=ReelContentSaved,
+    summary="Скрыть нерелевантный рилс",
+)
+def skip_reel(
+    reel_id: ReelId,
+    db: Annotated[Session, Depends(DbSession)],
+) -> ReelContentSaved:
+    content = ReelLibraryService(db).skip_reel(reel_id)
+    return ReelContentSaved(
+        reel_id=reel_id,
+        hook=content.hook or "",
+        script=content.script or "",
+        cta=content.cta or "",
+        notes=content.notes or "",
+        content_status=content.content_status,
+        updated_at=content.updated_at,
+    )
+
+
+@router.post(
+    "/{reel_id}/adapt",
+    response_model=AdaptationStarted,
+    status_code=202,
+    summary="Автоматически подготовить сценарий под профиль автора",
+)
+def adapt_reel(
+    reel_id: ReelId,
+    profile: CreatorProfile,
+    db: Annotated[Session, Depends(DbSession)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    background_tasks: BackgroundTasks,
+) -> AdaptationStarted:
+    """Start transcription, translation, structure analysis and personal rewrite."""
+    library = ReelLibraryService(db)
+    reel = library.get_reel(reel_id)
+    if not reel.video_url:
+        raise ReelVideoUnavailableError(details={"reelId": reel_id})
+
+    content = library.take_to_work(reel_id)
+    transcription_service = TranscriptionService(db, settings=settings)
+    transcription = transcription_service.get_transcription(reel_id)
+    if transcription is None or transcription.status == TranscriptionStatus.FAILED:
+        transcription = transcription_service.start_transcription(reel_id)
+
+    background_tasks.add_task(
+        prepare_reel_task,
+        reel_id,
+        settings,
+        profile.model_dump(mode="json"),
+    )
+    return AdaptationStarted(
+        reel_id=reel_id,
+        content_status=content.content_status.value,
+        transcription_status=str(transcription.status) if transcription else None,
+        message="Готовим первую версию сценария под ваш стиль",
     )
 
 

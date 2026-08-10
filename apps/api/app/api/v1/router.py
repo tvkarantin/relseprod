@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import __version__
 from app.api.deps import DbSession, check_database
-from app.api.v1 import analysis, competitors, dashboard, jobs, reels, transcriptions, monitoring
+from app.api.v1 import analysis, competitors, dashboard, jobs, monitoring, reels, transcriptions
 from app.schemas.common import HealthResponse, ServiceInfo
 
 api_router = APIRouter()

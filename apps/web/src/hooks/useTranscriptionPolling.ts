@@ -19,10 +19,11 @@ export function useTranscriptionPolling(
   options: {
     onCompleted?: (transcription: TranscriptionView) => void
     onFailed?: (transcription: TranscriptionView) => void
+    waitForCreation?: boolean
   } = {},
 ): TranscriptionPollingResult {
   const queryClient = useQueryClient()
-  const { onCompleted, onFailed } = options
+  const { onCompleted, onFailed, waitForCreation = false } = options
   const notifiedRef = useRef<number | null>(null)
 
   const query = useQuery({
@@ -31,7 +32,7 @@ export function useTranscriptionPolling(
     enabled: Number.isFinite(reelId) && reelId > 0,
     refetchInterval: (q) => {
       const data = q.state.data as TranscriptionView | null | undefined
-      if (!data) return false
+      if (!data) return waitForCreation ? POLL_INTERVAL_MS : false
       return data.status === 'queued' || data.status === 'processing' ? POLL_INTERVAL_MS : false
     },
     refetchIntervalInBackground: true,

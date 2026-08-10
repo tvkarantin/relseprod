@@ -23,6 +23,8 @@ from app.schemas.parsing_job import ParsingJobRead
 from app.schemas.reel_content import ReelContentUpdate
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from fastapi import FastAPI
 
 
@@ -81,13 +83,15 @@ def test_health_returns_503_error_envelope_when_database_is_down(app: FastAPI) -
     assert "SELECT 1" not in response.text
 
 
-def test_health_reports_503_for_an_unreachable_database() -> None:
+def test_health_reports_503_for_an_unreachable_database(tmp_path: Path) -> None:
     """The healthcheck really queries the database, it is not a constant."""
     from app.core.config import Settings
     from app.main import create_app
 
+    broken_database = tmp_path / "db.sqlite"
+    broken_database.mkdir()
     broken_settings = Settings(
-        database_url="sqlite:////nonexistent-dir-xyz/forbidden/db.sqlite",
+        database_url=f"sqlite:///{broken_database.as_posix()}",
         cors_origins=["http://localhost:4173"],
     )
     with TestClient(create_app(broken_settings), raise_server_exceptions=False) as broken:
@@ -228,6 +232,7 @@ def test_parsing_job_schema_serializes_camel_case() -> None:
         competitor_id=2,
         apify_run_id=None,
         status="queued",
+        import_mode="popular",
         progress=0,
         reels_created=3,
         reels_updated=4,
@@ -239,6 +244,7 @@ def test_parsing_job_schema_serializes_camel_case() -> None:
 
     assert payload["reelsCreated"] == 3
     assert payload["reelsUpdated"] == 4
+    assert payload["importMode"] == "popular"
     assert payload["errorMessage"] == "Ошибка"
     assert payload["competitorId"] == 2
     assert "reels_created" not in payload

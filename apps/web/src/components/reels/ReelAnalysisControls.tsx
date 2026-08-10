@@ -231,7 +231,7 @@ export function ReelAnalysisControls({
             className="workflow-button workflow-button-primary"
             onClick={handleOpenApplyModal}
           >
-            <span aria-hidden="true">✦</span> Применить к сценарию
+            <span aria-hidden="true">✦</span> Адаптировать под мой стиль
           </button>
         </div>
         {isPreviewOpen ? (

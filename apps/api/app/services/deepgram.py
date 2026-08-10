@@ -154,6 +154,15 @@ class DeepgramService:
                 details={"operation": "listen"},
             ) from exc
 
+        error_payload: dict[str, Any] = {}
+        if response.status_code >= 400:
+            try:
+                raw_error = response.json()
+                if isinstance(raw_error, dict):
+                    error_payload = raw_error
+            except ValueError:
+                pass
+
         if response.status_code == 401 or response.status_code == 403:
             raise DeepgramAuthFailedError(
                 _HTTP_ERROR_MESSAGES[response.status_code],
@@ -170,10 +179,21 @@ class DeepgramService:
                 details={"statusCode": 429, "operation": "listen"},
             )
         if response.status_code >= 400:
-            logger.warning("Deepgram returned HTTP %s", response.status_code)
+            provider_code = error_payload.get("err_code")
+            provider_message = error_payload.get("err_msg")
+            logger.warning(
+                "Deepgram returned HTTP %s (%s)",
+                response.status_code,
+                provider_code or "unknown",
+            )
             raise DeepgramRequestFailedError(
                 f"Deepgram вернул ошибку HTTP {response.status_code}",
-                details={"statusCode": response.status_code, "operation": "listen"},
+                details={
+                    "statusCode": response.status_code,
+                    "operation": "listen",
+                    "providerCode": provider_code,
+                    "providerMessage": provider_message,
+                },
             )
 
         try:

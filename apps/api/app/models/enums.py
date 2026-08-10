@@ -22,8 +22,11 @@ class ContentStatus(StrEnum):
     IDEA = "idea"
     SCRIPT = "script"
     READY = "ready"
+    FILMED = "filmed"
+    EDITING = "editing"
     PUBLISHED = "published"
     ARCHIVED = "archived"
+    SKIPPED = "skipped"
 
 
 class ParsingJobStatus(StrEnum):

@@ -42,7 +42,7 @@ def _to_view(a: ReelAnalysis) -> ReelAnalysisView:
     main_part = []
     if a.main_part_json:
         mapped = [_map_segment(s) for s in a.main_part_json if s]
-        main_part = [m for m in mapped if m is not None]  
+        main_part = [m for m in mapped if m is not None]
 
     return ReelAnalysisView(
         id=a.id,
@@ -58,10 +58,10 @@ def _to_view(a: ReelAnalysis) -> ReelAnalysisView:
         title=a.title,
         topic=a.topic,
         summary=a.summary,
-        hook=_map_segment(a.hook_json),  
-        main_part=main_part,  
-        conclusion=_map_segment(a.conclusion_json),  
-        cta=_map_segment(a.cta_json),  
+        hook=_map_segment(a.hook_json),
+        main_part=main_part,
+        conclusion=_map_segment(a.conclusion_json),
+        cta=_map_segment(a.cta_json),
         suggested_hook=a.suggested_hook,
         suggested_script=a.suggested_script,
         suggested_cta=a.suggested_cta,

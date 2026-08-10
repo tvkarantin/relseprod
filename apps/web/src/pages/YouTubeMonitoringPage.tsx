@@ -538,7 +538,7 @@ export function YouTubeMonitoringPage() {
             </h2>
           </div>
           <div className="monitoring-result-controls">
-            <Link className="button button-small" to="/reels">
+            <Link className="button button-small" to="/library">
               Открыть библиотеку →
             </Link>
             <span className="monitoring-result-count">

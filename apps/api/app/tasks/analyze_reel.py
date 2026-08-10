@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode, InternalError
-from app.database.session import SessionLocal
+from app.database.session import get_session_factory
 from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_transcription import ReelTranscription
 from app.services.openrouter import OpenRouterService
@@ -14,8 +14,13 @@ from app.services.reel_analysis import ReelAnalysisService
 logger = logging.getLogger(__name__)
 
 
-def analyze_reel_task(analysis_id: int, settings: Settings) -> None:
-    session = SessionLocal()
+def analyze_reel_task(
+    analysis_id: int,
+    settings: Settings,
+    creator_profile: dict[str, Any] | None = None,
+    apply_to_content: bool = False,
+) -> None:
+    session = get_session_factory(settings)()
     service = ReelAnalysisService(session, settings)
     openrouter = OpenRouterService(settings)
 
@@ -60,9 +65,15 @@ def analyze_reel_task(analysis_id: int, settings: Settings) -> None:
             utterances=normalized_utterances,
             detected_language=transcription.dominant_language,
             duration=transcription.provider_duration,
+            creator_profile=creator_profile,
         )
 
-        service.save_result(analysis_id, result, normalized_utterances)
+        service.save_result(
+            analysis_id,
+            result,
+            normalized_utterances,
+            apply_to_content=apply_to_content,
+        )
 
     except AppError as exc:
         logger.warning("Analysis failed with expected error %s: %s", exc.code, exc.message)

@@ -46,14 +46,14 @@ const CARDS = [
 
 const QUICK_ACTIONS = [
   {
-    to: '/reels?import=competitor',
+    to: '/library?import=competitor',
     title: 'Добавить конкурента',
     description: 'Добавьте Instagram-аккаунт конкурента и импортируйте его рилсы в пару кликов.',
     image: '/assets/overview-add-competitor.png',
     className: 'is-competitor',
   },
   {
-    to: '/reels',
+    to: '/ideas',
     title: 'Открыть библиотеку',
     description: 'Просматривайте, фильтруйте и анализируйте рилсы конкурентов в единой библиотеке.',
     image: '/assets/overview-library.png',

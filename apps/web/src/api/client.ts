@@ -9,9 +9,16 @@ import { ERROR_CODES, type ApiErrorBody } from '@/types/api'
 
 const DEFAULT_TIMEOUT_MS = 20_000
 
-export const API_URL: string =
+const configuredApiUrl =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ??
   'http://localhost:8000/api/v1'
+
+export const API_URL: string =
+  typeof window !== 'undefined' &&
+  window.location.hostname === '127.0.0.1' &&
+  configuredApiUrl.includes('://localhost:')
+    ? configuredApiUrl.replace('://localhost:', '://127.0.0.1:')
+    : configuredApiUrl
 
 /** Typed error carrying the backend's unified error envelope. */
 export class ApiError extends Error {

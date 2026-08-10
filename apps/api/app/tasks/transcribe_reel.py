@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 
 from app.core.config import Settings, get_settings
-from app.core.errors import AppError
+from app.core.errors import AppError, DeepgramRequestFailedError
 from app.database.session import get_session_factory
 from app.models.reel import Reel
 from app.models.reel_transcription import ReelTranscription
 from app.services.deepgram import DeepgramService
+from app.services.media_refresh import refresh_reel_media
 from app.services.transcriptions import TranscriptionService
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,17 @@ def transcribe_reel_job(transcription_id: int, settings: Settings | None = None)
             return
 
         service.mark_processing(transcription_id)
-        result = deepgram.transcribe_url(reel.video_url)
+        try:
+            result = deepgram.transcribe_url(reel.video_url)
+        except DeepgramRequestFailedError as exc:
+            if exc.details.get("providerCode") != "REMOTE_CONTENT_ERROR":
+                raise
+            logger.info(
+                "Refreshing expired Instagram media URL for transcription task %s",
+                transcription_id,
+            )
+            fresh_media_url = refresh_reel_media(session, reel, active_settings)
+            result = deepgram.transcribe_url(fresh_media_url)
         service.save_success(transcription_id, result)
         logger.info("Transcription task %s completed successfully", transcription_id)
     except AppError as exc:
