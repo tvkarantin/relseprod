@@ -9,7 +9,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.services.openrouter import JSON_SCHEMA, OpenRouterAnalysisResult, OpenRouterService
+from app.services.openrouter import (
+    JSON_SCHEMA,
+    OpenRouterAnalysisResult,
+    OpenRouterService,
+)
 
 
 SYSTEM_PROMPT_RU = """Ты — профессиональный редактор коротких вертикальных видео.
@@ -21,11 +25,13 @@ SYSTEM_PROMPT_RU = """Ты — профессиональный редактор
 
 Выполни:
 1. Определи язык исходной речи.
-2. Переведи всю речь на естественный русский язык. Если речь уже на русском — не переводи и не перефразируй её без необходимости.
+2. Переведи всю речь на естественный русский язык.
+   Если речь уже на русском — не переводи и не перефразируй её без необходимости.
 3. Сохрани смысл, факты, имена, числа, названия продуктов и призывы.
 4. Не добавляй новую информацию.
-5. Используй creatorProfile как обязательный редакционный бриф: перепиши hook, mainPart,
-   conclusion и cta под нишу, аудиторию, продукт, тон, длину и манеру обращения автора.
+5. Используй creatorProfile как обязательный редакционный бриф:
+   перепиши hook, mainPart, conclusion и cta под нишу, аудиторию, продукт,
+   тон, длину и манеру обращения автора.
    Весь адаптированный текст должен быть на русском языке.
    Не копируй формулировки дословно, но сохрани работающую идею и фактический смысл.
 6. Раздели речь на реальные смысловые части: hook, mainPart, conclusion, cta.
@@ -33,7 +39,8 @@ SYSTEM_PROMPT_RU = """Ты — профессиональный редактор
 8. Не считай первую фразу хуком автоматически.
 9. Не считай последнюю фразу CTA автоматически.
 10. CTA существует только при явном призыве совершить действие.
-11. Для каждого адаптированного блока верни индексы исходных utterances, на которых он основан.
+11. Для каждого адаптированного блока верни индексы исходных utterances,
+    на которых он основан.
 12. Не придумывай индексы.
 13. Не возвращай числовые таймкоды.
 14. Не возвращай markdown.
@@ -53,19 +60,27 @@ Selected output language: English.
 
 Do the following:
 1. Detect the source language.
-2. If the source speech is already English, DO NOT translate it. Preserve the original English meaning and wording in the transcript field.
-3. If the source speech is not English, translate it to natural English so the selected output language remains consistent.
-4. Preserve facts, names, numbers, product names, URLs, usernames, hashtags and calls to action. Do not invent information.
-5. Treat creatorProfile as a mandatory editorial brief. Adapt hook, mainPart, conclusion and cta to the creator's niche, audience, product, tone, requested length and addressing style.
-6. All generated title, topic, summary, hook, mainPart, conclusion and cta text must be in English.
+2. If the source speech is already English, DO NOT translate it.
+   Preserve the original English meaning and wording in the transcript field.
+3. If the source speech is not English, translate it to natural English
+   so the selected output language remains consistent.
+4. Preserve facts, names, numbers, product names, URLs, usernames, hashtags
+   and calls to action. Do not invent information.
+5. Treat creatorProfile as a mandatory editorial brief.
+   Adapt hook, mainPart, conclusion and cta to the creator's niche, audience,
+   product, tone, requested length and addressing style.
+6. All generated title, topic, summary, hook, mainPart, conclusion and cta text
+   must be in English.
 7. Split the speech only into real semantic sections: hook, mainPart, conclusion and cta.
 8. If a section is absent, return null or an empty array according to the schema.
 9. Do not automatically treat the first phrase as a hook or the last phrase as a CTA.
 10. A CTA exists only when there is an explicit request to take an action.
-11. For every adapted section, return only the indexes of source utterances it is based on. Never invent indexes.
+11. For every adapted section, return only the indexes of source utterances
+    it is based on. Never invent indexes.
 12. Do not return numeric timecodes or markdown.
 13. Return ONLY valid JSON matching the supplied JSON Schema.
-14. The legacy field russianTranscript must contain the complete English transcript/output text in English mode. The field name is kept only for API compatibility.
+14. The legacy field russianTranscript must contain the complete English
+    transcript/output text in English mode. The field name is kept only for API compatibility.
 
 Do not unnecessarily translate brand names, URLs, usernames, product names or hashtags."""
 
