@@ -18,8 +18,8 @@ import { YouTubeLibraryCard } from '@/components/reels/YouTubeLibraryCard'
 import { Pagination } from '@/components/ui/Pagination'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
-const DEFAULT_PAGE_SIZE = 8
-const PAGE_SIZES = [8, 20, 40] as const
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZES = [10, 20, 40] as const
 const SEARCH_DEBOUNCE_MS = 400
 const REEL_SORTS: readonly ReelSort[] = ['views', 'likes', 'date']
 
@@ -33,6 +33,7 @@ const CATEGORIES = [
 ] as const
 
 type CategoryKey = (typeof CATEGORIES)[number]['key']
+type SourceKey = 'all' | 'instagram' | 'youtube'
 
 function getContentCategory(value: string | null | undefined): CategoryKey {
   const text = (value ?? '').toLowerCase()
@@ -57,8 +58,11 @@ export function ReelsPage() {
   const urlSort: ReelSort =
     requestedSort && REEL_SORTS.includes(requestedSort as ReelSort)
       ? (requestedSort as ReelSort)
-      : 'views'
+      : 'date'
   const urlCategory = (searchParams.get('category') ?? 'all') as CategoryKey
+  const requestedSource = searchParams.get('source')
+  const urlSource: SourceKey =
+    requestedSource === 'instagram' || requestedSource === 'youtube' ? requestedSource : 'all'
   const urlView = (searchParams.get('view') ?? 'grid') as 'grid' | 'list'
   const requestedPageSize = Number(searchParams.get('limit'))
   const pageSize = PAGE_SIZES.includes(requestedPageSize as (typeof PAGE_SIZES)[number])
@@ -129,11 +133,15 @@ export function ReelsPage() {
   })
 
   const page = reelsQuery.data
-  const hasFilters = Boolean(urlSearch || urlCompetitorId || urlCategory !== 'all')
+  const hasFilters = Boolean(
+    urlSearch || urlCompetitorId || urlCategory !== 'all' || urlSource !== 'all',
+  )
 
-  let displayedItems = page?.items ?? []
+  let displayedItems = urlSource === 'youtube' ? [] : (page?.items ?? [])
   let displayedLibraryVideos =
-    urlPage === 1 && !urlCompetitorId ? (libraryVideosQuery.data ?? []) : []
+    urlSource === 'instagram' || urlPage !== 1 || urlCompetitorId
+      ? []
+      : (libraryVideosQuery.data ?? [])
 
   if (urlCategory !== 'all') {
     displayedItems = displayedItems.filter(
@@ -164,7 +172,7 @@ export function ReelsPage() {
     displayedLibraryVideos = [...displayedLibraryVideos].sort(
       (a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0),
     )
-  } else if (urlSort === 'date') {
+  } else {
     displayedItems = [...displayedItems].sort(
       (a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime(),
     )
@@ -175,67 +183,77 @@ export function ReelsPage() {
   const hasVisibleContent = displayedItems.length > 0 || displayedLibraryVideos.length > 0
 
   return (
-    <div className="page-content">
+    <div className="page-content library-page">
       <PageHeader
         title="Библиотека"
-        description="Сохранённые видео из мониторинга и импортированные рилсы конкурентов"
+        description="Ваши сохранённые Reels из Instagram и видео с YouTube."
         actions={
           <button type="button" className="button button-lime" onClick={() => setImportOpen(true)}>
-            + Импорт
+            + Добавить ссылку
           </button>
         }
       />
 
-      <ReelFilters
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
-        competitorId={urlCompetitorId}
-        competitors={competitorsQuery.data ?? []}
-        onCompetitorChange={(id) =>
-          updateParams((params) => {
-            if (id) params.set('competitor_id', String(id))
-            else params.delete('competitor_id')
-            params.delete('page')
-          })
-        }
-        sort={urlSort}
-        onSortChange={(sort) =>
-          updateParams((params) => {
-            if (sort && sort !== 'views') params.set('sort', sort)
-            else params.delete('sort')
-            params.delete('page')
-          })
-        }
-        viewMode={urlView}
-        onViewModeChange={(mode) =>
-          updateParams((params) => {
-            if (mode !== 'grid') params.set('view', mode)
-            else params.delete('view')
-          })
-        }
-      />
+      <div className="library-toolbar">
+        <ReelFilters
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
+          competitorId={urlCompetitorId}
+          competitors={competitorsQuery.data ?? []}
+          onCompetitorChange={(id) =>
+            updateParams((params) => {
+              if (id) params.set('competitor_id', String(id))
+              else params.delete('competitor_id')
+              params.delete('page')
+            })
+          }
+          source={urlSource}
+          onSourceChange={(source) =>
+            updateParams((params) => {
+              if (source === 'all') params.delete('source')
+              else params.set('source', source)
+              params.delete('page')
+            })
+          }
+          sort={urlSort}
+          onSortChange={(sort) =>
+            updateParams((params) => {
+              if (sort && sort !== 'date') params.set('sort', sort)
+              else params.delete('sort')
+              params.delete('page')
+            })
+          }
+          viewMode={urlView}
+          onViewModeChange={(mode) =>
+            updateParams((params) => {
+              if (mode !== 'grid') params.set('view', mode)
+              else params.delete('view')
+            })
+          }
+        />
 
-      <div className="category-tabs">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.key}
-            type="button"
-            className={`category-tab ${urlCategory === cat.key ? 'active' : ''}`}
-            onClick={() =>
-              updateParams((params) => {
-                if (cat.key !== 'all') params.set('category', cat.key)
-                else params.delete('category')
-                params.delete('page')
-              })
-            }
-          >
-            {cat.label}
-          </button>
-        ))}
+        <div className="category-tabs">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.key}
+              type="button"
+              className={`category-tab ${urlCategory === cat.key ? 'active' : ''}`}
+              onClick={() =>
+                updateParams((params) => {
+                  if (cat.key !== 'all') params.set('category', cat.key)
+                  else params.delete('category')
+                  params.delete('page')
+                })
+              }
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {reelsQuery.isLoading || libraryVideosQuery.isLoading ? (
-        <ReelCardSkeletons />
+        <ReelCardSkeletons count={10} />
       ) : reelsQuery.isError ? (
         <ErrorState error={reelsQuery.error} onRetry={() => void reelsQuery.refetch()} />
       ) : !page || !hasVisibleContent ? (
@@ -257,6 +275,7 @@ export function ReelsPage() {
                     params.delete('search')
                     params.delete('competitor_id')
                     params.delete('category')
+                    params.delete('source')
                     params.delete('page')
                   })
                 }}
@@ -293,31 +312,15 @@ export function ReelsPage() {
         />
       ) : (
         <>
-          {displayedLibraryVideos.length ? (
-            <section className="library-youtube-section" aria-labelledby="library-youtube-title">
-              <div className="library-youtube-heading">
-                <div>
-                  <h2 id="library-youtube-title">Из YouTube-мониторинга</h2>
-                  <p>Видео, которые вы перенесли в библиотеку</p>
-                </div>
-                <span className="library-youtube-count">
-                  {displayedLibraryVideos.length} видео
-                </span>
-              </div>
-              <div className="monitoring-video-grid">
-                {displayedLibraryVideos.map((video) => (
-                  <YouTubeLibraryCard key={video.id} video={video} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-          {displayedItems.length ? (
-            <div className={urlView === 'list' ? 'reels-list' : 'reels-grid'}>
-              {displayedItems.map((reel) => (
-                <ReelCard key={reel.id} reel={reel} viewMode={urlView} />
-              ))}
-            </div>
-          ) : null}
+          <div className={urlView === 'list' ? 'reels-list' : 'reels-grid library-mixed-grid'}>
+            {displayedLibraryVideos.map((video) => (
+              <YouTubeLibraryCard key={`youtube-${video.id}`} video={video} />
+            ))}
+            {displayedItems.map((reel) => (
+              <ReelCard key={`instagram-${reel.id}`} reel={reel} viewMode={urlView} />
+            ))}
+          </div>
+
           {page.total > 0 ? (
             <Pagination
               page={page.page}
