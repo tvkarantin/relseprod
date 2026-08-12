@@ -17,6 +17,7 @@ import {
 } from '@/types/creatorProfile'
 import { translateUiText } from './translations'
 import { translateSupplement } from './translationsSupplement'
+import { translateSupplement2 } from './translationsSupplement2'
 
 interface LanguageContextValue {
   language: AppLanguage
@@ -33,7 +34,10 @@ const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'aria-label', 'title'] as const
 type TranslatableAttribute = (typeof TRANSLATABLE_ATTRIBUTES)[number]
 
 function translateText(value: string, language: AppLanguage): string {
-  return translateSupplement(translateUiText(value, language), language)
+  return translateSupplement2(
+    translateSupplement(translateUiText(value, language), language),
+    language,
+  )
 }
 
 function getTextOriginal(node: Text, language: AppLanguage): string {
@@ -143,6 +147,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = language
+    document.title =
+      language === 'en'
+        ? 'Reels Finder | Find trends and analyze competitor Reels'
+        : 'Reels Finder | Поиск трендов и анализ Reels конкурентов'
+
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]')
+    if (description) {
+      description.content =
+        language === 'en'
+          ? 'Reels Finder helps track competitor Reels and YouTube Shorts, find rising videos, analyze winning mechanics and build your own scripts.'
+          : 'Reels Finder помогает отслеживать Reels конкурентов и YouTube Shorts, находить растущие видео, разбирать сильные механики и создавать собственные сценарии.'
+    }
+
     if (document.body) localizeElement(document.body, language)
 
     const observer = new MutationObserver((mutations) => {
