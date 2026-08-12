@@ -25,12 +25,7 @@ class AppEnv(StrEnum):
 
 
 class Settings(BaseSettings):
-    """Typed application settings.
-
-    Values are read from the process environment and from ``apps/api/.env``.
-    Apify credentials are intentionally optional at this stage: the application
-    must start without them.
-    """
+    """Typed application settings loaded from environment variables and ``.env``."""
 
     model_config = SettingsConfigDict(
         env_file=API_DIR / ".env",
@@ -48,6 +43,13 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
     youtube_monitoring_enabled: bool = True
+
+    # Instagram import: use free Instaloader first, with Apify kept as fallback.
+    instagram_primary_provider: str = "instaloader"
+    instaloader_session_username: str = ""
+    instaloader_session_file: str = ""
+    instaloader_timeout_seconds: int = Field(default=30, ge=5, le=300)
+    instaloader_max_connection_attempts: int = Field(default=2, ge=1, le=10)
 
     apify_api_token: str = ""
     apify_actor_id: str = ""
@@ -106,6 +108,16 @@ class Settings(BaseSettings):
     def _normalize_log_level(cls, value: str) -> str:
         return value.strip().upper()
 
+    @field_validator("instagram_primary_provider", mode="after")
+    @classmethod
+    def _normalize_instagram_primary_provider(cls, value: str) -> str:
+        normalized = value.strip().lower() or "instaloader"
+        allowed = {"instaloader", "apify"}
+        if normalized not in allowed:
+            msg = f"instagram_primary_provider must be one of {sorted(allowed)}"
+            raise ValueError(msg)
+        return normalized
+
     @field_validator("apify_actor_input_style", mode="after")
     @classmethod
     def _normalize_input_style(cls, value: str) -> str:
@@ -122,8 +134,13 @@ class Settings(BaseSettings):
 
     @property
     def apify_configured(self) -> bool:
-        """Whether Apify integration can be used (not required in this stage)."""
+        """Whether Apify integration can be used as a source or fallback."""
         return bool(self.apify_api_token and self.apify_actor_id)
+
+    @property
+    def instaloader_session_configured(self) -> bool:
+        """Whether an authenticated Instaloader session was requested."""
+        return bool(self.instaloader_session_username.strip())
 
     @property
     def deepgram_configured(self) -> bool:
