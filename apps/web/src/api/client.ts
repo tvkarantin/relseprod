@@ -8,17 +8,40 @@
 import { ERROR_CODES, type ApiErrorBody } from '@/types/api'
 
 const DEFAULT_TIMEOUT_MS = 20_000
+const LOCAL_API_URL = 'http://localhost:8000/api/v1'
+const PRODUCTION_API_URL = 'https://realsfinder-api.vercel.app/api/v1'
 
 const configuredApiUrl =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ??
-  'http://localhost:8000/api/v1'
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ?? LOCAL_API_URL
 
-export const API_URL: string =
-  typeof window !== 'undefined' &&
-  window.location.hostname === '127.0.0.1' &&
-  configuredApiUrl.includes('://localhost:')
-    ? configuredApiUrl.replace('://localhost:', '://127.0.0.1:')
-    : configuredApiUrl
+function isLocalHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
+function pointsToLocalhost(url: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?:\/|$)/i.test(url)
+}
+
+function resolveApiUrl(): string {
+  if (typeof window === 'undefined') return configuredApiUrl
+
+  const currentHostname = window.location.hostname
+
+  // A production build must never try to call the visitor's localhost.
+  // Keep localhost only for local development, and fall back to our public API
+  // when VITE_API_URL is missing or accidentally contains a local URL.
+  if (!isLocalHostname(currentHostname) && pointsToLocalhost(configuredApiUrl)) {
+    return PRODUCTION_API_URL
+  }
+
+  if (currentHostname === '127.0.0.1' && configuredApiUrl.includes('://localhost:')) {
+    return configuredApiUrl.replace('://localhost:', '://127.0.0.1:')
+  }
+
+  return configuredApiUrl
+}
+
+export const API_URL: string = resolveApiUrl()
 
 /** Typed error carrying the backend's unified error envelope. */
 export class ApiError extends Error {
@@ -112,7 +135,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
         status: 0,
       })
     }
-    throw new ApiError('Не удалось связаться с сервером. Проверьте, что backend запущен', {
+    throw new ApiError('Не удалось связаться с сервером. Попробуйте ещё раз через несколько секунд', {
       code: ERROR_CODES.network,
       status: 0,
     })
