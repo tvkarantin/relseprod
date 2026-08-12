@@ -7,11 +7,11 @@ export default function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store')
   return response.status(200).json({
     ok: true,
-    service: 'realsfinder-telegram-bot',
+    service: 'realsflow-telegram-bot',
     configured: Boolean(
       process.env.TELEGRAM_BOT_TOKEN &&
         process.env.TELEGRAM_WEBHOOK_SECRET &&
-        process.env.REELSFINDER_URL,
+        process.env.REALSFLOW_URL,
     ),
   })
 }
