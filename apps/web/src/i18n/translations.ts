@@ -206,7 +206,7 @@ const EN_TEXT: Record<string, string> = {
   'Просмотры': 'Views',
   'Мои рилсы · производство': 'My reels · production',
   'Весь путь рилса — от доработки сценария до публикации.': 'Track every reel from script refinement to publication.',
-  'Перетаскивайте карточки между этапами или меняйте статус внутри карточки': 'Drag cards between stages or change the status inside a card',
+  'Перетаскивайте карточки между этапами или меняйте статус внутри карточки': 'Drag cards between stages or change the status inside the card',
   'Разобрать идеи': 'Analyze ideas',
   'Экспорт CSV': 'Export CSV',
   'Этапы контент-плана': 'Content plan stages',
@@ -513,6 +513,8 @@ export function translateUiText(value: string, language: AppLanguage): string {
   if (language === 'ru' || !value) return value
   const match = value.match(/^(\s*)([\s\S]*?)(\s*)$/)
   if (!match) return translateCore(value)
-  const [, before, core, after] = match
+  const before = match[1] ?? ''
+  const core = match[2] ?? value
+  const after = match[3] ?? ''
   return `${before}${translateCore(core)}${after}`
 }
