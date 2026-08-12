@@ -227,8 +227,6 @@ class ParsingService:
         treated as an explicit source override so integration tests remain
         deterministic.
         """
-        edge_error: Exception | None = None
-
         if (
             not self._apify_injected
             and self.settings.instagram_primary_provider == "instaloader"
@@ -246,7 +244,6 @@ class ParsingService:
                     else:
                         raise RuntimeError("Instagram Edge fallback is not configured")
             except Exception as exc:
-                edge_error = exc
                 self.session.rollback()
                 logger.warning(
                     "Instagram Edge failed for %s (%s); trying local Instaloader",
@@ -279,10 +276,6 @@ class ParsingService:
                     competitor.instagram_username,
                     type(exc).__name__,
                 )
-                if not self.settings.apify_configured:
-                    if edge_error is not None:
-                        raise edge_error from exc
-                    raise
             else:
                 self.jobs.set_progress(job, Progress.DATASET_FETCHED)
                 self.session.commit()
