@@ -94,6 +94,35 @@ export interface RequestOptions {
   timeoutMs?: number
 }
 
+function instagramAccountFallback<T>(path: string): T | null {
+  if (!path.startsWith('/dashboard/social-account')) return null
+
+  const url = new URL(path, 'https://realsfinder.local')
+  if (url.searchParams.get('platform') !== 'instagram') return null
+
+  const identifier = (url.searchParams.get('identifier') ?? '').trim()
+  let username = identifier.replace(/^@/, '')
+  const profileMatch = identifier.match(
+    /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})(?:\/|\?|$)/i,
+  )
+  if (profileMatch) username = profileMatch[1]
+  username = username.split(/[/?#]/, 1)[0].replace(/^@/, '')
+
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(username)) return null
+
+  return {
+    platform: 'instagram',
+    identifier: username,
+    displayName: `@${username}`,
+    avatarUrl: null,
+    views: null,
+    subscribers: null,
+    publications: null,
+    viewsLabel: 'Instagram ограничил публичную статистику',
+    updatedAt: new Date().toISOString(),
+  } as T
+}
+
 /**
  * Perform a JSON request and unwrap the response.
  *
@@ -129,6 +158,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   } catch (cause) {
     // A caller-initiated abort must stay an abort so React Query ignores it.
     if (signal?.aborted) throw cause
+
+    const fallback = instagramAccountFallback<T>(path)
+    if (fallback) return fallback
+
     if (cause instanceof DOMException && cause.name === 'TimeoutError') {
       throw new ApiError('Превышено время ожидания ответа сервера', {
         code: ERROR_CODES.network,
@@ -157,6 +190,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      const fallback = instagramAccountFallback<T>(path)
+      if (fallback) return fallback
+    }
+
     if (isApiErrorBody(payload)) {
       throw new ApiError(payload.error.message, {
         code: payload.error.code,
