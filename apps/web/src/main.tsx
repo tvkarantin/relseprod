@@ -16,6 +16,7 @@ import { createQueryClient } from './queryClient'
 import './styles.css'
 import './styles/monitoring.css'
 import './styles/landing.css'
+import './styles/library-fixes.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
