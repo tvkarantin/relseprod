@@ -25,9 +25,10 @@ type TokenPayload = {
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '')
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''
-const STORAGE_KEY = 'reels-finder.auth.session'
-const NEXT_KEY = 'reels-finder.auth.next'
+const STORAGE_KEY = 'realsflow.auth.session'
+const NEXT_KEY = 'realsflow.auth.next'
 const EXPIRY_SKEW_MS = 60_000
+const YANDEX_PROVIDER = 'custom:yandex'
 
 export const isAuthConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
 
@@ -84,6 +85,23 @@ async function fetchUser(accessToken: string): Promise<AuthUser> {
   return (await response.json()) as AuthUser
 }
 
+function sessionFromPayload(payload: TokenPayload): AuthSession {
+  if (!payload.access_token || !payload.refresh_token) {
+    throw new Error('Сервис авторизации не вернул сессию.')
+  }
+
+  if (!payload.user) {
+    throw new Error('Сервис авторизации не вернул пользователя.')
+  }
+
+  return {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token,
+    expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000,
+    user: payload.user,
+  }
+}
+
 async function refreshSession(session: AuthSession): Promise<AuthSession | null> {
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
@@ -130,17 +148,55 @@ export function getSafeNext(value: string | null | undefined): string {
   return value
 }
 
-export function beginTelegramAuth(next = '/dashboard') {
+function requireAuthConfig() {
   if (!isAuthConfigured) {
     throw new Error('Авторизация ещё не настроена в окружении приложения.')
   }
+}
 
+export async function requestEmailOtp(email: string) {
+  requireAuthConfig()
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) throw new Error('Введите почту.')
+
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ email: normalizedEmail, create_user: true }),
+  })
+
+  if (!response.ok) throw new Error(await getErrorMessage(response))
+}
+
+export async function verifyEmailOtp(email: string, token: string): Promise<AuthSession> {
+  requireAuthConfig()
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedToken = token.replace(/\D/g, '')
+  if (!normalizedEmail) throw new Error('Введите почту.')
+  if (normalizedToken.length !== 6) throw new Error('Введите 6-значный код из письма.')
+
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ type: 'email', email: normalizedEmail, token: normalizedToken }),
+  })
+
+  if (!response.ok) throw new Error(await getErrorMessage(response))
+  const payload = (await response.json()) as TokenPayload
+  if (!payload.user && payload.access_token) payload.user = await fetchUser(payload.access_token)
+  const session = sessionFromPayload(payload)
+  saveSession(session)
+  return session
+}
+
+export function beginYandexAuth(next = '/dashboard') {
+  requireAuthConfig()
   const safeNext = getSafeNext(next)
   sessionStorage.setItem(NEXT_KEY, safeNext)
 
   const callbackUrl = `${window.location.origin}/auth/callback`
   const authorizeUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`)
-  authorizeUrl.searchParams.set('provider', 'custom:telegram')
+  authorizeUrl.searchParams.set('provider', YANDEX_PROVIDER)
   authorizeUrl.searchParams.set('redirect_to', callbackUrl)
   window.location.assign(authorizeUrl.toString())
 }
@@ -152,9 +208,7 @@ export function takeAuthNext(): string {
 }
 
 export async function consumeAuthCallback(): Promise<AuthSession> {
-  if (!isAuthConfigured) {
-    throw new Error('Авторизация ещё не настроена в окружении приложения.')
-  }
+  requireAuthConfig()
 
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
   const error = params.get('error_description') ?? params.get('error')
@@ -166,7 +220,7 @@ export async function consumeAuthCallback(): Promise<AuthSession> {
 
   if (error) throw new Error(error)
   if (!accessToken || !refreshToken) {
-    throw new Error('Telegram не вернул сессию. Запусти вход ещё раз.')
+    throw new Error('Яндекс не вернул сессию. Запусти вход ещё раз.')
   }
 
   const user = await fetchUser(accessToken)
