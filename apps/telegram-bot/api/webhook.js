@@ -37,7 +37,7 @@ async function telegram(method, payload) {
 }
 
 function appUrl() {
-  return (process.env.REELSFINDER_URL || 'https://realsfinder-vercel.vercel.app').replace(/\/$/, '')
+  return (process.env.REALSFLOW_URL || 'https://realsfinder-github.vercel.app').replace(/\/$/, '')
 }
 
 async function sendWelcome(chatId, firstName) {
@@ -45,13 +45,13 @@ async function sendWelcome(chatId, firstName) {
 
   return telegram('sendMessage', {
     chat_id: chatId,
-    text: `${greeting}\n\nЭто официальный бот Reels Finder. Через него будем подтверждать Telegram и присылать полезные системные уведомления.`,
+    text: `${greeting}\n\nЭто официальный бот RealsFlow. Через него будем подтверждать Telegram и присылать полезные системные уведомления.`,
     disable_web_page_preview: true,
     reply_markup: {
       inline_keyboard: [
         [
           {
-            text: 'Открыть Reels Finder',
+            text: 'Открыть RealsFlow',
             url: `${appUrl()}/auth?provider=telegram`,
           },
         ],
@@ -73,12 +73,12 @@ async function handleMessage(message) {
 
   await telegram('sendMessage', {
     chat_id: message.chat.id,
-    text: 'Для входа и работы с Reels Finder используй кнопку ниже.',
+    text: 'Для входа и работы с RealsFlow используй кнопку ниже.',
     reply_markup: {
       inline_keyboard: [
         [
           {
-            text: 'Открыть Reels Finder',
+            text: 'Открыть RealsFlow',
             url: `${appUrl()}/auth?provider=telegram`,
           },
         ],
