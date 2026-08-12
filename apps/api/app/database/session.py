@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings, get_settings
 
@@ -22,10 +23,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _sqlite_connect_args(url: str) -> dict[str, Any]:
-    """Connection arguments required for SQLite used from a threadpool."""
+def _connect_args(url: str) -> dict[str, Any]:
+    """Driver-specific connection arguments for supported databases."""
     if url.startswith("sqlite"):
         return {"check_same_thread": False}
+    if url.startswith("postgresql+psycopg"):
+        # Supavisor transaction mode does not support prepared statements.
+        return {"prepare_threshold": None}
     return {}
 
 
@@ -90,12 +94,16 @@ def create_database_engine(settings: Settings | None = None) -> Engine:
 def create_engine_for_url(url: str) -> Engine:
     """Create a SQLAlchemy engine for an explicit database URL."""
     _ensure_sqlite_directory(url)
-    engine = create_engine(
-        url,
-        connect_args=_sqlite_connect_args(url),
-        pool_pre_ping=True,
-        future=True,
-    )
+    engine_kwargs: dict[str, Any] = {
+        "connect_args": _connect_args(url),
+        "pool_pre_ping": True,
+        "future": True,
+    }
+    if not url.startswith("sqlite"):
+        # Vercel functions are short-lived and Supavisor already pools server-side.
+        engine_kwargs["poolclass"] = NullPool
+
+    engine = create_engine(url, **engine_kwargs)
     if url.startswith("sqlite"):
         enable_sqlite_foreign_keys(engine)
         register_unicode_lower(engine)
