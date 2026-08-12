@@ -149,7 +149,9 @@ export function translateSupplement2(value: string, language: AppLanguage): stri
   if (language === 'ru' || !value) return value
   const match = value.match(/^(\s*)([\s\S]*?)(\s*)$/)
   if (!match) return value
-  const [, before, core, after] = match
+  const before = match[1] ?? ''
+  const core = match[2] ?? value
+  const after = match[3] ?? ''
 
   const exact = EN_TEXT[core]
   if (exact !== undefined) return `${before}${exact}${after}`
