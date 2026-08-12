@@ -72,7 +72,10 @@ class ParsingService:
         self.settings = settings or get_settings()
         self.competitors = CompetitorRepository(session)
         self.jobs = ParsingJobRepository(session)
-        self._apify_injected = apify is not None
+        # A mocked/custom Apify transport is an explicit source override for tests.
+        # The normal background task passes the real lazy Apify client, so production
+        # still uses Instaloader first and only reaches Apify on fallback.
+        self._apify_injected = apify is not None and getattr(apify, "_client", None) is not None
         self._owns_apify = apify is None
         self.apify = apify or ApifyService(self.settings)
         self.importer = importer or ReelImporter()
@@ -217,8 +220,8 @@ class ParsingService:
     def _fetch_items(self, job: ParsingJob, competitor: Competitor) -> list[dict[str, object]]:
         """Fetch Reels from the free primary source, then fall back to Apify.
 
-        An explicitly injected Apify client is treated as a source override. This
-        keeps tests and one-off callers deterministic without touching Instagram.
+        A custom Apify transport is treated as a source override so existing
+        integration tests and one-off callers stay deterministic.
         """
         if not self._apify_injected and self.settings.instagram_primary_provider == "instaloader":
             self.jobs.set_progress(job, Progress.ACTOR_STARTING)
