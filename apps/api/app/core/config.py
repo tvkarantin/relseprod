@@ -48,8 +48,12 @@ class Settings(BaseSettings):
     youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
     youtube_monitoring_enabled: bool = True
 
-    # Instagram import: use free Instaloader first, with Apify kept as fallback.
+    # Instagram import: free providers first, Apify kept as the paid fallback.
     instagram_primary_provider: str = "instaloader"
+    instagram_edge_url: str = (
+        "https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-reels"
+    )
+    instagram_edge_timeout_seconds: int = Field(default=45, ge=5, le=180)
     instaloader_session_username: str = ""
     instaloader_session_file: str = ""
     instaloader_timeout_seconds: int = Field(default=30, ge=5, le=300)
