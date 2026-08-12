@@ -1,0 +1,35 @@
+/* Library loading state: keep skeletons aligned with the compact reel cards. */
+.reels-grid[aria-hidden='true'] {
+  align-items: stretch;
+}
+
+.reels-grid[aria-hidden='true'] .skeleton-card {
+  width: 100%;
+  height: 297px;
+  min-height: 297px;
+  aspect-ratio: auto;
+  overflow: hidden;
+  border: 1px solid rgba(202, 212, 196, 0.12);
+  border-radius: 17px;
+}
+
+@media (max-height: 1000px) and (min-width: 900px) {
+  .reels-grid[aria-hidden='true'] .skeleton-card {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .reels-grid[aria-hidden='true'] .skeleton-card {
+    height: 280px;
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 560px) {
+  .reels-grid[aria-hidden='true'] .skeleton-card {
+    height: 260px;
+    min-height: 260px;
+  }
+}
