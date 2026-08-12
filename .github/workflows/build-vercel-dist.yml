@@ -30,6 +30,8 @@ jobs:
         working-directory: apps/web
         env:
           VITE_API_URL: https://realsfinder-api.vercel.app/api/v1
+          VITE_SUPABASE_URL: https://tphahouachokghqlsczf.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_hiL0ifgGBlXV_XiSdfhELQ_PeG3ov9q
         run: npm run build
 
       - name: Add SPA rewrite
