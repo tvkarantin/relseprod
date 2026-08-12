@@ -33,6 +33,8 @@ export function Pagination({
 }: PaginationProps) {
   if (pages <= 1) return null
 
+  const pageSizeOptions = Array.from(new Set([8, 10, 20, 40, perPage])).sort((a, b) => a - b)
+
   return (
     <nav className="pagination" aria-label="Постраничная навигация">
       <div className="pagination-info">
@@ -91,9 +93,9 @@ export function Pagination({
           onChange={(event) => onPerPageChange?.(Number(event.target.value))}
           aria-label="Количество на странице"
         >
-          <option value={8}>8</option>
-          <option value={20}>20</option>
-          <option value={40}>40</option>
+          {pageSizeOptions.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
       </div>
     </nav>
