@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { useLanguage } from '@/i18n/LanguageProvider'
+import type { AppLanguage } from '@/types/creatorProfile'
+
 type LimitKind = 'daily' | 'weekly'
 
 export interface UsageLimitValue {
@@ -150,41 +153,75 @@ function isSameLocalDay(first: Date, second: Date): boolean {
   )
 }
 
-function formatReset(kind: LimitKind, resetAt: string): string {
+function formatReset(
+  kind: LimitKind,
+  resetAt: string,
+  language: AppLanguage,
+  locale: 'ru-RU' | 'en-US',
+): string {
   const reset = new Date(resetAt)
-  if (Number.isNaN(reset.getTime())) return 'Время обновления уточняется'
+  if (Number.isNaN(reset.getTime())) {
+    return language === 'en' ? 'Reset time unavailable' : 'Время обновления уточняется'
+  }
 
   const now = new Date()
-  const time = reset.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  const time = reset.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 
   if (kind === 'daily') {
-    if (isSameLocalDay(reset, now)) return `Обновится сегодня в ${time}`
+    if (isSameLocalDay(reset, now)) {
+      return language === 'en' ? `Resets today at ${time}` : `Обновится сегодня в ${time}`
+    }
 
     const tomorrow = new Date(now)
     tomorrow.setDate(now.getDate() + 1)
-    if (isSameLocalDay(reset, tomorrow)) return `Обновится завтра в ${time}`
+    if (isSameLocalDay(reset, tomorrow)) {
+      return language === 'en' ? `Resets tomorrow at ${time}` : `Обновится завтра в ${time}`
+    }
 
-    return `Обновится ${reset.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`
+    const date = reset.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+    return language === 'en' ? `Resets ${date}` : `Обновится ${date}`
   }
 
   const days = Math.max(1, Math.ceil((reset.getTime() - now.getTime()) / 86_400_000))
+  if (language === 'en') {
+    if (days === 1) return 'Resets tomorrow'
+    if (days < 7) return `Resets in ${days} days`
+    return `Resets ${reset.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}`
+  }
+
   if (days === 1) return 'Обновится завтра'
   if (days >= 2 && days <= 4) return `Обновится через ${days} дня`
   if (days < 7) return `Обновится через ${days} дней`
-
-  return `Обновится ${reset.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`
+  return `Обновится ${reset.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}`
 }
 
-function LimitRow({ kind, value }: { kind: LimitKind; value: UsageLimitValue }) {
+function LimitRow({
+  kind,
+  value,
+  language,
+  locale,
+}: {
+  kind: LimitKind
+  value: UsageLimitValue
+  language: AppLanguage
+  locale: 'ru-RU' | 'en-US'
+}) {
   const remaining = clampPercent(value.remainingPercent)
   const exhausted = remaining === 0
-  const title = kind === 'daily' ? 'Дневной лимит AI' : 'Недельный лимит AI'
+  const title =
+    language === 'en'
+      ? kind === 'daily' ? 'Daily AI limit' : 'Weekly AI limit'
+      : kind === 'daily' ? 'Дневной лимит AI' : 'Недельный лимит AI'
+  const exhaustedTitle =
+    language === 'en'
+      ? `${kind === 'daily' ? 'Daily' : 'Weekly'} limit reached`
+      : `${kind === 'daily' ? 'Дневной' : 'Недельный'} лимит закончился`
 
   return (
     <div className={`rf-limit-row ${exhausted ? 'is-exhausted' : ''}`}>
       <div className="rf-limit-heading">
-        <span>{exhausted ? `${kind === 'daily' ? 'Дневной' : 'Недельный'} лимит закончился` : title}</span>
-        {!exhausted ? <strong>Осталось {remaining}%</strong> : null}
+        <span>{exhausted ? exhaustedTitle : title}</span>
+        {!exhausted ? <strong>{language === 'en' ? `${remaining}% left` : `Осталось ${remaining}%`}</strong> : null}
       </div>
       <div
         className="rf-limit-track"
@@ -196,7 +233,7 @@ function LimitRow({ kind, value }: { kind: LimitKind; value: UsageLimitValue }) 
       >
         <span style={{ width: `${remaining}%` }} />
       </div>
-      <small>{formatReset(kind, value.resetAt)}</small>
+      <small>{formatReset(kind, value.resetAt, language, locale)}</small>
     </div>
   )
 }
@@ -207,6 +244,7 @@ export function UsageLimitsCard({
   upgradeHref = '/#pricing',
   creditsHref = '/#pricing',
 }: UsageLimitsCardProps) {
+  const { language, locale } = useLanguage()
   const storedLimits = useStoredUsageLimits()
   const limits = useMemo(
     () => normalizeLimits(controlledLimits ?? storedLimits),
@@ -236,18 +274,18 @@ export function UsageLimitsCard({
   if (!visible) return null
 
   return (
-    <aside className="rf-usage-card" data-testid="usage-limits-card" aria-label="Лимиты AI">
+    <aside className="rf-usage-card" data-testid="usage-limits-card" aria-label={language === 'en' ? 'AI limits' : 'Лимиты AI'}>
       <div className="rf-usage-title">
-        <strong>Лимиты AI</strong>
-        <span>Сколько осталось</span>
+        <strong>{language === 'en' ? 'AI limits' : 'Лимиты AI'}</strong>
+        <span>{language === 'en' ? 'Remaining' : 'Сколько осталось'}</span>
       </div>
 
-      <LimitRow kind="daily" value={limits.daily} />
-      <LimitRow kind="weekly" value={limits.weekly} />
+      <LimitRow kind="daily" value={limits.daily} language={language} locale={locale} />
+      <LimitRow kind="weekly" value={limits.weekly} language={language} locale={locale} />
 
       <div className="rf-usage-actions">
-        <a className="rf-upgrade-button" href={upgradeHref}>Перейти на PRO</a>
-        <a className="rf-credits-button" href={creditsHref}>Докупить кредиты</a>
+        <a className="rf-upgrade-button" href={upgradeHref}>{language === 'en' ? 'Upgrade to PRO' : 'Перейти на PRO'}</a>
+        <a className="rf-credits-button" href={creditsHref}>{language === 'en' ? 'Buy credits' : 'Докупить кредиты'}</a>
       </div>
     </aside>
   )
