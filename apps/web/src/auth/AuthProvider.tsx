@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
-  beginTelegramAuth,
+  beginYandexAuth,
   getAuthSession,
   signOutAuth,
   type AuthSession,
@@ -11,7 +11,7 @@ type AuthContextValue = {
   session: AuthSession | null
   isLoading: boolean
   refresh: () => Promise<void>
-  signInWithTelegram: (next?: string) => void
+  signInWithYandex: (next?: string) => void
   signOut: () => Promise<void>
 }
 
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isLoading,
       refresh,
-      signInWithTelegram: beginTelegramAuth,
+      signInWithYandex: beginYandexAuth,
       signOut,
     }),
     [session, isLoading, refresh, signOut],
