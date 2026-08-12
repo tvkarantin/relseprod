@@ -23,6 +23,10 @@ jobs:
       - name: Ruff
         run: python -m ruff check . --output-format=github
       - name: Pytest
+        env:
+          # Import-flow integration tests use mocked Apify responses and must never
+          # make live Instagram requests. Instaloader has its own isolated unit tests.
+          INSTAGRAM_PRIMARY_PROVIDER: apify
         run: python -m pytest
 
   frontend:
