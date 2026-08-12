@@ -145,33 +145,14 @@
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
-.auth-provider + .auth-provider {
-  margin-top: 9px;
-}
-
 .auth-provider:hover:not(:disabled) {
   border-color: #ddc4a3;
   background: #fffaf3;
   transform: translateY(-1px);
 }
 
-.auth-provider-primary {
-  border-color: #ed9d35;
-  color: #2b2117;
-  background: linear-gradient(180deg, #ffc45d, #ffa72a);
-  box-shadow: 0 10px 24px rgba(234, 143, 23, 0.15);
-}
-
-.auth-provider-primary:hover:not(:disabled) {
-  border-color: #e98f1d;
-  background: linear-gradient(180deg, #ffca6d, #ffad34);
-}
-
 .auth-provider:disabled {
   cursor: not-allowed;
-}
-
-.auth-provider:not(.auth-provider-primary):disabled {
   opacity: 0.62;
 }
 
@@ -185,10 +166,6 @@
   background: rgba(255, 255, 255, 0.58);
 }
 
-.auth-telegram-icon svg {
-  transform: translateX(-1px) rotate(-8deg);
-}
-
 .auth-yandex-icon {
   color: #d52b1e;
   font-size: 17px;
@@ -197,17 +174,6 @@
 
 .auth-provider-arrow {
   opacity: 0.68;
-}
-
-.auth-provider small {
-  padding: 3px 7px;
-  border-radius: 999px;
-  color: #8a7762;
-  background: #f5ede2;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 .auth-divider {
@@ -227,12 +193,35 @@
   background: var(--auth-line-soft);
 }
 
-.auth-email-preview label {
-  display: block;
+.auth-email-label-row {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 7px;
+}
+
+.auth-email-preview label {
   color: #625a52;
   font-size: 12px;
   font-weight: 620;
+}
+
+.auth-email-change {
+  padding: 0;
+  border: 0;
+  color: #d9780d;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.auth-email-change:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .auth-email-field {
@@ -245,48 +234,80 @@
   border-radius: 12px;
   color: #a1978c;
   background: rgba(255, 253, 249, 0.76);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.auth-email-field:focus-within {
+  border-color: #e7a14b;
+  background: #fffdf9;
+  box-shadow: 0 0 0 3px rgba(255, 155, 28, 0.1);
 }
 
 .auth-email-field input {
   width: 100%;
   border: 0;
   outline: 0;
-  color: #777068;
+  color: #302821;
   background: transparent;
   font: inherit;
   font-size: 14px;
+}
+
+.auth-email-field input:disabled {
+  color: #777068;
+  cursor: not-allowed;
 }
 
 .auth-email-field input::placeholder {
   color: #b1a79d;
 }
 
-.auth-email-preview > button {
+.auth-email-hint {
+  margin: 11px 2px 8px;
+  color: #847a70;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.auth-email-hint strong {
+  color: #5d554d;
+  font-weight: 650;
+}
+
+.auth-otp-field input {
+  letter-spacing: 0.08em;
+}
+
+.auth-email-preview > button[type='submit'] {
   width: 100%;
-  min-height: 44px;
+  min-height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 9px;
-  border: 1px solid #e9dfd1;
+  margin-top: 10px;
+  border: 1px solid #ed9d35;
   border-radius: 12px;
-  color: #8d847a;
-  background: #f8f3ec;
+  color: #2b2117;
+  background: linear-gradient(180deg, #ffc45d, #ffa72a);
+  box-shadow: 0 9px 22px rgba(234, 143, 23, 0.13);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
-  cursor: not-allowed;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease, opacity 150ms ease;
 }
 
-.auth-email-preview > button span {
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: #95836f;
-  background: #eee5da;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
+.auth-email-preview > button[type='submit']:hover:not(:disabled) {
+  border-color: #e98f1d;
+  background: linear-gradient(180deg, #ffca6d, #ffad34);
+  transform: translateY(-1px);
+}
+
+.auth-email-preview > button[type='submit']:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 .auth-error,
@@ -424,7 +445,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-provider {
+  .auth-provider,
+  .auth-email-field,
+  .auth-email-preview > button[type='submit'] {
     transition: none;
   }
 }
