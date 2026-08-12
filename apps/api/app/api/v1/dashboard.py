@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import DbSession
 from app.core.config import get_settings
 from app.schemas.common import DashboardSummary
+from app.services.instagram_edge import InstagramEdgeService
 from app.services.instaloader_service import InstaloaderService
 from app.services.reel_content import DashboardService
 from app.services.youtube_monitoring import YouTubeMonitoringService, parse_youtube_url
@@ -101,9 +102,32 @@ def _youtube_channel_item(
     return item
 
 
+def _instagram_summary(db: Session, settings: Any, username: str) -> dict[str, Any]:
+    edge_error: Exception | None = None
+    edge = InstagramEdgeService(db, settings)
+    try:
+        if edge.is_configured():
+            return edge.fetch_profile_summary(username, reels_limit=20)
+    except Exception as exc:
+        edge_error = exc
+    finally:
+        edge.close()
+
+    service = InstaloaderService(settings)
+    try:
+        return service.fetch_profile_summary(username, reels_limit=20)
+    except Exception as exc:
+        if edge_error is not None:
+            raise RuntimeError("Instagram Edge and Instaloader both failed") from exc
+        raise
+    finally:
+        service.close()
+
+
 @router.get("/social-account", summary="Публичная статистика подключённого аккаунта")
 def social_account(
     request: Request,
+    db: Annotated[Session, Depends(DbSession)],
     platform: Literal["instagram", "youtube"] = Query(...),
     identifier: str = Query(..., min_length=2, max_length=500),
 ) -> dict[str, Any]:
@@ -112,16 +136,13 @@ def social_account(
 
     if platform == "instagram":
         username = _instagram_username(identifier)
-        service = InstaloaderService(settings)
         try:
-            payload = service.fetch_profile_summary(username, reels_limit=20)
+            payload = _instagram_summary(db, settings, username)
         except Exception as exc:
             raise HTTPException(
                 status_code=502,
-                detail="Не удалось получить статистику Instagram",
+                detail="Instagram временно ограничил доступ. Попробуйте ещё раз через минуту",
             ) from exc
-        finally:
-            service.close()
 
         sample_size = int(payload.get("viewsSampleSize") or 0)
         views_label = (
