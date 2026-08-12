@@ -125,6 +125,18 @@ export function getAppLocale(): 'ru-RU' | 'en-US' {
   return getAppLanguage() === 'en' ? 'en-US' : 'ru-RU'
 }
 
+function createLanguageValue(language: AppLanguage): LanguageContextValue {
+  return {
+    language,
+    locale: language === 'en' ? 'en-US' : 'ru-RU',
+    t: (text: string) => translateText(text, language),
+    setLanguage: (nextLanguage: AppLanguage) => {
+      const profile = loadCreatorProfile()
+      saveCreatorProfile({ ...profile, language: nextLanguage })
+    },
+  }
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>(() => getAppLanguage())
 
@@ -191,24 +203,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => observer.disconnect()
   }, [language])
 
-  const value = useMemo<LanguageContextValue>(
-    () => ({
-      language,
-      locale: language === 'en' ? 'en-US' : 'ru-RU',
-      t: (text: string) => translateText(text, language),
-      setLanguage: (nextLanguage: AppLanguage) => {
-        const profile = loadCreatorProfile()
-        saveCreatorProfile({ ...profile, language: nextLanguage })
-      },
-    }),
-    [language],
-  )
+  const value = useMemo<LanguageContextValue>(() => createLanguageValue(language), [language])
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 
 export function useLanguage(): LanguageContextValue {
   const value = useContext(LanguageContext)
-  if (!value) throw new Error('useLanguage must be used within LanguageProvider')
-  return value
+  return value ?? createLanguageValue(getAppLanguage())
 }
