@@ -1,0 +1,51 @@
+name: Build Vercel frontend artifact
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: apps/web
+        env:
+          VITE_API_URL: https://realsfinder-api.vercel.app/api/v1
+        run: npm run build
+
+      - name: Add SPA rewrite
+        run: |
+          cat > apps/web/dist/vercel.json <<'EOF'
+          {
+            "rewrites": [
+              { "source": "/((?!assets/).*)", "destination": "/index.html" }
+            ]
+          }
+          EOF
+
+      - name: Upload production dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: realsfinder-vercel-dist
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 1
