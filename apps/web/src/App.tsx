@@ -1,6 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { fetchCompetitors } from '@/api/competitors'
+import { queryKeys } from '@/api/queryKeys'
+import { useJobPolling } from '@/hooks/useJobPolling'
 import { LandingPage } from '@/pages/LandingPage'
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })))
@@ -16,12 +20,41 @@ const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage').then((mod
 const AiDashboardPage = lazy(() => import('@/features/ai-dashboard').then((module) => ({ default: module.AiDashboardPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
+function ActiveImportWatcher({ jobId }: { jobId: number }) {
+  useJobPolling(jobId)
+  return null
+}
+
+function ImportJobsWatcher() {
+  const competitorsQuery = useQuery({
+    queryKey: queryKeys.competitors.list(),
+    queryFn: ({ signal }) => fetchCompetitors(signal),
+  })
+
+  return (
+    <>
+      {(competitorsQuery.data ?? []).map((competitor) =>
+        typeof competitor.activeJobId === 'number' ? (
+          <ActiveImportWatcher key={competitor.activeJobId} jobId={competitor.activeJobId} />
+        ) : null,
+      )}
+    </>
+  )
+}
+
 export function App() {
   return (
     <Suspense fallback={<div className="route-loading" role="status">Загружаем рабочее пространство…</div>}>
       <Routes>
         <Route index element={<LandingPage />} />
-        <Route element={<AppLayout />}>
+        <Route
+          element={
+            <>
+              <ImportJobsWatcher />
+              <AppLayout />
+            </>
+          }
+        >
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="ideas" element={<IdeaFeedPage />} />
           <Route path="competitors" element={<CompetitorsPage />} />
