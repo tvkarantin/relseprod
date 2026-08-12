@@ -10,9 +10,13 @@
   --accent: #ff9b1c;
   --accent-soft: #fff0d7;
   --accent-hover: #ff8a00;
-  --green: #3b9b63;
+  --green: #d98b2b;
   --amber: #f4a11a;
   --red: #d76549;
+  --rf-cursor-x: 50vw;
+  --rf-cursor-y: 42vh;
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
@@ -26,6 +30,20 @@
   color-scheme: light;
 }
 
+.rf-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 280px at var(--rf-cursor-x) var(--rf-cursor-y),
+    rgba(255, 178, 64, 0.15),
+    rgba(255, 190, 93, 0.055) 42%,
+    transparent 72%
+  );
+}
+
 .rf-sidebar {
   position: sticky;
   top: 0;
@@ -37,7 +55,7 @@
   flex-direction: column;
   padding: 27px 18px 22px;
   border-right: 1px solid rgba(226, 214, 198, 0.78);
-  background: rgba(255, 252, 247, 0.88);
+  background: rgba(255, 252, 247, 0.9);
   backdrop-filter: blur(20px);
 }
 
@@ -94,7 +112,7 @@
   font-size: 14px;
   font-weight: 520;
   text-decoration: none;
-  transition: 160ms ease;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .rf-nav-item:hover {
@@ -123,7 +141,12 @@
   align-items: center;
   gap: 24px;
   padding: 20px 34px 14px;
-  background: linear-gradient(180deg, rgba(251, 248, 243, 0.97), rgba(251, 248, 243, 0.82), rgba(251, 248, 243, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(251, 248, 243, 0.97),
+    rgba(251, 248, 243, 0.82),
+    rgba(251, 248, 243, 0)
+  );
   backdrop-filter: blur(8px);
 }
 
@@ -147,7 +170,7 @@
   border: 1px solid rgba(224, 214, 201, 0.92);
   border-radius: 13px;
   color: #7e776f;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.74);
   box-shadow: 0 8px 30px rgba(121, 92, 56, 0.035);
 }
 
@@ -250,6 +273,8 @@
 }
 
 .rf-main {
+  position: relative;
+  z-index: 1;
   grid-column: 2;
   min-width: 0;
   padding: 6px 34px 48px;
@@ -259,7 +284,6 @@
   color: var(--text);
 }
 
-/* Compact limits card inspired by the new warm RealsFlow system. */
 .rf-usage-card {
   display: grid;
   gap: 13px;
@@ -357,7 +381,7 @@
   font-size: 11px;
   font-weight: 700;
   text-decoration: none;
-  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition: box-shadow 150ms ease, background 150ms ease;
 }
 
 .rf-upgrade-button {
@@ -370,11 +394,6 @@
   border: 1px solid #eadfce;
   color: #3f3831;
   background: rgba(255, 255, 255, 0.72);
-}
-
-.rf-usage-actions a:hover {
-  transform: translateY(-1px);
-  text-decoration: none;
 }
 
 .rf-upgrade-button:hover {
@@ -391,34 +410,16 @@
 }
 
 @keyframes rf-limit-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 1120px) {
-  .rf-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  .rf-sidebar {
-    padding-inline: 14px;
-  }
-
-  .rf-search {
-    width: min(540px, 55vw);
-  }
-
+  .rf-shell { grid-template-columns: 220px minmax(0, 1fr); }
+  .rf-sidebar { padding-inline: 14px; }
+  .rf-search { width: min(540px, 55vw); }
   .rf-profile-button span,
-  .rf-profile-button > svg {
-    display: none;
-  }
-
+  .rf-profile-button > svg { display: none; }
   .rf-profile-button {
     min-height: 42px;
     grid-template-columns: 38px;
@@ -427,11 +428,7 @@
 }
 
 @media (max-width: 860px) {
-  .rf-shell {
-    display: block;
-    min-height: 100dvh;
-  }
-
+  .rf-shell { display: block; min-height: 100dvh; }
   .rf-sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -441,16 +438,9 @@
     transition: transform 200ms ease;
     box-shadow: 20px 0 70px rgba(91, 65, 37, 0.12);
   }
-
-  .rf-shell.is-menu-open .rf-sidebar {
-    transform: translateX(0);
-  }
-
+  .rf-shell.is-menu-open .rf-sidebar { transform: translateX(0); }
   .rf-sidebar-close,
-  .rf-mobile-menu {
-    display: inline-grid;
-  }
-
+  .rf-mobile-menu { display: inline-grid; }
   .rf-shell.is-menu-open .rf-sidebar-backdrop {
     position: fixed;
     inset: 0;
@@ -460,50 +450,26 @@
     background: rgba(69, 52, 35, 0.18);
     backdrop-filter: blur(2px);
   }
-
   .rf-topbar {
     position: sticky;
     top: 0;
     min-height: 74px;
     padding: 14px 18px;
   }
-
-  .rf-search {
-    width: auto;
-    flex: 1;
-  }
-
-  .rf-search kbd {
-    display: none;
-  }
-
-  .rf-main {
-    padding: 8px 18px 40px;
-  }
+  .rf-search { width: auto; flex: 1; }
+  .rf-search kbd { display: none; }
+  .rf-main { padding: 8px 18px 40px; }
 }
 
 @media (max-width: 620px) {
-  .rf-topbar {
-    gap: 10px;
-  }
+  .rf-topbar { gap: 10px; }
+  .rf-search { min-height: 42px; }
+  .rf-search input { font-size: 12px; }
+  .rf-topbar-actions { gap: 4px; }
+  .rf-profile-button { display: none; }
+  .rf-main { padding-inline: 12px; }
+}
 
-  .rf-search {
-    min-height: 42px;
-  }
-
-  .rf-search input {
-    font-size: 12px;
-  }
-
-  .rf-topbar-actions {
-    gap: 4px;
-  }
-
-  .rf-profile-button {
-    display: none;
-  }
-
-  .rf-main {
-    padding-inline: 12px;
-  }
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .rf-shell::before { display: none; }
 }

@@ -17,6 +17,7 @@ import './styles.css'
 import './styles/monitoring.css'
 import './styles/landing.css'
 import './styles/library-fixes.css'
+import './styles/realsflow-theme.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'

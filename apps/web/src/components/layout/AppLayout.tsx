@@ -1,5 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
-import { Bell, CalendarDays, ChevronDown, CircleHelp, Folder, Home, Library, Lightbulb, Menu, Search, Star, X } from 'lucide-react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import {
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  CircleHelp,
+  Folder,
+  Home,
+  Library,
+  Lightbulb,
+  Menu,
+  Search,
+  Star,
+  X,
+} from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { UsageLimitsCard } from '@/components/layout/UsageLimitsCard'
@@ -26,51 +44,158 @@ export function AppLayout() {
   const { notifications } = useNotifications()
   const hasUnreadNotifications = notifications.some((item) => item.unread)
 
-  useEffect(() => { setMenuOpen(false); setNotificationsOpen(false) }, [location.pathname])
+  useEffect(() => {
+    setMenuOpen(false)
+    setNotificationsOpen(false)
+  }, [location.pathname])
+
   useEffect(() => {
     if (!isNotificationsOpen) return
-    const onPointerDown = (event: PointerEvent) => { if (!notificationAnchorRef.current?.contains(event.target as Node)) setNotificationsOpen(false) }
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setNotificationsOpen(false) }
-    document.addEventListener('pointerdown', onPointerDown); document.addEventListener('keydown', onKeyDown)
-    return () => { document.removeEventListener('pointerdown', onPointerDown); document.removeEventListener('keydown', onKeyDown) }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!notificationAnchorRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNotificationsOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [isNotificationsOpen])
 
+  const handleShellPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.style.setProperty('--rf-cursor-x', `${event.clientX}px`)
+    event.currentTarget.style.setProperty('--rf-cursor-y', `${event.clientY}px`)
+  }
+
   return (
-    <div className={`rf-shell ${isMenuOpen ? 'is-menu-open' : ''}`}>
+    <div
+      className={`rf-shell ${isMenuOpen ? 'is-menu-open' : ''}`}
+      onPointerMove={handleShellPointerMove}
+    >
       <aside className="rf-sidebar" aria-label="Основная навигация">
         <div className="rf-sidebar-head">
-          <NavLink to="/dashboard" className="rf-brand" aria-label="RealsFlow — мои рилсы">RealsFlow</NavLink>
-          <button type="button" className="rf-sidebar-close" aria-label="Закрыть меню" onClick={() => setMenuOpen(false)}><X size={20} /></button>
+          <NavLink
+            to="/dashboard"
+            className="rf-brand"
+            aria-label="RealsFlow — мои рилсы"
+          >
+            RealsFlow
+          </NavLink>
+          <button
+            type="button"
+            className="rf-sidebar-close"
+            aria-label="Закрыть меню"
+            onClick={() => setMenuOpen(false)}
+          >
+            <X size={20} />
+          </button>
         </div>
+
         <nav className="rf-sidebar-nav">
-          {NAV_ITEMS.map((item) => { const Icon = item.icon; return (
-            <NavLink key={item.to} to={item.to} end={'end' in item ? item.end : false} className={({ isActive }) => `rf-nav-item ${isActive ? 'is-active' : ''}`}>
-              <Icon size={19} strokeWidth={1.8} aria-hidden="true" /><span>{item.label}</span>
-            </NavLink>
-          ) })}
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={'end' in item ? item.end : false}
+                className={({ isActive }) =>
+                  `rf-nav-item ${isActive ? 'is-active' : ''}`
+                }
+              >
+                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
+
         <div className="rf-sidebar-spacer" />
         <UsageLimitsCard />
       </aside>
 
-      <button type="button" className="rf-sidebar-backdrop" aria-label="Закрыть меню" onClick={() => setMenuOpen(false)} />
+      <button
+        type="button"
+        className="rf-sidebar-backdrop"
+        aria-label="Закрыть меню"
+        onClick={() => setMenuOpen(false)}
+      />
+
       <header className="rf-topbar">
-        <button type="button" className="rf-mobile-menu" aria-label="Открыть меню" aria-expanded={isMenuOpen} onClick={() => setMenuOpen((open) => !open)}><Menu size={21} /></button>
-        <label className="rf-search"><Search size={19} aria-hidden="true" /><input type="search" placeholder="Поиск по сценариям, идеям и ресурсам" aria-label="Поиск" /><kbd>⌘K</kbd></label>
+        <button
+          type="button"
+          className="rf-mobile-menu"
+          aria-label="Открыть меню"
+          aria-expanded={isMenuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <Menu size={21} />
+        </button>
+
+        <label className="rf-search">
+          <Search size={19} aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Поиск по сценариям, идеям и ресурсам"
+            aria-label="Поиск"
+          />
+          <kbd>⌘K</kbd>
+        </label>
+
         <div className="rf-topbar-actions">
           <div className="notification-anchor" ref={notificationAnchorRef}>
-            <button type="button" className={`rf-icon-button ${hasUnreadNotifications ? 'has-unread' : ''}`} aria-label="Уведомления" aria-haspopup="dialog" aria-expanded={isNotificationsOpen} onClick={() => setNotificationsOpen((open) => !open)}><Bell size={20} strokeWidth={1.8} /></button>
-            {isNotificationsOpen ? <NotificationPanel onClose={() => setNotificationsOpen(false)} /> : null}
+            <button
+              type="button"
+              className={`rf-icon-button ${hasUnreadNotifications ? 'has-unread' : ''}`}
+              aria-label="Уведомления"
+              aria-haspopup="dialog"
+              aria-expanded={isNotificationsOpen}
+              onClick={() => setNotificationsOpen((open) => !open)}
+            >
+              <Bell size={20} strokeWidth={1.8} />
+            </button>
+            {isNotificationsOpen ? (
+              <NotificationPanel onClose={() => setNotificationsOpen(false)} />
+            ) : null}
           </div>
-          <button type="button" className="rf-icon-button" aria-label="Помощь"><CircleHelp size={20} strokeWidth={1.8} /></button>
-          <button type="button" className="rf-profile-button" onClick={() => setProfileOpen(true)} aria-label="Открыть профиль">
-            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85" alt="" />
-            <span><strong>Андрей</strong><small>Автор</small></span><ChevronDown size={16} aria-hidden="true" />
+
+          <button type="button" className="rf-icon-button" aria-label="Помощь">
+            <CircleHelp size={20} strokeWidth={1.8} />
+          </button>
+
+          <button
+            type="button"
+            className="rf-profile-button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="Открыть профиль"
+          >
+            <img
+              src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85"
+              alt=""
+            />
+            <span>
+              <strong>Андрей</strong>
+              <small>Автор</small>
+            </span>
+            <ChevronDown size={16} aria-hidden="true" />
           </button>
         </div>
       </header>
-      <main className="rf-main"><Outlet /></main>
-      {isProfileOpen ? <CreatorProfileDialog onClose={() => setProfileOpen(false)} /> : null}
+
+      <main className="rf-main">
+        <Outlet />
+      </main>
+
+      {isProfileOpen ? (
+        <CreatorProfileDialog onClose={() => setProfileOpen(false)} />
+      ) : null}
     </div>
   )
 }

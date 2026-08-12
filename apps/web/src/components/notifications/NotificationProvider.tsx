@@ -8,36 +8,9 @@ import {
   type NotificationApi,
 } from './notificationContext'
 
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 1,
-    kind: 'reel',
-    title: 'Новый рилс у конкурента',
-    description: 'У @nick_saraev вышло новое видео',
-    time: 'только что',
-    unread: true,
-  },
-  {
-    id: 2,
-    kind: 'import',
-    title: 'Новые рилсы найдены',
-    description: 'В библиотеку добавлено 8 новых рилсов',
-    time: '5 мин назад',
-    unread: true,
-  },
-  {
-    id: 3,
-    kind: 'saved',
-    title: 'Сценарий сохранён',
-    description: 'Черновик для рилса успешно сохранён',
-    time: '12 мин назад',
-    unread: false,
-  },
-]
-
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS)
-  const nextId = useRef(INITIAL_NOTIFICATIONS.length + 1)
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const nextId = useRef(1)
 
   const addNotification = useCallback((notification: NewNotification) => {
     setNotifications((current) => [
