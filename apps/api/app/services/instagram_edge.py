@@ -22,12 +22,7 @@ _SECRET_QUERY = text(
 
 
 class InstagramEdgeService:
-    """Fetch public Instagram Reels through the project's Supabase Edge Function.
-
-    Anonymous Instagram access from shared Vercel IP ranges is frequently throttled
-    with HTTP 429. The Edge Function gives the importer an independent free egress
-    path before falling back to the paid Apify integration.
-    """
+    """Fetch public Instagram data through the project's Supabase Edge Function."""
 
     def __init__(
         self,
@@ -58,8 +53,7 @@ class InstagramEdgeService:
         token = self.session.execute(_SECRET_QUERY).scalar_one_or_none()
         return isinstance(token, str) and bool(token.strip())
 
-    def fetch_profile_reels(self, username: str, *, limit: int) -> list[dict[str, object]]:
-        """Fetch normalized-to-Apify-shaped Reel metadata for one public profile."""
+    def _post(self, username: str, *, limit: int, mode: str) -> dict[str, Any]:
         endpoint = self.settings.instagram_edge_url.strip()
         if not endpoint:
             raise RuntimeError("Instagram Edge endpoint is not configured")
@@ -71,7 +65,7 @@ class InstagramEdgeService:
         response = self.client.post(
             endpoint,
             headers={"x-internal-token": token.strip()},
-            json={"username": username, "limit": limit},
+            json={"username": username, "limit": limit, "mode": mode},
         )
 
         try:
@@ -81,7 +75,7 @@ class InstagramEdgeService:
                 f"Instagram Edge returned invalid JSON (HTTP {response.status_code})"
             ) from exc
 
-        if response.status_code >= 400:
+        if response.status_code >= 400 or not isinstance(payload, dict):
             diagnostics = payload.get("diagnostics") if isinstance(payload, dict) else None
             logger.warning(
                 "Instagram Edge failed for %s: http=%s diagnostics=%s",
@@ -91,8 +85,42 @@ class InstagramEdgeService:
             )
             raise RuntimeError(f"Instagram Edge request failed with HTTP {response.status_code}")
 
-        items = payload.get("items") if isinstance(payload, dict) else None
+        return payload
+
+    def fetch_profile_reels(self, username: str, *, limit: int) -> list[dict[str, object]]:
+        """Fetch normalized-to-Apify-shaped Reel metadata for one public profile."""
+        payload = self._post(username, limit=limit, mode="reels")
+        items = payload.get("items")
         if not isinstance(items, list):
             raise RuntimeError("Instagram Edge response does not contain an items list")
-
         return [item for item in items if isinstance(item, dict)]
+
+    def fetch_profile_summary(self, username: str, *, reels_limit: int = 20) -> dict[str, Any]:
+        """Fetch public profile totals plus a bounded recent-Reels view sample."""
+        payload = self._post(username, limit=reels_limit, mode="summary")
+        profile = payload.get("profile")
+        items = payload.get("items")
+        if not isinstance(profile, dict):
+            raise RuntimeError("Instagram Edge response does not contain profile data")
+        if not isinstance(items, list):
+            items = []
+
+        views = 0
+        sample_size = 0
+        for item in items[:reels_limit]:
+            if not isinstance(item, dict):
+                continue
+            value = item.get("videoPlayCount")
+            if isinstance(value, (int, float)) and value >= 0:
+                views += int(value)
+                sample_size += 1
+
+        return {
+            "username": str(profile.get("username") or username),
+            "displayName": str(profile.get("displayName") or profile.get("username") or username),
+            "avatarUrl": profile.get("avatarUrl"),
+            "followers": profile.get("followers"),
+            "publications": profile.get("publications"),
+            "views": views,
+            "viewsSampleSize": sample_size,
+        }
