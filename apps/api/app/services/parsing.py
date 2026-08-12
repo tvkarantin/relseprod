@@ -72,8 +72,21 @@ class ParsingService:
         self.settings = settings or get_settings()
         self.competitors = CompetitorRepository(session)
         self.jobs = ParsingJobRepository(session)
+        self._apify_injected = apify is not None
+        self._owns_apify = apify is None
         self.apify = apify or ApifyService(self.settings)
         self.importer = importer or ReelImporter()
+
+    def close(self) -> None:
+        """Close owned network clients."""
+        if self._owns_apify:
+            self.apify.close()
+
+    def __enter__(self) -> ParsingService:
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        self.close()
 
     # ------------------------------------------------------------ scheduling
 
@@ -202,8 +215,12 @@ class ParsingService:
         return result
 
     def _fetch_items(self, job: ParsingJob, competitor: Competitor) -> list[dict[str, object]]:
-        """Fetch Reels from the free primary source, then fall back to Apify."""
-        if self.settings.instagram_primary_provider == "instaloader":
+        """Fetch Reels from the free primary source, then fall back to Apify.
+
+        An explicitly injected Apify client is treated as a source override. This
+        keeps tests and one-off callers deterministic without touching Instagram.
+        """
+        if not self._apify_injected and self.settings.instagram_primary_provider == "instaloader":
             self.jobs.set_progress(job, Progress.ACTOR_STARTING)
             self.session.commit()
 
