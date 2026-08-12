@@ -1,9 +1,9 @@
 """Orchestration of the Instagram Reels import pipeline.
 
-``ParsingService`` owns the long-running work: it fetches Reel metadata from the
-configured primary source, falls back to Apify when Instaloader fails, normalizes
-the items and hands them to the importer. It is deliberately independent of HTTP
-so it can be called from a background task and from tests without a client.
+``ParsingService`` owns the long-running work: it fetches Reel metadata from free
+providers first, falls back to Apify when they fail, normalizes the items and hands
+them to the importer. It is deliberately independent of HTTP so it can be called
+from a background task and from tests without a client.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from app.repositories.jobs import ParsingJobRepository
 from app.repositories.reels import ReelRepository
 from app.services.apify import ApifyService
 from app.services.apify_input import build_actor_input
+from app.services.instagram_edge import InstagramEdgeService
 from app.services.instaloader_service import InstaloaderService
 from app.services.reel_importer import ImportResult, ReelImporter
 from app.services.reel_normalizer import normalize_apify_items
@@ -74,7 +75,7 @@ class ParsingService:
         self.jobs = ParsingJobRepository(session)
         # A mocked/custom Apify transport is an explicit source override for tests.
         # The normal background task passes the real lazy Apify client, so production
-        # still uses Instaloader first and only reaches Apify on fallback.
+        # uses free providers first and only reaches Apify as a paid fallback.
         self._apify_injected = apify is not None and getattr(apify, "_client", None) is not None
         self._owns_apify = apify is None
         self.apify = apify or ApifyService(self.settings)
@@ -218,11 +219,50 @@ class ParsingService:
         return result
 
     def _fetch_items(self, job: ParsingJob, competitor: Competitor) -> list[dict[str, object]]:
-        """Fetch Reels from the free primary source, then fall back to Apify.
+        """Fetch Reels through free providers, then fall back to Apify.
 
-        A custom Apify transport is treated as a source override so existing
-        integration tests and one-off callers stay deterministic.
+        Production first tries the project's Supabase Edge scraper so Instagram
+        requests do not originate from Vercel's heavily rate-limited shared IPs.
+        Instaloader remains the second free path. A custom Apify transport is
+        treated as an explicit source override so integration tests remain
+        deterministic.
         """
+        edge_error: Exception | None = None
+
+        if (
+            not self._apify_injected
+            and self.settings.instagram_primary_provider == "instaloader"
+            and not self.settings.is_sqlite
+        ):
+            self.jobs.set_progress(job, Progress.ACTOR_STARTING)
+            self.session.commit()
+            try:
+                with InstagramEdgeService(self.session, self.settings) as edge:
+                    if edge.is_configured():
+                        items = edge.fetch_profile_reels(
+                            competitor.instagram_username,
+                            limit=self.settings.apify_results_limit,
+                        )
+                    else:
+                        raise RuntimeError("Instagram Edge fallback is not configured")
+            except Exception as exc:
+                edge_error = exc
+                self.session.rollback()
+                logger.warning(
+                    "Instagram Edge failed for %s (%s); trying local Instaloader",
+                    competitor.instagram_username,
+                    type(exc).__name__,
+                )
+            else:
+                self.jobs.set_progress(job, Progress.DATASET_FETCHED)
+                self.session.commit()
+                logger.info(
+                    "Instagram Edge fetched %s items for job %s",
+                    len(items),
+                    job.id,
+                )
+                return items
+
         if not self._apify_injected and self.settings.instagram_primary_provider == "instaloader":
             self.jobs.set_progress(job, Progress.ACTOR_STARTING)
             self.session.commit()
@@ -240,6 +280,8 @@ class ParsingService:
                     type(exc).__name__,
                 )
                 if not self.settings.apify_configured:
+                    if edge_error is not None:
+                        raise edge_error from exc
                     raise
             else:
                 self.jobs.set_progress(job, Progress.DATASET_FETCHED)
