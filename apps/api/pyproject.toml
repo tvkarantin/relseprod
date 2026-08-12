@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "httpx>=0.27",
     "instaloader==4.15.3",
+    "psycopg[binary]>=3.2,<4",
 ]
 
 [project.optional-dependencies]
@@ -33,6 +34,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["app*", "scripts*"]
+
+[tool.vercel]
+entrypoint = "app.main:app"
 
 [tool.ruff]
 target-version = "py312"
