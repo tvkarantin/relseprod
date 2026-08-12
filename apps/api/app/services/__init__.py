@@ -4,6 +4,7 @@ from app.services.apify import ApifyRun, ApifyService
 from app.services.apify_input import build_actor_input
 from app.services.competitors import CompetitorService
 from app.services.instagram import InstagramProfile, normalize_instagram_profile
+from app.services.instaloader_service import InstaloaderService
 from app.services.parsing import ParsingService, Progress
 from app.services.reel_content import (
     DashboardService,
@@ -20,6 +21,7 @@ __all__ = [
     "DashboardService",
     "ImportResult",
     "InstagramProfile",
+    "InstaloaderService",
     "NormalizedReel",
     "ParsingService",
     "Progress",
