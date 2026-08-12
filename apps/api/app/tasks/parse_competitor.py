@@ -14,7 +14,6 @@ import logging
 
 from app.core.config import Settings, get_settings
 from app.database.session import get_session_factory
-from app.services.apify import ApifyService
 from app.services.parsing import ParsingService
 
 logger = logging.getLogger(__name__)
@@ -28,14 +27,12 @@ def parse_competitor_job(job_id: int, settings: Settings | None = None) -> None:
     """
     active_settings = settings or get_settings()
     session = get_session_factory(active_settings)()
-    apify = ApifyService(active_settings)
 
     try:
-        service = ParsingService(session, settings=active_settings, apify=apify)
-        service.run_job(job_id)
+        with ParsingService(session, settings=active_settings) as service:
+            service.run_job(job_id)
     except Exception:
         # Already persisted on the job; log without a traceback of secrets.
         logger.warning("Background parsing job %s finished with an error", job_id)
     finally:
-        apify.close()
         session.close()
