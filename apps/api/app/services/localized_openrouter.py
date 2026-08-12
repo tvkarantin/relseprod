@@ -7,13 +7,12 @@ API compatibility. In English mode that field contains the English transcript.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from app.services.openrouter import (
-    JSON_SCHEMA,
-    OpenRouterAnalysisResult,
-    OpenRouterService,
-)
+from app.services.openrouter import JSON_SCHEMA, OpenRouterService
+
+if TYPE_CHECKING:
+    from app.services.openrouter import OpenRouterAnalysisResult
 
 
 SYSTEM_PROMPT_RU = """Ты — профессиональный редактор коротких вертикальных видео.
