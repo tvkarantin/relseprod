@@ -1,26 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
+import {
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  Home,
+  Lightbulb,
+  Library,
+  Menu,
+  Search,
+  Users,
+  X,
+  Youtube,
+} from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useNotifications } from '@/components/notifications/notificationContext'
 import { CreatorProfileDialog } from '@/components/profile/CreatorProfileDialog'
+import { UsageLimitsCard } from '@/components/layout/UsageLimitsCard'
+import './realsflow-shell.css'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Обзор', end: true },
-  { to: '/ideas', label: 'Для вас' },
-  { to: '/library', label: 'Библиотека' },
-  { to: '/youtube-monitoring', label: 'YouTube мониторинг' },
-  { to: '/my-reels', label: 'Мои рилсы' },
+  { to: '/dashboard', label: 'Обзор', icon: Home, end: true },
+  { to: '/ideas', label: 'Идеи', icon: Lightbulb },
+  { to: '/library', label: 'Библиотека', icon: Library },
+  { to: '/my-reels', label: 'Контент-план', icon: CalendarDays },
+  { to: '/competitors', label: 'Конкуренты', icon: Users },
+  { to: '/youtube-monitoring', label: 'YouTube', icon: Youtube },
 ] as const
-
-function IconBell() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </svg>
-  )
-}
 
 export function AppLayout() {
   const [isMenuOpen, setMenuOpen] = useState(false)
@@ -57,66 +64,107 @@ export function AppLayout() {
   }, [isNotificationsOpen])
 
   return (
-    <div className="app-shell">
-      <header className="top-nav">
-        <button
-          type="button"
-          className="mobile-menu"
-          aria-label="Открыть меню"
-          aria-expanded={isMenuOpen}
-          onClick={() => setMenuOpen(!isMenuOpen)}
-        >
-          ☰
-        </button>
-
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            <img src="/assets/overview-logo.png" alt="" />
-          </div>
-          <span className="brand-name">Reels Finder</span>
+    <div className={`rf-shell ${isMenuOpen ? 'is-menu-open' : ''}`}>
+      <aside className="rf-sidebar" aria-label="Основная навигация">
+        <div className="rf-sidebar-head">
+          <NavLink to="/dashboard" className="rf-brand" aria-label="Reels Finder — обзор">
+            ReelsFinder
+          </NavLink>
+          <button
+            type="button"
+            className="rf-sidebar-close"
+            aria-label="Закрыть меню"
+            onClick={() => setMenuOpen(false)}
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="top-nav-tabs" aria-label="Основная навигация">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={'end' in item ? item.end : false}
-              className={({ isActive }) => `top-nav-tab ${isActive ? 'active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="rf-sidebar-nav">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={'end' in item ? item.end : false}
+                className={({ isActive }) => `rf-nav-item ${isActive ? 'is-active' : ''}`}
+              >
+                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
 
-        <div className="top-nav-right">
+        <div className="rf-sidebar-spacer" />
+        <UsageLimitsCard />
+      </aside>
+
+      <button
+        type="button"
+        className="rf-sidebar-backdrop"
+        aria-label="Закрыть меню"
+        onClick={() => setMenuOpen(false)}
+      />
+
+      <header className="rf-topbar">
+        <button
+          type="button"
+          className="rf-mobile-menu"
+          aria-label="Открыть меню"
+          aria-expanded={isMenuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <Menu size={21} />
+        </button>
+
+        <label className="rf-search">
+          <Search size={19} aria-hidden="true" />
+          <input type="search" placeholder="Поиск по сценариям, идеям и ресурсам" aria-label="Поиск" />
+          <kbd>⌘K</kbd>
+        </label>
+
+        <div className="rf-topbar-actions">
           <div className="notification-anchor" ref={notificationAnchorRef}>
             <button
               type="button"
-              className={`top-nav-bell ${hasUnreadNotifications ? 'has-unread' : ''}`}
+              className={`rf-icon-button ${hasUnreadNotifications ? 'has-unread' : ''}`}
               aria-label="Уведомления"
               aria-haspopup="dialog"
               aria-expanded={isNotificationsOpen}
               onClick={() => setNotificationsOpen((open) => !open)}
             >
-              <IconBell />
+              <Bell size={20} strokeWidth={1.8} />
             </button>
             {isNotificationsOpen ? (
               <NotificationPanel onClose={() => setNotificationsOpen(false)} />
             ) : null}
           </div>
-          <button type="button" className="top-nav-avatar" onClick={() => setProfileOpen(true)} aria-label="Настроить мой стиль">
+
+          <button
+            type="button"
+            className="rf-profile-button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="Открыть профиль"
+          >
             <img
               src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85"
-              alt="Аватар пользователя"
+              alt=""
             />
+            <span>
+              <strong>Профиль</strong>
+              <small>Автор</small>
+            </span>
+            <ChevronDown size={16} aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      <main className={`main-view ${location.pathname === '/dashboard' ? 'main-view-dashboard' : ''}`}>
+      <main className="rf-main">
         <Outlet />
       </main>
+
       {isProfileOpen ? <CreatorProfileDialog onClose={() => setProfileOpen(false)} /> : null}
     </div>
   )
