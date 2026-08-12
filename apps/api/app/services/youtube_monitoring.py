@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import html
+import json
 import logging
 import re
 import time
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -14,6 +17,15 @@ from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_ORIGIN = "https://www.youtube.com"
+YOUTUBE_PUBLIC_HEADERS = {
+    "accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.9",
+    "user-agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+    ),
+}
 SCORE_WEIGHTS = {
     "relevance": 0.35,
     "velocity": 0.30,
@@ -24,30 +36,109 @@ SCORE_WEIGHTS = {
 
 
 def parse_youtube_url(value: str) -> tuple[str, str | None]:
-    """Return (kind, id/handle) without making a network request."""
+    """Return (kind, id/handle/path) without making a network request."""
     text = value.strip()
     if re.fullmatch(r"UC[\w-]{20,}", text):
         return "channel_id", text
-    short = re.match(r"https?://youtu\.be/([\\w-]+)", text, re.I)
-    if short:
-        return "video_id", short.group(1)
-    parsed = re.match(r"https?://(?:www\.)?youtube\.com/(.+)$", text, re.I)
-    if not parsed:
+    if re.fullmatch(r"@[A-Za-z0-9._-]{2,}", text):
+        return "handle", text
+
+    if text.lower().startswith(("youtube.com/", "www.youtube.com/", "m.youtube.com/", "youtu.be/")):
+        text = f"https://{text}"
+
+    parsed = urlparse(text)
+    host = parsed.netloc.lower().split(":", 1)[0]
+    if host in {"youtu.be", "www.youtu.be"}:
+        video_id = parsed.path.strip("/").split("/", 1)[0]
+        if re.fullmatch(r"[\w-]{6,}", video_id):
+            return "video_id", video_id
+        raise ValueError("Не удалось определить YouTube-видео")
+
+    if host not in {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+    }:
         raise ValueError("Введите ссылку YouTube, @username или Channel ID")
-    path = parsed.group(1).split("?", 1)[0].strip("/")
-    if path.startswith("watch/") or path.startswith("shorts/"):
-        return "video_id", path.split("/", 1)[1]
-    if path.startswith("watch"):
-        query = re.search(r"[?&]v=([\w-]{6,})", text)
-        if query:
-            return "video_id", query.group(1)
-    if path.startswith("@"):
-        return "handle", path
-    if path.startswith("channel/"):
-        return "channel_id", path.split("/", 1)[1]
-    if path.startswith("user/") or path.startswith("c/"):
-        return "handle", path.split("/", 1)[1]
+
+    path = parsed.path.strip("/")
+    if path == "watch":
+        video_id = parse_qs(parsed.query).get("v", [None])[0]
+        if video_id and re.fullmatch(r"[\w-]{6,}", video_id):
+            return "video_id", video_id
+        raise ValueError("Не удалось определить YouTube-видео")
+
+    parts = [part for part in path.split("/") if part]
+    if not parts:
+        raise ValueError("Не удалось определить YouTube-канал")
+
+    first = parts[0]
+    if first in {"shorts", "live", "embed", "v"} and len(parts) > 1:
+        video_id = parts[1]
+        if re.fullmatch(r"[\w-]{6,}", video_id):
+            return "video_id", video_id
+    if first.startswith("@"):
+        return "handle", first
+    if first == "channel" and len(parts) > 1:
+        return "channel_id", parts[1]
+    if first in {"user", "c"} and len(parts) > 1:
+        return "legacy_path", f"{first}/{parts[1]}"
     raise ValueError("Не удалось определить YouTube-канал")
+
+
+def _decode_json_text(value: str) -> str:
+    try:
+        return html.unescape(json.loads(f'"{value}"'))
+    except (json.JSONDecodeError, TypeError):
+        return html.unescape(value.replace("\\u0026", "&"))
+
+
+def _meta_content(page: str, name: str) -> str | None:
+    escaped = re.escape(name)
+    patterns = (
+        rf'<meta[^>]+(?:property|name)=["\']{escaped}["\'][^>]+content=["\']([^"\']+)["\']',
+        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']{escaped}["\']',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, page, re.I)
+        if match:
+            return html.unescape(match.group(1))
+    return None
+
+
+def _youtube_text(page: str, key: str) -> str | None:
+    escaped = re.escape(key)
+    patterns = (
+        rf'"{escaped}":"([^"\\]*(?:\\.[^"\\]*)*)"',
+        rf'"{escaped}":\{{"simpleText":"([^"\\]*(?:\\.[^"\\]*)*)"',
+        rf'"{escaped}":\{{"runs":\[\{{"text":"([^"\\]*(?:\\.[^"\\]*)*)"',
+        rf'"{escaped}".*?"label":"([^"\\]*(?:\\.[^"\\]*)*)"',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, page, re.I | re.S)
+        if match:
+            return _decode_json_text(match.group(1))
+    return None
+
+
+def _parse_public_count(value: str | None) -> int | None:
+    if not value:
+        return None
+    normalized = value.replace("\u00a0", " ").strip().upper()
+    match = re.search(r"([0-9][0-9.,]*)\s*([KMBT]?)", normalized)
+    if not match:
+        return None
+    raw, suffix = match.groups()
+    if suffix:
+        try:
+            number = float(raw.replace(",", ""))
+        except ValueError:
+            return None
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000, "T": 1_000_000_000_000}[suffix]
+        return int(round(number * multiplier))
+    digits = re.sub(r"\D", "", raw)
+    return int(digits) if digits else None
 
 
 def parse_duration(value: str | None) -> int | None:
@@ -129,13 +220,13 @@ def fallback_analysis(
 
 
 class YouTubeMonitoringService:
-    """Server-only client for YouTube Data API v3. API key is never serialized."""
+    """Server-only client for YouTube Data API v3 with a public-page fallback."""
 
     def __init__(
         self, settings: Settings | None = None, client: httpx.Client | None = None
     ) -> None:
         self.settings = settings or get_settings()
-        self.client = client or httpx.Client(timeout=20)
+        self.client = client or httpx.Client(timeout=20, follow_redirects=True)
         self._owns_client = client is None
 
     def close(self) -> None:
@@ -150,8 +241,8 @@ class YouTubeMonitoringService:
             try:
                 response = self.client.get(f"{YOUTUBE_API}/" + operation, params=params)
                 if response.status_code in (429, 500, 502, 503, 504) and attempt < 2:
-                        time.sleep(2**attempt)
-                        continue
+                    time.sleep(2**attempt)
+                    continue
                 response.raise_for_status()
                 return response.json()
             except (httpx.TimeoutException, httpx.NetworkError):
@@ -159,6 +250,83 @@ class YouTubeMonitoringService:
                     raise
                 time.sleep(2**attempt)
         raise RuntimeError("YouTube API недоступен")
+
+    def _public_channel_url(self, identifier: str) -> str:
+        text = identifier.strip()
+        kind, resolved = parse_youtube_url(text)
+        if not resolved:
+            raise ValueError("Не удалось определить YouTube-канал")
+        if kind == "handle":
+            return f"{YOUTUBE_ORIGIN}/{str(resolved).lstrip('/')}"
+        if kind == "channel_id":
+            return f"{YOUTUBE_ORIGIN}/channel/{resolved}"
+        if kind == "legacy_path":
+            return f"{YOUTUBE_ORIGIN}/{resolved}"
+        if kind != "video_id":
+            raise ValueError("Не удалось определить YouTube-канал")
+
+        video_url = f"{YOUTUBE_ORIGIN}/watch?v={resolved}"
+        response = self.client.get(
+            f"{YOUTUBE_ORIGIN}/oembed",
+            params={"url": video_url, "format": "json"},
+            headers=YOUTUBE_PUBLIC_HEADERS,
+        )
+        response.raise_for_status()
+        author_url = response.json().get("author_url")
+        if not isinstance(author_url, str) or not author_url.startswith(YOUTUBE_ORIGIN):
+            raise RuntimeError("YouTube не вернул ссылку на автора видео")
+        return author_url
+
+    def getPublicChannelSummary(self, identifier: str) -> dict[str, Any]:  # noqa: N802
+        """Read public channel totals without an API key; never fabricates unavailable values."""
+        channel_url = self._public_channel_url(identifier).rstrip("/")
+        about_url = f"{channel_url}/about"
+        response = self.client.get(
+            about_url,
+            params={"hl": "en", "gl": "US"},
+            headers=YOUTUBE_PUBLIC_HEADERS,
+        )
+        response.raise_for_status()
+        page = response.text
+
+        title = _meta_content(page, "og:title") or _youtube_text(page, "channelName")
+        avatar = _meta_content(page, "og:image")
+        channel_id_match = re.search(r'"channelId":"(UC[\w-]+)"', page)
+        channel_id = channel_id_match.group(1) if channel_id_match else None
+        canonical = _meta_content(page, "og:url") or channel_url
+        canonical_path = urlparse(canonical).path.strip("/").split("/", 1)[0]
+        custom_url = canonical_path if canonical_path.startswith("@") else None
+
+        subscribers = _parse_public_count(_youtube_text(page, "subscriberCountText"))
+        views = _parse_public_count(_youtube_text(page, "viewCountText"))
+        publications = _parse_public_count(
+            _youtube_text(page, "videoCountText") or _youtube_text(page, "videosCountText")
+        )
+
+        if not title and not channel_id:
+            raise RuntimeError("YouTube не вернул данные канала")
+
+        statistics: dict[str, str] = {}
+        if views is not None:
+            statistics["viewCount"] = str(views)
+        if subscribers is not None:
+            statistics["subscriberCount"] = str(subscribers)
+        if publications is not None:
+            statistics["videoCount"] = str(publications)
+
+        snippet: dict[str, Any] = {
+            "title": title or custom_url or channel_id or identifier,
+        }
+        if custom_url:
+            snippet["customUrl"] = custom_url
+        if avatar:
+            snippet["thumbnails"] = {"default": {"url": avatar}}
+
+        return {
+            "id": channel_id or custom_url or channel_url,
+            "snippet": snippet,
+            "statistics": statistics,
+        }
 
     def searchVideosByKeywords(  # noqa: N802
         self,
