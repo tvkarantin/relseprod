@@ -105,8 +105,8 @@ function instagramAccountFallback<T>(path: string): T | null {
   const profileMatch = identifier.match(
     /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})(?:\/|\?|$)/i,
   )
-  if (profileMatch) username = profileMatch[1]
-  username = username.split(/[/?#]/, 1)[0].replace(/^@/, '')
+  if (profileMatch?.[1]) username = profileMatch[1]
+  username = (username.split(/[/?#]/, 1)[0] ?? '').replace(/^@/, '')
 
   if (!/^[A-Za-z0-9._]{1,30}$/.test(username)) return null
 
