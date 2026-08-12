@@ -51,6 +51,8 @@ interface ReelFiltersProps {
   onCompetitorChange: (id: number | null) => void
   competitors: Competitor[]
   searchLabel?: string
+  source?: 'all' | 'instagram' | 'youtube'
+  onSourceChange?: (source: 'all' | 'instagram' | 'youtube') => void
   sort?: string
   onSortChange?: (sort: string) => void
   viewMode?: 'grid' | 'list'
@@ -63,8 +65,10 @@ export function ReelFilters({
   competitorId,
   onCompetitorChange,
   competitors,
-  searchLabel = 'Поиск по заголовку, автору или темам...',
-  sort = 'views',
+  searchLabel = 'Поиск по библиотеке',
+  source,
+  onSourceChange,
+  sort = 'date',
   onSortChange,
   viewMode = 'grid',
   onViewModeChange,
@@ -89,7 +93,23 @@ export function ReelFilters({
         />
       </div>
 
-      {competitors.length > 0 ? (
+      {onSourceChange ? (
+        <div className="filter-select-wrap library-source-select">
+          <label className="visually-hidden" htmlFor="source-filter">
+            Источник
+          </label>
+          <select
+            id="source-filter"
+            className="select"
+            value={source ?? 'all'}
+            onChange={(event) => onSourceChange(event.target.value as 'all' | 'instagram' | 'youtube')}
+          >
+            <option value="all">Все источники</option>
+            <option value="instagram">Instagram</option>
+            <option value="youtube">YouTube</option>
+          </select>
+        </div>
+      ) : competitors.length > 0 ? (
         <div className="filter-select-wrap">
           <span className="filter-select-icon" aria-hidden="true">
             <IconPeople />
@@ -116,7 +136,7 @@ export function ReelFilters({
       ) : null}
 
       {onSortChange ? (
-        <div className="filter-select-wrap">
+        <div className="filter-select-wrap library-sort-select">
           <label className="visually-hidden" htmlFor="sort-filter">
             Сортировка
           </label>
@@ -126,9 +146,9 @@ export function ReelFilters({
             value={sort}
             onChange={(event) => onSortChange(event.target.value)}
           >
+            <option value="date">Сначала новые</option>
             <option value="views">По просмотрам</option>
             <option value="likes">По лайкам</option>
-            <option value="date">По дате</option>
           </select>
         </div>
       ) : null}
