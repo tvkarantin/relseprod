@@ -1,9 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 
 from app.api.v1.monitoring import _video_model_values
 from app.services.youtube_monitoring import (
+    YouTubeMonitoringService,
     calculate_final_score,
     category_for_score,
     detect_content_type,
@@ -16,12 +18,61 @@ from app.services.youtube_monitoring import (
 
 def test_parse_youtube_urls():
     assert parse_youtube_url("https://www.youtube.com/@creator") == ("handle", "@creator")
-    assert parse_youtube_url("https://youtu.be/abc12345") if False else True
+    assert parse_youtube_url("https://youtu.be/abc12345") == ("video_id", "abc12345")
+    assert parse_youtube_url("https://www.youtube.com/watch?v=abc12345") == (
+        "video_id",
+        "abc12345",
+    )
     assert parse_youtube_url("UC1234567890123456789012") == (
         "channel_id",
         "UC1234567890123456789012",
     )
-    assert parse_youtube_url("https://youtube.com/shorts/abc12345") == ("video_id", "abc12345")
+    assert parse_youtube_url("https://youtube.com/shorts/abc12345") == (
+        "video_id",
+        "abc12345",
+    )
+    assert parse_youtube_url("https://youtube.com/live/abc12345?si=x") == (
+        "video_id",
+        "abc12345",
+    )
+    assert parse_youtube_url("https://youtube.com/c/Creator") == (
+        "legacy_path",
+        "c/Creator",
+    )
+
+
+def test_public_channel_summary_without_api_key():
+    page = """
+    <html><head>
+      <meta property="og:title" content="Creator">
+      <meta property="og:image" content="https://example.com/avatar.jpg">
+      <meta property="og:url" content="https://www.youtube.com/@creator">
+    </head><body>
+      <script>
+        {"channelId":"UC1234567890123456789012",
+         "subscriberCountText":"1.25M subscribers",
+         "viewCountText":"12,345,678 views",
+         "videoCountText":"321 videos"}
+      </script>
+    </body></html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/@creator/about"
+        return httpx.Response(200, text=page)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    service = YouTubeMonitoringService(client=client)
+    item = service.getPublicChannelSummary("https://youtube.com/@creator")
+
+    assert item["id"] == "UC1234567890123456789012"
+    assert item["snippet"]["title"] == "Creator"
+    assert item["snippet"]["customUrl"] == "@creator"
+    assert item["statistics"] == {
+        "viewCount": "12345678",
+        "subscriberCount": "1250000",
+        "videoCount": "321",
+    }
 
 
 def test_metrics_and_score_are_bounded():
