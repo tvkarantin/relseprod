@@ -1,29 +1,69 @@
-import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Send } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, KeyRound, LockKeyhole, Mail } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthProvider'
-import { getSafeNext, isAuthConfigured } from '@/auth/authClient'
+import {
+  getSafeNext,
+  isAuthConfigured,
+  requestEmailOtp,
+  verifyEmailOtp,
+} from '@/auth/authClient'
 
 export function AuthPage() {
-  const { session, isLoading, signInWithTelegram } = useAuth()
+  const navigate = useNavigate()
+  const { session, isLoading, refresh, signInWithYandex } = useAuth()
   const [searchParams] = useSearchParams()
-  const [isStarting, setStarting] = useState(false)
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
+  const [isWorking, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isLogin = searchParams.get('mode') === 'login'
   const next = useMemo(() => getSafeNext(searchParams.get('next')), [searchParams])
 
   if (!isLoading && session) return <Navigate to={next} replace />
 
-  const handleTelegram = () => {
+  const handleYandex = () => {
     try {
       setError(null)
-      setStarting(true)
-      signInWithTelegram(next)
+      setWorking(true)
+      signInWithYandex(next)
     } catch (cause) {
-      setStarting(false)
-      setError(cause instanceof Error ? cause.message : 'Не удалось открыть Telegram.')
+      setWorking(false)
+      setError(cause instanceof Error ? cause.message : 'Не удалось открыть Яндекс.')
     }
+  }
+
+  const handleEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isWorking) return
+
+    setError(null)
+    setWorking(true)
+
+    try {
+      if (!emailSent) {
+        await requestEmailOtp(email)
+        setEmailSent(true)
+        setCode('')
+        return
+      }
+
+      await verifyEmailOtp(email, code)
+      await refresh()
+      navigate(next, { replace: true })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось выполнить вход.')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const changeEmail = () => {
+    setEmailSent(false)
+    setCode('')
+    setError(null)
   }
 
   return (
@@ -47,52 +87,87 @@ export function AuthPage() {
             <h1 id="auth-title">{isLogin ? 'Войти в аккаунт' : 'Создать аккаунт'}</h1>
             <p>
               {isLogin
-                ? 'Продолжи тем способом, которым регистрировался.'
-                : 'Сохраняй идеи, сценарии и подборки в одном рабочем пространстве.'}
+                ? 'Войди через Яндекс или получи одноразовый код на почту.'
+                : 'Регистрация без пароля — через Яндекс или одноразовый код на почту.'}
             </p>
           </div>
 
           <button
-            className="auth-provider auth-provider-primary"
+            className="auth-provider"
             type="button"
-            onClick={handleTelegram}
-            disabled={isStarting || isLoading}
+            onClick={handleYandex}
+            disabled={isWorking || isLoading}
           >
-            <span className="auth-provider-icon auth-telegram-icon"><Send size={18} /></span>
-            <span>{isStarting ? 'Открываем Telegram…' : 'Продолжить через Telegram'}</span>
-            <ArrowRight className="auth-provider-arrow" size={17} />
-          </button>
-
-          <button className="auth-provider" type="button" disabled aria-disabled="true">
             <span className="auth-provider-icon auth-yandex-icon">Я</span>
-            <span>Продолжить через Яндекс</span>
-            <small>скоро</small>
+            <span>{isWorking ? 'Открываем…' : 'Продолжить через Яндекс'}</span>
+            <ArrowRight className="auth-provider-arrow" size={17} />
           </button>
 
           <div className="auth-divider"><span>или</span></div>
 
-          <div className="auth-email-preview" aria-disabled="true">
-            <label htmlFor="auth-email">Почта</label>
+          <form className="auth-email-preview" onSubmit={handleEmail}>
+            <div className="auth-email-label-row">
+              <label htmlFor="auth-email">Почта</label>
+              {emailSent ? (
+                <button className="auth-email-change" type="button" onClick={changeEmail} disabled={isWorking}>
+                  Изменить
+                </button>
+              ) : null}
+            </div>
+
             <div className="auth-email-field">
               <Mail size={17} />
-              <input id="auth-email" type="email" placeholder="name@example.com" disabled />
+              <input
+                id="auth-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                disabled={emailSent || isWorking}
+                required
+              />
             </div>
-            <button type="button" disabled>
-              Продолжить по почте
-              <span>скоро</span>
+
+            {emailSent ? (
+              <>
+                <p className="auth-email-hint">Отправили код на <strong>{email}</strong></p>
+                <div className="auth-email-field auth-otp-field">
+                  <KeyRound size={17} />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="6-значный код"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    disabled={isWorking}
+                    autoFocus
+                    required
+                  />
+                </div>
+              </>
+            ) : null}
+
+            <button type="submit" disabled={isWorking || isLoading || !email.trim() || (emailSent && code.length !== 6)}>
+              {isWorking
+                ? 'Подождите…'
+                : emailSent
+                  ? 'Подтвердить код'
+                  : 'Получить код'}
             </button>
-          </div>
+          </form>
 
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
           {!isAuthConfigured ? (
-            <p className="auth-note">
-              Telegram-кнопка готова, но для рабочего входа нужно добавить настройки Supabase в окружение.
-            </p>
+            <p className="auth-note">Для рабочего входа нужно добавить публичные настройки Supabase в окружение приложения.</p>
           ) : null}
 
           <div className="auth-security">
             <LockKeyhole size={15} />
-            <span>Пароль от Telegram мы не получаем и не храним.</span>
+            <span>Пароль не нужен. Код одноразовый и используется только для подтверждения почты.</span>
           </div>
 
           <p className="auth-switch">
