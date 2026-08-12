@@ -21,7 +21,7 @@ jobs:
       - name: Install backend dependencies
         run: python -m pip install -e '.[dev]'
       - name: Ruff
-        run: python -m ruff check .
+        run: python -m ruff check . --output-format=github
       - name: Pytest
         run: python -m pytest
 
