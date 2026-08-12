@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, ge=1, le=65535)
 
     database_url: str = "sqlite:///./data/relseprod.db"
+    # Vercel Marketplace (Supabase) injects POSTGRES_URL automatically when
+    # the resource is connected to the project. DATABASE_URL remains the local
+    # development override and takes precedence when it is explicitly non-SQLite.
+    postgres_url: str = ""
 
     youtube_api_key: str = ""
     youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
@@ -130,7 +134,7 @@ class Settings(BaseSettings):
 
     @property
     def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
+        return self.sqlalchemy_database_url.startswith("sqlite")
 
     @property
     def apify_configured(self) -> bool:
@@ -153,12 +157,22 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_url(self) -> str:
-        """Database URL with relative SQLite paths resolved against ``apps/api``.
+        """Return the SQLAlchemy-ready database URL.
 
-        This makes ``sqlite:///./data/relseprod.db`` behave identically no matter
-        which working directory uvicorn, alembic or pytest were started from.
+        Local development keeps using DATABASE_URL/SQLite. On Vercel, connecting
+        a Supabase Marketplace resource injects POSTGRES_URL, which is used as a
+        fallback. PostgreSQL URLs are normalized to psycopg 3 explicitly.
         """
-        url = self.database_url
+        url = self.database_url.strip()
+        postgres_url = self.postgres_url.strip()
+        if (not url or url.startswith("sqlite")) and postgres_url:
+            url = postgres_url
+
+        if url.startswith("postgres://"):
+            return f"postgresql+psycopg://{url[len('postgres://') :]}"
+        if url.startswith("postgresql://"):
+            return f"postgresql+psycopg://{url[len('postgresql://') :]}"
+
         prefix = "sqlite:///"
         if not url.startswith(prefix):
             return url
