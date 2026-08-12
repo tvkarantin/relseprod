@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from app.models.reel_analysis import ReelAnalysis
 from app.services.reel_analysis import ReelAnalysisService
+
+if TYPE_CHECKING:
+    from app.models.reel_analysis import ReelAnalysis
 
 
 class LocalizedReelAnalysisService(ReelAnalysisService):
