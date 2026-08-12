@@ -135,8 +135,13 @@ def _parse_public_count(value: str | None) -> int | None:
             number = float(raw.replace(",", ""))
         except ValueError:
             return None
-        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000, "T": 1_000_000_000_000}[suffix]
-        return int(round(number * multiplier))
+        multipliers = {
+            "K": 1_000,
+            "M": 1_000_000,
+            "B": 1_000_000_000,
+            "T": 1_000_000_000_000,
+        }
+        return round(number * multipliers[suffix])
     digits = re.sub(r"\D", "", raw)
     return int(digits) if digits else None
 
