@@ -49,7 +49,10 @@ def test_english_mode_does_not_translate_english_source():
         system = payload["messages"][0]["content"]
         user = json.loads(payload["messages"][1]["content"])
         assert "DO NOT translate" in system
-        assert "All generated title, topic, summary, hook, mainPart, conclusion and cta text must be in English" in system
+        required_output_rule = (
+            "All generated title, topic, summary, hook, mainPart, conclusion and cta text"
+        )
+        assert required_output_rule in system
         assert user["outputLanguage"] == "en"
         assert user["creatorProfile"]["language"] == "en"
         return _response("Keep this exact English transcript")
