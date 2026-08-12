@@ -11,6 +11,8 @@ const ReelsPage = lazy(() => import('@/pages/ReelsPage').then((module) => ({ def
 const YouTubeMonitoringPage = lazy(() => import('@/pages/YouTubeMonitoringPage').then((module) => ({ default: module.YouTubeMonitoringPage })))
 const ReelDetailsPage = lazy(() => import('@/pages/ReelDetailsPage').then((module) => ({ default: module.ReelDetailsPage })))
 const MyReelsPage = lazy(() => import('@/pages/MyReelsPage').then((module) => ({ default: module.MyReelsPage })))
+const ResourcesPage = lazy(() => import('@/pages/ResourcesPage').then((module) => ({ default: module.ResourcesPage })))
+const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage').then((module) => ({ default: module.SubscriptionPage })))
 const AiDashboardPage = lazy(() => import('@/features/ai-dashboard').then((module) => ({ default: module.AiDashboardPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
@@ -28,6 +30,8 @@ export function App() {
           <Route path="youtube-monitoring" element={<YouTubeMonitoringPage />} />
           <Route path="reels/:reelId" element={<ReelDetailsPage />} />
           <Route path="my-reels" element={<MyReelsPage />} />
+          <Route path="resources" element={<ResourcesPage />} />
+          <Route path="subscription" element={<SubscriptionPage />} />
           <Route path="ai-dashboard" element={<AiDashboardPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

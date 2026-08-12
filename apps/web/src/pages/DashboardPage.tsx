@@ -1,198 +1,94 @@
 import { useQuery } from '@tanstack/react-query'
+import { BookOpen, Clapperboard, FileText, Lightbulb, Plus, Send, TrendingUp } from 'lucide-react'
+import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { queryKeys } from '@/api/queryKeys'
 import { fetchDashboardSummary } from '@/api/reels'
 import { formatNumber } from '@/utils/format'
+import './dashboard-realsflow.css'
 
-const CARDS = [
-  {
-    key: 'competitorsCount',
-    label: 'Конкуренты',
-    icon: '/assets/overview-icon-competitors.png',
-    line: '2,35 20,38 38,30 56,34 74,16 92,25 110,29',
-  },
-  {
-    key: 'reelsCount',
-    label: 'Импортировано рилсов',
-    icon: '/assets/overview-icon-imported.png',
-    line: '2,37 20,32 38,30 55,19 73,29 92,9 110,15',
-  },
-  {
-    key: 'ideasCount',
-    label: 'Идеи',
-    icon: '/assets/overview-icon-ideas.png',
-    line: '2,37 20,31 38,35 55,21 73,30 91,8 110,14',
-  },
-  {
-    key: 'scriptsCount',
-    label: 'Сценарии',
-    icon: '/assets/overview-icon-scripts.png',
-    line: '2,37 20,29 38,30 55,15 73,23 92,9 110,7',
-  },
-  {
-    key: 'readyCount',
-    label: 'Готово к съёмке',
-    icon: '/assets/overview-icon-ready.png',
-    line: '2,37 20,31 38,35 55,19 73,29 91,6 110,13',
-  },
-  {
-    key: 'activeJobsCount',
-    label: 'Активные импорты',
-    icon: '/assets/overview-icon-imports.png',
-    line: '2,37 20,31 38,34 55,22 73,29 91,7 110,14',
-  },
-] as const
+const RECENT = [
+  { title: 'Три ошибки при съёмке рилс', date: 'Обновлён 25 мая', status: 'Черновик', image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=700&q=85' },
+  { title: 'Как снимать видео за 5 минут', date: 'Обновлён 24 мая', status: 'Готов к съёмке', image: 'https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=85' },
+  { title: 'Мой сетап для съёмки дома', date: 'Обновлён 22 мая', status: 'Черновик', image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=700&q=85' },
+  { title: 'Свет и тени: простой приём', date: 'Опубликовано 20 мая', status: 'Опубликовано', image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=700&q=85' },
+]
 
-const QUICK_ACTIONS = [
-  {
-    to: '/library?import=competitor',
-    title: 'Добавить конкурента',
-    description: 'Добавьте Instagram-аккаунт конкурента и импортируйте его рилсы в пару кликов.',
-    image: '/assets/overview-add-competitor.png',
-    className: 'is-competitor',
-  },
-  {
-    to: '/ideas',
-    title: 'Открыть библиотеку',
-    description: 'Просматривайте, фильтруйте и анализируйте рилсы конкурентов в единой библиотеке.',
-    image: '/assets/overview-library.png',
-    className: 'is-library',
-  },
-  {
-    to: '/my-reels',
-    title: 'Мои рилсы',
-    description: 'Управляйте своими сценариями, отслеживайте статусы и готовьтесь к съёмке контента.',
-    image: '/assets/overview-my-reels.png',
-    className: 'is-my-reels',
-  },
-] as const
-
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 12h13M13 7l5 5-5 5" />
-    </svg>
-  )
+function TiltCard({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const onMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const el = event.currentTarget
+    const rect = el.getBoundingClientRect()
+    const x = (event.clientX - rect.left) / rect.width - 0.5
+    const y = (event.clientY - rect.top) / rect.height - 0.5
+    el.style.setProperty('--tilt-x', `${(-y * 5).toFixed(2)}deg`)
+    el.style.setProperty('--tilt-y', `${(x * 7).toFixed(2)}deg`)
+    el.style.setProperty('--glow-x', `${((x + 0.5) * 100).toFixed(1)}%`)
+    el.style.setProperty('--glow-y', `${((y + 0.5) * 100).toFixed(1)}%`)
+  }
+  const onLeave = (event: ReactPointerEvent<HTMLElement>) => {
+    event.currentTarget.style.setProperty('--tilt-x', '0deg')
+    event.currentTarget.style.setProperty('--tilt-y', '0deg')
+  }
+  return <article className={`rf-tilt-card ${className}`} onPointerMove={onMove} onPointerLeave={onLeave}>{children}</article>
 }
 
-function ActivityIcon({ kind }: { kind: 'complete' | 'search' | 'saved' }) {
-  if (kind === 'complete') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="8" />
-        <path d="m8.5 12 2.2 2.2 4.8-5" />
-      </svg>
-    )
-  }
-
-  if (kind === 'search') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="10.5" cy="10.5" r="6.5" />
-        <path d="m15.5 15.5 4 4" />
-      </svg>
-    )
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 3h7l4 4v14H7z" />
-      <path d="M14 3v5h5M10 12h5M10 16h4" />
-    </svg>
-  )
+function TypeName({ value }: { value: string }) {
+  const [visible, setVisible] = useState('')
+  useEffect(() => {
+    let index = 0
+    setVisible('')
+    const timer = window.setInterval(() => {
+      index += 1
+      setVisible(value.slice(0, index))
+      if (index >= value.length) window.clearInterval(timer)
+    }, 120)
+    return () => window.clearInterval(timer)
+  }, [value])
+  return <span className="rf-typed-name">{visible}<i aria-hidden="true" /></span>
 }
 
 export function DashboardPage() {
-  const summaryQuery = useQuery({
-    queryKey: queryKeys.dashboard.summary(),
-    queryFn: ({ signal }) => fetchDashboardSummary(signal),
-  })
+  const summaryQuery = useQuery({ queryKey: queryKeys.dashboard.summary(), queryFn: ({ signal }) => fetchDashboardSummary(signal) })
+  const summary = summaryQuery.data
+  const stats = useMemo(() => [
+    { label: 'Новые идеи', value: summary?.ideasCount ?? 16, note: '+8 за неделю', icon: Lightbulb },
+    { label: 'Сценарии', value: summary?.scriptsCount ?? 24, note: 'В работе', icon: FileText },
+    { label: 'Готово к съёмке', value: summary?.readyCount ?? 7, note: 'На этой неделе', icon: Clapperboard },
+    { label: 'Опубликовано', value: Math.max(32, (summary?.reelsCount ?? 0) - (summary?.ideasCount ?? 0)), note: '+12 за неделю', icon: Send },
+  ], [summary])
 
   return (
-    <div className="page-content dashboard-page">
-      <section className="dashboard-summary" aria-label="Сводка">
-        {CARDS.map((card) => (
-          <article className="dashboard-stat-card" key={card.key}>
-            <div className="dashboard-stat-icon" aria-hidden="true">
-              <img src={card.icon} alt="" />
-            </div>
-            <span>{card.label}</span>
-            <strong>
-              {summaryQuery.isLoading
-                ? '—'
-                : formatNumber(summaryQuery.data?.[card.key] ?? 0)}
-            </strong>
-            <svg className="dashboard-sparkline" viewBox="0 0 112 42" preserveAspectRatio="none" aria-hidden="true">
-              <polyline points={card.line} />
-            </svg>
-          </article>
+    <div className="rf-dashboard-page">
+      <section className="rf-hero">
+        <div className="rf-hero-copy">
+          <div className="rf-day-chip"><span>☀</span><strong>Пн, 26 мая</strong><i />Хорошего дня!</div>
+          <h1>Доброе утро,<br /><TypeName value="Андрей" /></h1>
+          <p>RealsFlow помогает управлять идеями, сценариями<br className="rf-desktop-break" /> и контентом — от задумки до публикации.</p>
+          <div className="rf-hero-actions">
+            <Link to="/ideas" className="rf-primary-button"><Plus size={19} /> Создать сценарий</Link>
+            <Link to="/library" className="rf-secondary-button"><BookOpen size={19} /> Открыть библиотеку</Link>
+          </div>
+        </div>
+
+        <div className="rf-story-stack" aria-label="Анимированная схема от идеи к рилсу">
+          <div className="rf-orbit-line" />
+          <div className="rf-story-card rf-story-card-back"><span>контент</span></div>
+          <div className="rf-story-card rf-story-card-mid"><span>сценарий</span></div>
+          <div className="rf-story-card rf-story-card-front"><div className="rf-play">▶</div><em>Идея</em><b>→ сценарий</b><b>→ рилс</b></div>
+          <div className="rf-spark">✦</div>
+        </div>
+      </section>
+
+      <section className="rf-stat-grid" aria-label="Сводка">
+        {stats.map(({ label, value, note, icon: Icon }) => (
+          <TiltCard key={label} className="rf-stat-card"><div className="rf-stat-top"><Icon size={21} /><span>{label}</span></div><strong>{summaryQuery.isLoading ? '—' : formatNumber(value)}</strong><small>{note}{note.startsWith('+') ? <TrendingUp size={14} /> : null}</small></TiltCard>
         ))}
       </section>
 
-      <section className="dashboard-section" aria-labelledby="quick-actions-title">
-        <h2 id="quick-actions-title">Быстрые действия</h2>
-        <div className="dashboard-action-grid">
-          {QUICK_ACTIONS.map((action) => (
-            <Link
-              to={action.to}
-              className={`dashboard-action-card ${action.className}`}
-              key={action.title}
-            >
-              <div className="dashboard-action-art" aria-hidden="true">
-                <img src={action.image} alt="" />
-              </div>
-              <div className="dashboard-action-copy">
-                <strong>{action.title}</strong>
-                <p>{action.description}</p>
-              </div>
-              <span className="dashboard-action-arrow" aria-hidden="true">
-                <ArrowIcon />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="dashboard-section dashboard-activity-section" aria-labelledby="activity-title">
-        <h2 id="activity-title">Последняя активность</h2>
-        <div className="dashboard-activity">
-          <article className="dashboard-activity-item">
-            <span className="dashboard-activity-icon"><ActivityIcon kind="complete" /></span>
-            <div className="dashboard-activity-copy">
-              <div><strong>Импорт завершён</strong><time>только что</time></div>
-              <p>@nick_saraev: добавлено 20 рилсов</p>
-            </div>
-          </article>
-          <article className="dashboard-activity-item">
-            <span className="dashboard-activity-icon"><ActivityIcon kind="search" /></span>
-            <div className="dashboard-activity-copy">
-              <div><strong>Новые рилсы найдены</strong><time>5 мин назад</time></div>
-              <p>У конкурента @ai.creators найдено 12 новых рилсов</p>
-            </div>
-          </article>
-          <article className="dashboard-activity-item">
-            <span className="dashboard-activity-icon"><ActivityIcon kind="saved" /></span>
-            <div className="dashboard-activity-copy">
-              <div><strong>Сценарий сохранён</strong><time>12 мин назад</time></div>
-              <p>Черновик для reels “AI-инструменты” успешно сохранён</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <footer className="dashboard-status">
-        <span className="dashboard-updated" aria-hidden="true">⟳</span>
-        <span>Обновлено сегодня в 12:30</span>
-        <i aria-hidden="true" />
-        <span className="dashboard-saved-check" aria-hidden="true">✓</span>
-        <span>Все данные сохранены</span>
-        {summaryQuery.isError ? (
-          <button type="button" onClick={() => void summaryQuery.refetch()}>
-            Не удалось обновить · Повторить
-          </button>
-        ) : null}
-      </footer>
+      <section className="rf-recents"><div className="rf-section-head"><h2>Недавние сценарии</h2><Link to="/my-reels">Смотреть все →</Link></div><div className="rf-recent-grid">
+        {RECENT.map((item) => <TiltCard key={item.title} className="rf-recent-card"><div className="rf-recent-image"><img src={item.image} alt="" /><span className={`rf-status rf-status-${item.status === 'Опубликовано' ? 'green' : item.status === 'Готов к съёмке' ? 'yellow' : 'cream'}`}>{item.status}</span></div><div className="rf-recent-copy"><strong>{item.title}</strong><small>{item.date}</small></div></TiltCard>)}
+      </div></section>
     </div>
   )
 }
