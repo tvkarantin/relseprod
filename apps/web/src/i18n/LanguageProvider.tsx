@@ -16,6 +16,7 @@ import {
   type CreatorProfile,
 } from '@/types/creatorProfile'
 import { translateUiText } from './translations'
+import { translateSupplement } from './translationsSupplement'
 
 interface LanguageContextValue {
   language: AppLanguage
@@ -29,6 +30,11 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 const textOriginals = new WeakMap<Text, string>()
 const attributeOriginals = new WeakMap<Element, Map<string, string>>()
 const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'aria-label', 'title'] as const
+type TranslatableAttribute = (typeof TRANSLATABLE_ATTRIBUTES)[number]
+
+function translateText(value: string, language: AppLanguage): string {
+  return translateSupplement(translateUiText(value, language), language)
+}
 
 function getTextOriginal(node: Text, language: AppLanguage): string {
   const current = node.nodeValue ?? ''
@@ -38,11 +44,11 @@ function getTextOriginal(node: Text, language: AppLanguage): string {
     return current
   }
 
-  const previousEnglish = translateUiText(previous, 'en')
+  const previousEnglish = translateText(previous, 'en')
   const isReactSourceUpdate =
     current !== previous &&
     current !== previousEnglish &&
-    (language === 'ru' || translateUiText(current, 'en') !== current || /[А-Яа-яЁё]/.test(current))
+    (language === 'ru' || translateText(current, 'en') !== current || /[А-Яа-яЁё]/.test(current))
 
   if (isReactSourceUpdate) {
     textOriginals.set(node, current)
@@ -54,7 +60,7 @@ function getTextOriginal(node: Text, language: AppLanguage): string {
 
 function localizeTextNode(node: Text, language: AppLanguage): void {
   const original = getTextOriginal(node, language)
-  const next = translateUiText(original, language)
+  const next = translateText(original, language)
   if (node.nodeValue !== next) node.nodeValue = next
 }
 
@@ -73,14 +79,14 @@ function localizeAttribute(element: Element, attribute: string, language: AppLan
   if (previous === undefined) {
     originals.set(attribute, current)
   } else {
-    const previousEnglish = translateUiText(previous, 'en')
+    const previousEnglish = translateText(previous, 'en')
     if (current !== previous && current !== previousEnglish) {
       original = current
       originals.set(attribute, current)
     }
   }
 
-  const next = translateUiText(original, language)
+  const next = translateText(original, language)
   if (current !== next) element.setAttribute(attribute, next)
 }
 
@@ -146,8 +152,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           continue
         }
         if (mutation.type === 'attributes') {
-          const attribute = mutation.attributeName
-          if (attribute && TRANSLATABLE_ATTRIBUTES.includes(attribute as never)) {
+          const attribute = mutation.attributeName as TranslatableAttribute | null
+          if (attribute && TRANSLATABLE_ATTRIBUTES.includes(attribute)) {
             localizeAttribute(mutation.target as Element, attribute, language)
           }
           continue
@@ -172,7 +178,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     () => ({
       language,
       locale: language === 'en' ? 'en-US' : 'ru-RU',
-      t: (text: string) => translateUiText(text, language),
+      t: (text: string) => translateText(text, language),
       setLanguage: (nextLanguage: AppLanguage) => {
         const profile = loadCreatorProfile()
         saveCreatorProfile({ ...profile, language: nextLanguage })
