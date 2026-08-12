@@ -12,7 +12,7 @@ from app.models.enums import ReelAnalysisStatus
 from app.models.reel_analysis import ReelAnalysis
 from app.schemas.analysis import ReelAnalysisSegment, ReelAnalysisUsage, ReelAnalysisView
 from app.schemas.reel import CreatorProfile
-from app.services.reel_analysis import ReelAnalysisService
+from app.services.localized_reel_analysis import LocalizedReelAnalysisService
 from app.tasks.analyze_reel import analyze_reel_task
 
 router = APIRouter(prefix="/reels/{reel_id}/analysis", tags=["analysis"])
@@ -93,15 +93,10 @@ def start_analysis(
     profile: CreatorProfile | None = None,
 ) -> Response:
     creator_profile = _profile_payload(profile)
-    service = ReelAnalysisService(db, settings)
+    service = LocalizedReelAnalysisService(db, settings)
     analysis = service.create_or_retry_analysis(reel_id, creator_profile)
 
-    background_tasks.add_task(
-        analyze_reel_task,
-        analysis.id,
-        settings,
-        creator_profile,
-    )
+    background_tasks.add_task(analyze_reel_task, analysis.id, settings, creator_profile)
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
@@ -117,7 +112,7 @@ def retry_analysis(
     background_tasks: BackgroundTasks,
     profile: CreatorProfile | None = None,
 ) -> Response:
-    service = ReelAnalysisService(db, settings)
+    service = LocalizedReelAnalysisService(db, settings)
 
     analysis = service.get_analysis_by_reel(reel_id)
     if not analysis or analysis.status != ReelAnalysisStatus.FAILED:
@@ -125,12 +120,7 @@ def retry_analysis(
 
     creator_profile = _profile_payload(profile)
     analysis = service.create_or_retry_analysis(reel_id, creator_profile)
-    background_tasks.add_task(
-        analyze_reel_task,
-        analysis.id,
-        settings,
-        creator_profile,
-    )
+    background_tasks.add_task(analyze_reel_task, analysis.id, settings, creator_profile)
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
@@ -143,7 +133,7 @@ def get_analysis(
     reel_id: ReelId,
     db: Annotated[Session, Depends(DbSession)],
 ) -> ReelAnalysisView | None:
-    service = ReelAnalysisService(db)
+    service = LocalizedReelAnalysisService(db)
     analysis = service.get_analysis_by_reel(reel_id)
     if not analysis:
         return None
