@@ -11,6 +11,7 @@ from app.core.errors import InvalidAnalysisStateError
 from app.models.enums import ReelAnalysisStatus
 from app.models.reel_analysis import ReelAnalysis
 from app.schemas.analysis import ReelAnalysisSegment, ReelAnalysisUsage, ReelAnalysisView
+from app.schemas.reel import CreatorProfile
 from app.services.reel_analysis import ReelAnalysisService
 from app.tasks.analyze_reel import analyze_reel_task
 
@@ -75,6 +76,10 @@ def _to_view(a: ReelAnalysis) -> ReelAnalysisView:
     )
 
 
+def _profile_payload(profile: CreatorProfile | None) -> dict[str, Any] | None:
+    return profile.model_dump(mode="json") if profile is not None else None
+
+
 @router.post(
     "",
     status_code=status.HTTP_202_ACCEPTED,
@@ -85,11 +90,18 @@ def start_analysis(
     db: Annotated[Session, Depends(DbSession)],
     settings: Annotated[Settings, Depends(get_settings)],
     background_tasks: BackgroundTasks,
+    profile: CreatorProfile | None = None,
 ) -> Response:
+    creator_profile = _profile_payload(profile)
     service = ReelAnalysisService(db, settings)
-    analysis = service.create_or_retry_analysis(reel_id)
+    analysis = service.create_or_retry_analysis(reel_id, creator_profile)
 
-    background_tasks.add_task(analyze_reel_task, analysis.id, settings)
+    background_tasks.add_task(
+        analyze_reel_task,
+        analysis.id,
+        settings,
+        creator_profile,
+    )
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
@@ -103,16 +115,22 @@ def retry_analysis(
     db: Annotated[Session, Depends(DbSession)],
     settings: Annotated[Settings, Depends(get_settings)],
     background_tasks: BackgroundTasks,
+    profile: CreatorProfile | None = None,
 ) -> Response:
     service = ReelAnalysisService(db, settings)
 
-    # ensure it was failed
     analysis = service.get_analysis_by_reel(reel_id)
     if not analysis or analysis.status != ReelAnalysisStatus.FAILED:
         raise InvalidAnalysisStateError("Повторный запуск разрешен только для неудачного анализа")
 
-    analysis = service.create_or_retry_analysis(reel_id)
-    background_tasks.add_task(analyze_reel_task, analysis.id, settings)
+    creator_profile = _profile_payload(profile)
+    analysis = service.create_or_retry_analysis(reel_id, creator_profile)
+    background_tasks.add_task(
+        analyze_reel_task,
+        analysis.id,
+        settings,
+        creator_profile,
+    )
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
