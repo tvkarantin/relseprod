@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -29,6 +29,7 @@ class ViralScore(APIModel):
 class CreatorProfile(APIModel):
     """Personal style constraints used by the automatic rewrite."""
 
+    language: Literal["ru", "en"] = "ru"
     niche: str = Field(default="", max_length=200)
     target_audience: str = Field(default="", max_length=500)
     product: str = Field(default="", max_length=500)
