@@ -21,7 +21,7 @@ export function AuthCallbackPage() {
         navigate(takeAuthNext(), { replace: true })
       })
       .catch((cause) => {
-        setError(cause instanceof Error ? cause.message : 'Не удалось завершить вход через Telegram.')
+        setError(cause instanceof Error ? cause.message : 'Не удалось завершить вход через Яндекс.')
       })
   }, [navigate, refresh])
 
