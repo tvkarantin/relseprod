@@ -1,9 +1,9 @@
-"""Orchestration of the reels import pipeline.
+"""Orchestration of the Instagram Reels import pipeline.
 
-``ParsingService`` owns the long-running work: it starts the Apify Actor, polls
-it, downloads the dataset, normalizes the items and hands them to the importer.
-It is deliberately independent of HTTP so it can be called from a background
-task and from tests without a client.
+``ParsingService`` owns the long-running work: it fetches Reel metadata from the
+configured primary source, falls back to Apify when Instaloader fails, normalizes
+the items and hands them to the importer. It is deliberately independent of HTTP
+so it can be called from a background task and from tests without a client.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from app.repositories.jobs import ParsingJobRepository
 from app.repositories.reels import ReelRepository
 from app.services.apify import ApifyService
 from app.services.apify_input import build_actor_input
+from app.services.instaloader_service import InstaloaderService
 from app.services.reel_importer import ImportResult, ReelImporter
 from app.services.reel_normalizer import normalize_apify_items
 from app.services.reel_selector import select_reels_for_import
@@ -201,7 +202,41 @@ class ParsingService:
         return result
 
     def _fetch_items(self, job: ParsingJob, competitor: Competitor) -> list[dict[str, object]]:
-        """Run the Actor and download its dataset."""
+        """Fetch Reels from the free primary source, then fall back to Apify."""
+        if self.settings.instagram_primary_provider == "instaloader":
+            self.jobs.set_progress(job, Progress.ACTOR_STARTING)
+            self.session.commit()
+
+            try:
+                with InstaloaderService(self.settings) as primary:
+                    items = primary.fetch_profile_reels(
+                        competitor.instagram_username,
+                        limit=self.settings.apify_results_limit,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "Instaloader failed for %s (%s); trying Apify fallback",
+                    competitor.instagram_username,
+                    type(exc).__name__,
+                )
+                if not self.settings.apify_configured:
+                    raise
+            else:
+                self.jobs.set_progress(job, Progress.DATASET_FETCHED)
+                self.session.commit()
+                logger.info(
+                    "Instaloader fetched %s items for job %s",
+                    len(items),
+                    job.id,
+                )
+                return items
+
+        return self._fetch_items_from_apify(job, competitor)
+
+    def _fetch_items_from_apify(
+        self, job: ParsingJob, competitor: Competitor
+    ) -> list[dict[str, object]]:
+        """Run the configured Apify Actor and download its dataset."""
         self.apify.ensure_configured()
 
         actor_input = build_actor_input(
@@ -235,13 +270,13 @@ class ParsingService:
         )
         self.jobs.set_progress(job, Progress.DATASET_FETCHED)
         self.session.commit()
-        logger.info("Dataset fetched for job %s: %s items", job.id, len(items))
+        logger.info("Apify dataset fetched for job %s: %s items", job.id, len(items))
         return items
 
     def _store_items(
         self, job: ParsingJob, competitor: Competitor, items: list[dict[str, object]]
     ) -> ImportResult:
-        """Normalize and persist dataset items, then finish the job."""
+        """Normalize and persist fetched items, then finish the job."""
         self.jobs.set_progress(job, Progress.IMPORTING)
         self.session.commit()
 
@@ -296,11 +331,7 @@ class ParsingService:
         return result
 
     def _fail(self, job: ParsingJob, competitor: Competitor, exc: Exception) -> None:
-        """Persist a failure in its own transaction.
-
-        Only safe text reaches the database: Apify errors carry a curated
-        message, anything else becomes a generic one.
-        """
+        """Persist a failure in its own transaction."""
         message = exc.message if isinstance(exc, ApifyError | AppError) else GENERIC_FAILURE_MESSAGE
 
         self.session.rollback()
