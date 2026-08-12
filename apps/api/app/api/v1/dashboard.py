@@ -124,6 +124,36 @@ def _instagram_summary(db: Session, settings: Any, username: str) -> dict[str, A
         service.close()
 
 
+def _youtube_public_or_api_item(
+    service: YouTubeMonitoringService,
+    settings: Any,
+    identifier: str,
+) -> dict[str, Any]:
+    """Prefer the official API, then use public channel HTML when no key is available."""
+    api_error: Exception | None = None
+    if settings.youtube_api_key:
+        try:
+            return _youtube_channel_item(service, identifier)
+        except HTTPException as exc:
+            if exc.status_code == 422:
+                raise
+            api_error = exc
+        except Exception as exc:
+            api_error = exc
+
+    try:
+        return service.getPublicChannelSummary(identifier)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Введите ссылку YouTube, @handle или Channel ID",
+        ) from exc
+    except Exception as exc:
+        if api_error is not None:
+            raise RuntimeError("YouTube API and public fallback both failed") from exc
+        raise
+
+
 @router.get("/social-account", summary="Публичная статистика подключённого аккаунта")
 def social_account(
     request: Request,
@@ -164,7 +194,7 @@ def social_account(
 
     service = YouTubeMonitoringService(settings)
     try:
-        item = _youtube_channel_item(service, identifier)
+        item = _youtube_public_or_api_item(service, settings, identifier)
     except HTTPException:
         raise
     except Exception as exc:
