@@ -11,3 +11,23 @@
   border-color: transparent;
   box-shadow: none;
 }
+
+/* The import dialog is portalled outside .rf-shell. Reset the legacy dark
+   color-scheme/base-select styling so the category field stays aligned and
+   its native dropdown matches the warm interface instead of turning green. */
+.import-dialog {
+  color-scheme: light;
+}
+
+.import-dialog .import-control select {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  color: #40372f;
+  background: transparent;
+  line-height: normal;
+}
+
+.import-dialog .import-control select option {
+  color: #302820;
+  background: #fffdf9;
+}
