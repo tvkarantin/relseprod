@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   beginTelegramAuth,
@@ -21,10 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [isLoading, setLoading] = useState(true)
 
-  const refresh = async () => {
-    const nextSession = await getAuthSession()
-    setSession(nextSession)
-  }
+  const refresh = useCallback(async () => {
+    try {
+      const nextSession = await getAuthSession()
+      setSession(nextSession)
+    } catch {
+      setSession(null)
+    }
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await signOutAuth()
+    setSession(null)
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -33,14 +42,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((nextSession) => {
         if (alive) setSession(nextSession)
       })
+      .catch(() => {
+        if (alive) setSession(null)
+      })
       .finally(() => {
         if (alive) setLoading(false)
       })
 
     const syncAcrossTabs = () => {
-      void getAuthSession().then((nextSession) => {
-        if (alive) setSession(nextSession)
-      })
+      void getAuthSession()
+        .then((nextSession) => {
+          if (alive) setSession(nextSession)
+        })
+        .catch(() => {
+          if (alive) setSession(null)
+        })
     }
     window.addEventListener('storage', syncAcrossTabs)
 
@@ -56,12 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       refresh,
       signInWithTelegram: beginTelegramAuth,
-      signOut: async () => {
-        await signOutAuth()
-        setSession(null)
-      },
+      signOut,
     }),
-    [session, isLoading],
+    [session, isLoading, refresh, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
