@@ -1,0 +1,418 @@
+.rf-account-section {
+  margin-top: 26px;
+  padding: 24px;
+  border: 1px solid #eadfd2;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 12px 34px rgba(116, 80, 37, 0.045);
+}
+
+.rf-account-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.rf-account-kicker {
+  display: block;
+  margin-bottom: 7px;
+  color: #f28a12;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rf-account-heading h2 {
+  margin: 0;
+  color: #17120e;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.rf-account-heading p {
+  margin: 8px 0 0;
+  color: #756d65;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rf-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rf-account-icon-button,
+.rf-account-text-button,
+.rf-account-cancel,
+.rf-account-error button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rf-account-icon-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #e7dacb;
+  border-radius: 10px;
+  color: #61584f;
+  background: #fffaf4;
+}
+
+.rf-account-icon-button:hover {
+  background: #fff4e5;
+}
+
+.rf-account-text-button {
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 9px;
+  color: #443b33;
+  background: #f8efe4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rf-account-text-button:hover {
+  background: #f4e7d8;
+}
+
+.rf-account-text-button.is-muted {
+  color: #8a8178;
+  background: transparent;
+}
+
+.rf-account-connect {
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee4da;
+}
+
+.rf-account-platforms {
+  display: flex;
+  gap: 7px;
+}
+
+.rf-account-platform {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid #e8ddd1;
+  border-radius: 11px;
+  color: #5e564e;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rf-account-platform.is-active {
+  border-color: #e6b875;
+  color: #322820;
+  background: #fff4df;
+  box-shadow: inset 0 0 0 1px rgba(244, 157, 38, 0.08);
+}
+
+.rf-account-input {
+  min-width: 0;
+}
+
+.rf-account-input > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #756c64;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.rf-account-input > div {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e6d9ca;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.rf-account-input input {
+  min-width: 0;
+  flex: 1;
+  height: 42px;
+  padding: 0 13px;
+  border: 0;
+  outline: 0;
+  color: #2e2721;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.rf-account-input input::placeholder {
+  color: #a59c93;
+}
+
+.rf-account-input > div:focus-within {
+  border-color: #e5ad5b;
+  box-shadow: 0 0 0 3px rgba(243, 157, 37, 0.09);
+}
+
+.rf-account-input button {
+  min-width: 104px;
+  border: 0;
+  color: #2b2117;
+  background: #ffb340;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rf-account-input button:hover {
+  background: #ffa82b;
+}
+
+.rf-account-cancel {
+  height: 42px;
+  padding: 0 5px;
+  color: #827970;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rf-account-summary {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.72fr) minmax(0, 1.6fr);
+  gap: 18px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee4da;
+}
+
+.rf-account-profile {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #eee3d8;
+  border-radius: 14px;
+  background: #fffaf4;
+}
+
+.rf-account-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #eadfd4;
+  border-radius: 50%;
+  color: #f18b13;
+  background: #fff;
+}
+
+.rf-account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rf-account-profile > div:last-child {
+  min-width: 0;
+}
+
+.rf-account-platform-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  color: #8a8178;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.rf-account-profile strong,
+.rf-account-profile small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rf-account-profile strong {
+  color: #2b241e;
+  font-size: 13px;
+}
+
+.rf-account-profile small {
+  margin-top: 3px;
+  color: #8b827a;
+  font-size: 10px;
+}
+
+.rf-account-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rf-account-metric {
+  min-width: 0;
+  padding: 14px 15px;
+  border: 1px solid #eee3d8;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.rf-account-metric > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #6e655d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.rf-account-metric > span svg {
+  color: #f28b13;
+}
+
+.rf-account-metric > strong {
+  display: block;
+  margin-top: 11px;
+  overflow: hidden;
+  color: #17120e;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 29px;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.rf-account-metric > small {
+  display: block;
+  margin-top: 6px;
+  color: #948b82;
+  font-size: 9px;
+}
+
+.rf-account-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 15px 16px;
+  border: 1px solid #ecd6bd;
+  border-radius: 13px;
+  background: #fff7ed;
+}
+
+.rf-account-error strong,
+.rf-account-error span {
+  display: block;
+}
+
+.rf-account-error strong {
+  color: #44372c;
+  font-size: 12px;
+}
+
+.rf-account-error span {
+  margin-top: 3px;
+  color: #80746a;
+  font-size: 10px;
+}
+
+.rf-account-error button {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 9px;
+  color: #4d3b2c;
+  background: #f6e4cf;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.rf-account-icon-button .is-spinning {
+  animation: rf-account-spin 0.8s linear infinite;
+}
+
+@keyframes rf-account-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .rf-account-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .rf-account-connect {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .rf-account-cancel {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 680px) {
+  .rf-account-section {
+    padding: 19px;
+  }
+
+  .rf-account-heading {
+    flex-direction: column;
+  }
+
+  .rf-account-actions {
+    width: 100%;
+  }
+
+  .rf-account-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .rf-account-platforms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rf-account-platform {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .rf-account-input > div {
+    display: grid;
+  }
+
+  .rf-account-input button {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-account-icon-button .is-spinning {
+    animation: none;
+  }
+}

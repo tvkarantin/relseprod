@@ -72,6 +72,44 @@ class InstaloaderService:
         logger.info("Instaloader fetched %s reels for %s", len(items), username)
         return items
 
+    def fetch_profile_summary(
+        self,
+        username: str,
+        *,
+        reels_limit: int = 20,
+    ) -> dict[str, object]:
+        """Fetch public profile totals plus a bounded sample of Reel views."""
+        profile = instaloader.Profile.from_username(self.loader.context, username)
+        view_counts: list[int] = []
+        reels_checked = 0
+
+        try:
+            for post in profile.get_reels():
+                reels_checked += 1
+                views_count = post.video_play_count
+                if views_count is None:
+                    views_count = post.video_view_count
+                if views_count is not None:
+                    view_counts.append(int(views_count))
+                if reels_checked >= reels_limit:
+                    break
+        except Exception:
+            logger.warning(
+                "Could not read Reel view sample for %s; profile totals are still available",
+                username,
+                exc_info=True,
+            )
+
+        return {
+            "username": str(profile.username),
+            "displayName": profile.full_name or profile.username,
+            "avatarUrl": str(profile.profile_pic_url) if profile.profile_pic_url else None,
+            "followers": int(profile.followers),
+            "publications": int(profile.mediacount),
+            "views": sum(view_counts) if view_counts else None,
+            "viewsSampleSize": reels_checked,
+        }
+
     def fetch_reel(self, shortcode: str) -> dict[str, object]:
         """Fetch fresh metadata for a single Reel by shortcode."""
         post = instaloader.Post.from_shortcode(self.loader.context, shortcode)
