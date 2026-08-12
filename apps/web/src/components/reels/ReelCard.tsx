@@ -44,6 +44,9 @@ export function ReelCard({ reel, viewMode = 'grid' }: { reel: Reel; viewMode?: '
           videoSrc={reel.videoUrl}
           alt={title}
         />
+        <span className="reel-platform-badge reel-platform-instagram">
+          <span aria-hidden="true">◎</span> Instagram
+        </span>
         {reel.duration !== null ? (
           <span className="reel-cover-badge">{formatDuration(reel.duration)}</span>
         ) : null}
