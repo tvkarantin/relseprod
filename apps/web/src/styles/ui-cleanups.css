@@ -1,0 +1,13 @@
+/* Final UI polish overrides. Keep these after the theme so legacy dark-theme
+   interaction styles cannot leak back into the warm interface. */
+
+/* The dashboard illustration should stay visually stable on hover. */
+.rf-story-stack::before {
+  content: none;
+}
+
+/* Active notification tabs use the warm fill only — no legacy green ring. */
+.rf-shell .notification-tabs button.active {
+  border-color: transparent;
+  box-shadow: none;
+}
