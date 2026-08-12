@@ -31,8 +31,8 @@ export function AuthPage() {
       <div className="auth-glow" aria-hidden="true" />
 
       <header className="auth-topbar">
-        <Link className="auth-brand" to="/" aria-label="Reels Finder — на главную">
-          Reels Finder
+        <Link className="auth-brand" to="/" aria-label="RealsFlow — на главную">
+          RealsFlow
         </Link>
         <Link className="auth-back" to="/">
           <ArrowLeft size={16} />
