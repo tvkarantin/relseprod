@@ -100,7 +100,7 @@ export function CompetitorsPage() {
     <div className="page-content">
       <PageHeader
         title="Конкуренты"
-        description="Добавьте Instagram-аккаунты и импортируйте их рилсы через Apify"
+        description="Здесь видно, что сейчас импортируется, сколько Reels добавлено и почему задача могла упасть."
       />
 
       <AddCompetitorForm
@@ -127,7 +127,12 @@ export function CompetitorsPage() {
             <CompetitorRow
               key={competitor.id}
               competitor={competitor}
-              jobId={competitor.activeJobId ?? activeJobs[competitor.id] ?? null}
+              jobId={
+                competitor.activeJobId ??
+                activeJobs[competitor.id] ??
+                competitor.latestJobId ??
+                null
+              }
               isStarting={startingId === competitor.id}
               onStartImport={(item) => void handleStartImport(item)}
               onDelete={setPendingDelete}
