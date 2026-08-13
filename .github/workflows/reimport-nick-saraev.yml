@@ -1,4 +1,4 @@
-name: Inspect Nick Saraev Instagram metadata
+name: Apply metadata refresh backend fix
 
 on:
   push:
@@ -6,12 +6,104 @@ on:
     paths:
       - '.github/workflows/reimport-nick-saraev.yml'
 
+permissions:
+  contents: write
+
 jobs:
-  inspect:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch Tokyo Instagram metadata probe
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch parsing refresh behavior and regression test
         run: |
-          set -euo pipefail
-          curl --fail-with-body --silent --show-error \
-            'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-meta-probe?username=nick_saraev&forceFunctionRegion=ap-northeast-1'
+          python - <<'PY'
+          from pathlib import Path
+
+          parsing = Path('apps/api/app/services/parsing.py')
+          text = parsing.read_text()
+          old = '''        selected = select_reels_for_import(
+              normalized,
+              mode=job.import_mode,
+              excluded_shortcodes=existing_shortcodes,
+              excluded_instagram_ids=existing_instagram_ids,
+          )
+          logger.info(
+              "Job %s: selected %s reels for import from %s normalized candidates",
+              job.id,
+              len(selected),
+              len(normalized),
+          )
+
+          result = self.importer.import_reels(self.session, competitor, selected)
+          '''
+          new = '''        selected_new = select_reels_for_import(
+              normalized,
+              mode=job.import_mode,
+              excluded_shortcodes=existing_shortcodes,
+              excluded_instagram_ids=existing_instagram_ids,
+          )
+
+          existing_candidates = []
+          seen_shortcodes: set[str] = set()
+          seen_instagram_ids: set[str] = set()
+          for reel in normalized:
+              matches_existing = bool(
+                  (reel.shortcode and reel.shortcode in existing_shortcodes)
+                  or (reel.instagram_id and reel.instagram_id in existing_instagram_ids)
+              )
+              if not matches_existing:
+                  continue
+              if reel.shortcode and reel.shortcode in seen_shortcodes:
+                  continue
+              if reel.instagram_id and reel.instagram_id in seen_instagram_ids:
+                  continue
+              existing_candidates.append(reel)
+              if reel.shortcode:
+                  seen_shortcodes.add(reel.shortcode)
+              if reel.instagram_id:
+                  seen_instagram_ids.add(reel.instagram_id)
+
+          selected = [*existing_candidates, *selected_new]
+          logger.info(
+              "Job %s: refreshing %s existing reels and importing %s new reels "
+              "from %s normalized candidates",
+              job.id,
+              len(existing_candidates),
+              len(selected_new),
+              len(normalized),
+          )
+
+          result = self.importer.import_reels(self.session, competitor, selected)
+          '''
+          if old not in text:
+              raise SystemExit('parsing.py target block not found')
+          parsing.write_text(text.replace(old, new, 1))
+
+          test = Path('apps/api/tests/test_import_flow.py')
+          text = test.read_text()
+          replacements = {
+              '    assert (result.created, result.updated) == (1, 0)\n': '    assert (result.created, result.updated) == (1, 2)\n',
+              '    assert job["reelsUpdated"] == 0\n': '    assert job["reelsUpdated"] == 2\n',
+              '    assert refreshed.views_count == 1000\n': '    assert refreshed.views_count == 99_999\n',
+              '    assert refreshed.likes_count == 100\n': '    assert refreshed.likes_count == 888\n',
+              '    assert refreshed.caption == "Подпись AAA"\n': '    assert refreshed.caption == "Новая подпись"\n',
+              "    # Existing external data and the user's script are untouched.\n": "    # Instagram-owned metadata refreshes while the user's script stays untouched.\n",
+          }
+          for old_value, new_value in replacements.items():
+              if old_value not in text:
+                  raise SystemExit(f'test target not found: {old_value!r}')
+              text = text.replace(old_value, new_value, 1)
+          test.write_text(text)
+          PY
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/reimport-nick-saraev.yml
+          git add apps/api/app/services/parsing.py apps/api/tests/test_import_flow.py
+          git commit -m "fix: refresh metadata for imported reels"
+          git push origin HEAD:main
