@@ -1,0 +1,30 @@
+name: Refresh Instagram v5 metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-instagram-v5.yml'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh production competitor
+        run: |
+          set -euo pipefail
+          response=$(curl --fail-with-body --silent --show-error \
+            -X POST -H 'Content-Type: application/json' -d '{}' \
+            'https://realsfinder-api.vercel.app/api/v1/competitors/7/parse')
+          echo "$response"
+          job_id=$(python -c 'import json,sys; print(json.load(sys.stdin)["jobId"])' <<< "$response")
+          for i in $(seq 1 36); do
+            job=$(curl --fail-with-body --silent --show-error "https://realsfinder-api.vercel.app/api/v1/jobs/${job_id}")
+            echo "$job"
+            status=$(python -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<< "$job")
+            [ "$status" = completed ] && break
+            [ "$status" = failed ] && exit 1
+            sleep 5
+          done
+          curl --fail-with-body --silent --show-error \
+            'https://realsfinder-api.vercel.app/api/v1/reels?competitor_id=7&page=1&limit=10'
