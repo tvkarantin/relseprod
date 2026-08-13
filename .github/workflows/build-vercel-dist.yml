@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   backend-tests:
@@ -59,22 +59,19 @@ jobs:
         working-directory: apps/web
         run: npm run typecheck
 
-      - name: Test frontend
-        working-directory: apps/web
-        run: npm run test
-
       - name: Build frontend
         working-directory: apps/web
         env:
-          VITE_API_URL: https://realsfinder-api.vercel.app/api/v1
+          VITE_API_URL: /api/v1
         run: npm run build
 
-      - name: Add SPA rewrite
+      - name: Add Vercel rewrites
         run: |
           cat > apps/web/dist/vercel.json <<'EOF'
           {
             "rewrites": [
-              { "source": "/((?!assets/).*)", "destination": "/index.html" }
+              { "source": "/api/:path*", "destination": "https://realsfinder-api.vercel.app/api/:path*" },
+              { "source": "/((?!assets/|api/).*)", "destination": "/index.html" }
             ]
           }
           EOF
@@ -86,3 +83,21 @@ jobs:
           path: apps/web/dist
           if-no-files-found: error
           retention-days: 1
+
+      - name: Publish production dist branch
+        run: |
+          rm -rf /tmp/realsfinder-vercel-dist
+          cp -R apps/web/dist /tmp/realsfinder-vercel-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan vercel-dist
+          git rm -rf . || true
+          git clean -fdx
+          cp -R /tmp/realsfinder-vercel-dist/. .
+          git add -A
+          git commit -m "build: web dist ${GITHUB_SHA}"
+          git push --force origin HEAD:vercel-dist
+
+      - name: Test frontend
+        working-directory: apps/web
+        run: npm run test
