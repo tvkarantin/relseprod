@@ -12,22 +12,46 @@ jobs:
     steps:
       - name: Inspect GWAA viewer transport
         run: |
-          set -euo pipefail
-          curl -L --silent --show-error 'https://reels.gwaa.net/' -o /tmp/gwaa.html
-          echo '--- scripts ---'
-          grep -Eo '<script[^>]+src=["'"'][^"'"']+' /tmp/gwaa.html | head -30 || true
-          echo '--- form/action/api hints ---'
-          grep -Eo '(action|endpoint|fetch|axios|api)[^<"'"']{0,120}' /tmp/gwaa.html | head -80 || true
-          echo '--- likely URLs ---'
-          grep -Eo 'https?://[^"'"' <]+' /tmp/gwaa.html | sort -u | head -80 || true
-          echo '--- query candidates ---'
-          for url in \
-            'https://reels.gwaa.net/?username=nick_saraev' \
-            'https://reels.gwaa.net/?q=nick_saraev' \
-            'https://reels.gwaa.net/nick_saraev' \
-            'https://gwaa.net/instagram-reels-viewer?username=nick_saraev'; do
-            echo "URL=$url"
-            page=$(curl -L --silent --show-error "$url")
-            printf '%s' "$page" | grep -o 'Db52rxbPh6i' | head -1 || true
-            printf '%s' "$page" | grep -Eo 'nick_saraev.{0,100}' | head -3 || true
-          done
+          python - <<'PY'
+          import re
+          import urllib.request
+          from urllib.parse import urljoin
+
+          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
+
+          def get(url):
+              req = urllib.request.Request(url, headers={'User-Agent': UA})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return r.geturl(), r.read().decode('utf-8', 'ignore')
+
+          base = 'https://reels.gwaa.net/'
+          final, html = get(base)
+          print('HOME', final, 'bytes', len(html))
+          scripts = re.findall(r'<script[^>]+src=["\']([^"\']+)', html, re.I)
+          print('SCRIPTS', scripts[:30])
+          for src in scripts[:20]:
+              url = urljoin(base, src)
+              try:
+                  _, js = get(url)
+              except Exception as exc:
+                  print('SCRIPT_FAIL', url, type(exc).__name__)
+                  continue
+              hints = sorted(set(re.findall(r'(?:https?://[^"\'\s]+|/api/[A-Za-z0-9_?&=./:{}$-]+)', js)))
+              fetches = re.findall(r'fetch\((.{0,180})', js)
+              if hints or fetches:
+                  print('SCRIPT', url, 'bytes', len(js))
+                  print('URL_HINTS', hints[:40])
+                  print('FETCH_HINTS', fetches[:20])
+
+          for url in [
+              'https://reels.gwaa.net/?username=nick_saraev',
+              'https://reels.gwaa.net/?q=nick_saraev',
+              'https://reels.gwaa.net/nick_saraev',
+              'https://gwaa.net/instagram-reels-viewer?username=nick_saraev',
+          ]:
+              try:
+                  final, page = get(url)
+                  print('CANDIDATE', url, '->', final, 'bytes', len(page), 'has_shortcode', 'Db52rxbPh6i' in page, 'has_username', 'nick_saraev' in page)
+              except Exception as exc:
+                  print('CANDIDATE_FAIL', url, type(exc).__name__, str(exc)[:160])
+          PY
