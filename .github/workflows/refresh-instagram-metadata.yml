@@ -1,4 +1,4 @@
-name: Inspect reel cover and metric metadata
+name: Inspect SilentPeek reel metadata transport
 
 on:
   push:
@@ -10,57 +10,49 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Instagram and Imginn metadata
+      - name: Inspect SilentPeek transport
         run: |
           python - <<'PY'
           import re
-          import urllib.error
           import urllib.request
+          from urllib.parse import urljoin
 
-          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
-          code = 'Db52rxbPh6i'
-          urls = [
-              f'https://www.instagram.com/reel/{code}/embed/captioned/',
-              f'https://imginn.com/p/{code}/',
-              'https://imginn.com/reels/nick_saraev/',
-          ]
-          needles = [
-              'display_url','thumbnail_src','image_versions2','additional_candidates',
-              'first_frame','video_play_count','video_view_count','play_count','view_count',
-              'views','plays','poster','og:image','likes','comments'
-          ]
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
+          base='https://silentpeek.com/reels-viewer'
+          req=urllib.request.Request(base,headers={'User-Agent':UA,'Accept':'text/html,*/*'})
+          with urllib.request.urlopen(req,timeout=25) as r:
+              html=r.read().decode('utf-8','ignore')
+              print('HOME',r.status,r.geturl(),'bytes',len(html))
 
-          for url in urls:
-              req = urllib.request.Request(url, headers={
-                  'User-Agent': UA,
-                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                  'Accept-Language': 'en-US,en;q=0.9',
-                  'Referer': 'https://www.instagram.com/',
-              })
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I)
+          print('SCRIPTS',scripts[:40])
+
+          def inspect(label,text):
+              print('\n###',label,'bytes',len(text))
+              patterns=[
+                  r'fetch\((.{0,320})',
+                  r'axios[^;]{0,320}',
+                  r'https?://[^"\'\s<>]+',
+                  r'/api/[A-Za-z0-9_?&=./:{}$%-]+',
+                  r'(?i)(?:play_count|view_count|viewsCount|playCount|shortcode|thumbnail|cover_url|display_url).{0,260}',
+              ]
+              for pat in patterns:
+                  vals=re.findall(pat,text)
+                  if vals:
+                      print('PAT',pat)
+                      for v in vals[:80]: print(str(v)[:520])
+
+          inspect('HTML',html)
+          for src in scripts[:30]:
+              url=urljoin(base,src)
               try:
-                  with urllib.request.urlopen(req, timeout=25) as r:
-                      body = r.read().decode('utf-8', 'ignore')
-                      print('\nURL', url, 'STATUS', r.status, 'FINAL', r.geturl(), 'BYTES', len(body))
-              except urllib.error.HTTPError as exc:
-                  body = exc.read().decode('utf-8', 'ignore')
-                  print('\nURL', url, 'STATUS', exc.code, 'BYTES', len(body))
+                  req=urllib.request.Request(url,headers={'User-Agent':UA,'Referer':base})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      js=r.read().decode('utf-8','ignore')
               except Exception as exc:
-                  print('\nURL_FAIL', url, type(exc).__name__, str(exc)[:180])
+                  print('SCRIPT_FAIL',url,type(exc).__name__,str(exc)[:120])
                   continue
-
-              low = body.lower()
-              for needle in needles:
-                  count = low.count(needle.lower())
-                  if count:
-                      print('HIT', needle, count)
-                      start = 0
-                      for _ in range(min(count, 3)):
-                          idx = low.find(needle.lower(), start)
-                          if idx < 0: break
-                          snippet = body[max(0, idx-220):min(len(body), idx+520)].replace('\n',' ')
-                          snippet = re.sub(r'https?://[^"\' <]+', '<URL>', snippet)
-                          print(' ', snippet[:740])
-                          start = idx + len(needle)
-              print('META_IMAGES', re.findall(r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]+content=["\']([^"\']+)', body, re.I)[:4])
-              print('POSTERS', re.findall(r'<video[^>]+poster=["\']([^"\']+)', body, re.I)[:4])
+              low=js.lower()
+              if any(x in low for x in ['fetch(','/api/','shortcode','play_count','view_count','reels']):
+                  inspect(url,js)
           PY
