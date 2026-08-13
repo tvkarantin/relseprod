@@ -1,4 +1,4 @@
-name: Refresh Instagram metadata
+name: Inspect free reel metrics source
 
 on:
   push:
@@ -7,30 +7,27 @@ on:
       - '.github/workflows/refresh-instagram-metadata.yml'
 
 jobs:
-  refresh:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh nick_saraev Reels
+      - name: Inspect GWAA viewer transport
         run: |
           set -euo pipefail
-          response=$(curl --fail-with-body --silent --show-error \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{}' \
-            'https://realsfinder-api.vercel.app/api/v1/competitors/7/parse')
-          echo "$response"
-          job_id=$(python -c 'import json,sys; print(json.load(sys.stdin)["jobId"])' <<< "$response")
-          for i in $(seq 1 36); do
-            job=$(curl --fail-with-body --silent --show-error "https://realsfinder-api.vercel.app/api/v1/jobs/${job_id}")
-            echo "$job"
-            status=$(python -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<< "$job")
-            if [ "$status" = completed ]; then
-              break
-            fi
-            if [ "$status" = failed ]; then
-              exit 1
-            fi
-            sleep 5
+          curl -L --silent --show-error 'https://reels.gwaa.net/' -o /tmp/gwaa.html
+          echo '--- scripts ---'
+          grep -Eo '<script[^>]+src=["'"'][^"'"']+' /tmp/gwaa.html | head -30 || true
+          echo '--- form/action/api hints ---'
+          grep -Eo '(action|endpoint|fetch|axios|api)[^<"'"']{0,120}' /tmp/gwaa.html | head -80 || true
+          echo '--- likely URLs ---'
+          grep -Eo 'https?://[^"'"' <]+' /tmp/gwaa.html | sort -u | head -80 || true
+          echo '--- query candidates ---'
+          for url in \
+            'https://reels.gwaa.net/?username=nick_saraev' \
+            'https://reels.gwaa.net/?q=nick_saraev' \
+            'https://reels.gwaa.net/nick_saraev' \
+            'https://gwaa.net/instagram-reels-viewer?username=nick_saraev'; do
+            echo "URL=$url"
+            page=$(curl -L --silent --show-error "$url")
+            printf '%s' "$page" | grep -o 'Db52rxbPh6i' | head -1 || true
+            printf '%s' "$page" | grep -Eo 'nick_saraev.{0,100}' | head -3 || true
           done
-          curl --fail-with-body --silent --show-error \
-            'https://realsfinder-api.vercel.app/api/v1/reels?competitor_id=7&page=1&limit=10'
