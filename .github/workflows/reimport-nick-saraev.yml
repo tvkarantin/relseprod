@@ -1,0 +1,18 @@
+name: Refresh Nick Saraev reel metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/reimport-nick-saraev.yml'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start production re-import
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            'https://realsfinder-api.vercel.app/api/v1/competitors/7/parse'
