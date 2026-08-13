@@ -10,54 +10,75 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect inline GWAA transport
+      - name: Verify GWAA reel metrics payload
         run: |
           python - <<'PY'
+          import http.cookiejar
+          import json
           import re
           import urllib.request
+          from urllib.parse import urljoin
 
           UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
-          url = 'https://reels.gwaa.net/'
-          req = urllib.request.Request(url, headers={'User-Agent': UA})
-          with urllib.request.urlopen(req, timeout=20) as r:
-              html = r.read().decode('utf-8', 'ignore')
+          base = 'https://reels.gwaa.net/'
+          jar = http.cookiejar.CookieJar()
+          opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
-          print('BYTES', len(html))
-          patterns = {
-              'fetch': r'fetch\((.{0,420})',
-              'api': r'(?i)(?:https?://[^"\'\s<>]+|/api/[A-Za-z0-9_?&=./:{}$%-]+)',
-              'xhr': r'(?i)(?:XMLHttpRequest|axios|endpoint|lookup|search|profile|username).{0,260}',
-              'action': r'(?i)<form[^>]+action=["\']([^"\']+)',
-          }
-          for name, pattern in patterns.items():
-              print('\n---', name, '---')
-              values = re.findall(pattern, html)
-              for value in values[:120]:
-                  print(value if isinstance(value, str) else repr(value))
+          def get(url):
+              req = urllib.request.Request(url, headers={
+                  'User-Agent': UA,
+                  'Accept': 'application/json,text/plain,*/*',
+                  'Referer': base,
+              })
+              with opener.open(req, timeout=30) as r:
+                  return r.geturl(), r.status, r.read().decode('utf-8', 'ignore')
 
-          needles = [
-              'Paste a Reel URL or username',
-              'Enter username',
-              'play_count',
-              'playCount',
-              'view_count',
-              'viewCount',
-              '/api/',
-              'fetch(',
-              'iv-',
-          ]
-          for needle in needles:
-              print('\n=== NEEDLE', needle, '===')
-              start = 0
-              hits = 0
-              low = html.lower()
-              target = needle.lower()
-              while hits < 12:
-                  idx = low.find(target, start)
-                  if idx < 0:
-                      break
-                  print(html[max(0, idx-700):min(len(html), idx+1500)].replace('\n', ' ')[:2200])
-                  print('---')
-                  start = idx + len(target)
-                  hits += 1
+          _, _, html = get(base)
+          m = re.search(r'(?:var|const|let)\s+SITE_URL_IG\s*=\s*["\']([^"\']+)', html)
+          site = m.group(1) if m else base.rstrip('/')
+          if site.startswith('/'):
+              site = urljoin(base, site)
+          site = site.rstrip('/')
+          print('SITE_URL_IG', site)
+
+          for path in [
+              '/api/instagram/quota.php?tool=reels',
+              '/api/instagram/profile.php?username=nick_saraev&refresh=1',
+          ]:
+              url = site + path
+              try:
+                  final, status, body = get(url)
+                  print('REQUEST', path, 'status', status, 'final', final, 'bytes', len(body))
+                  data = json.loads(body)
+              except Exception as exc:
+                  print('REQUEST_FAIL', path, type(exc).__name__, str(exc)[:220])
+                  continue
+
+              if 'profile.php' not in path:
+                  print('QUOTA_KEYS', sorted(data.keys()) if isinstance(data, dict) else type(data).__name__)
+                  continue
+
+              print('PROFILE_KEYS', sorted(data.keys()) if isinstance(data, dict) else type(data).__name__)
+              posts = data.get('posts') if isinstance(data, dict) else None
+              if not isinstance(posts, list):
+                  print('POSTS_TYPE', type(posts).__name__, 'ERROR', data.get('error') if isinstance(data, dict) else None)
+                  continue
+              print('POSTS_COUNT', len(posts))
+              for p in posts[:8]:
+                  if not isinstance(p, dict):
+                      continue
+                  print('POST_KEYS', sorted(p.keys()))
+                  picked = {}
+                  for key in [
+                      'shortcode','code','media_type','is_video','product_type','type',
+                      'play_count','playCount','views','view_count','viewCount','video_view_count','video_play_count',
+                      'like_count','likes','likes_count','comment_count','comments','comments_count',
+                      'thumbnail_url','display_url','image_url','cover_url','taken_at','timestamp'
+                  ]:
+                      if key in p:
+                          value = p[key]
+                          if isinstance(value, str) and value.startswith('http'):
+                              value = value.split('?')[0][:140]
+                          picked[key] = value
+                  print('POST', json.dumps(picked, ensure_ascii=False))
           PY
