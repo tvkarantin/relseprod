@@ -34,10 +34,14 @@ def _read_competitor(
     competitor: Competitor,
     *,
     active_job_id: int | None = None,
+    latest_job_id: int | None = None,
 ) -> CompetitorRead:
-    """Serialize a competitor together with the job the UI should poll."""
+    """Serialize a competitor together with import jobs used by the UI."""
     return CompetitorRead.model_validate(competitor).model_copy(
-        update={"active_job_id": active_job_id}
+        update={
+            "active_job_id": active_job_id,
+            "latest_job_id": latest_job_id,
+        }
     )
 
 
@@ -49,16 +53,20 @@ def _read_competitor(
 def list_competitors(db: Annotated[Session, Depends(DbSession)]) -> list[CompetitorRead]:
     """Return every tracked competitor, newest first."""
     competitors = CompetitorService(db).list_competitors()
-    active_jobs = ParsingJobRepository(db).get_active_for_competitors(
-        [item.id for item in competitors]
-    )
-    return [
-        _read_competitor(
-            item,
-            active_job_id=active_jobs[item.id].id if item.id in active_jobs else None,
+    jobs = ParsingJobRepository(db)
+    active_jobs = jobs.get_active_for_competitors([item.id for item in competitors])
+
+    result: list[CompetitorRead] = []
+    for item in competitors:
+        latest = jobs.list_for_competitor(item.id, limit=1)
+        result.append(
+            _read_competitor(
+                item,
+                active_job_id=active_jobs[item.id].id if item.id in active_jobs else None,
+                latest_job_id=latest[0].id if latest else None,
+            )
         )
-        for item in competitors
-    ]
+    return result
 
 
 @router.post(
@@ -92,10 +100,13 @@ def get_competitor(
 ) -> CompetitorRead:
     """Return a single competitor."""
     competitor = CompetitorService(db).get_competitor(competitor_id)
-    active_job = ParsingJobRepository(db).get_active_for_competitor(competitor.id)
+    jobs = ParsingJobRepository(db)
+    active_job = jobs.get_active_for_competitor(competitor.id)
+    latest = jobs.list_for_competitor(competitor.id, limit=1)
     return _read_competitor(
         competitor,
         active_job_id=active_job.id if active_job is not None else None,
+        latest_job_id=latest[0].id if latest else None,
     )
 
 
@@ -135,8 +146,8 @@ def start_parsing(
 ) -> ParsingJobStart:
     """Queue an import and return immediately.
 
-    The Apify call happens in a background task, so this request never waits for
-    the Actor to finish.
+    The Instagram provider call happens in a background task, so this request
+    never waits for the remote source to finish.
     """
     settings = _settings(request)
     import_mode = payload.import_mode if payload is not None else ParsingJobCreate().import_mode
