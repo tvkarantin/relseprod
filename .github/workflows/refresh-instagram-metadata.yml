@@ -1,4 +1,4 @@
-name: Inspect SilentPeek reel metadata transport
+name: Inspect Instagram web profile reel metadata
 
 on:
   push:
@@ -10,49 +10,110 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect SilentPeek transport
+      - name: Inspect Instagram Web API
         run: |
           python - <<'PY'
-          import re
+          import json
+          import urllib.error
+          import urllib.parse
           import urllib.request
-          from urllib.parse import urljoin
 
-          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
-          base='https://silentpeek.com/reels-viewer'
-          req=urllib.request.Request(base,headers={'User-Agent':UA,'Accept':'text/html,*/*'})
-          with urllib.request.urlopen(req,timeout=25) as r:
-              html=r.read().decode('utf-8','ignore')
-              print('HOME',r.status,r.geturl(),'bytes',len(html))
+          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36'
+          USERNAME = 'nick_saraev'
+          BASE = 'https://www.instagram.com'
+          HEADERS = {
+              'User-Agent': UA,
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'X-IG-App-ID': '936619743392459',
+              'X-ASBD-ID': '129477',
+              'Referer': f'{BASE}/{USERNAME}/',
+          }
 
-          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I)
-          print('SCRIPTS',scripts[:40])
-
-          def inspect(label,text):
-              print('\n###',label,'bytes',len(text))
-              patterns=[
-                  r'fetch\((.{0,320})',
-                  r'axios[^;]{0,320}',
-                  r'https?://[^"\'\s<>]+',
-                  r'/api/[A-Za-z0-9_?&=./:{}$%-]+',
-                  r'(?i)(?:play_count|view_count|viewsCount|playCount|shortcode|thumbnail|cover_url|display_url).{0,260}',
-              ]
-              for pat in patterns:
-                  vals=re.findall(pat,text)
-                  if vals:
-                      print('PAT',pat)
-                      for v in vals[:80]: print(str(v)[:520])
-
-          inspect('HTML',html)
-          for src in scripts[:30]:
-              url=urljoin(base,src)
+          def get_json(url):
+              req = urllib.request.Request(url, headers=HEADERS)
               try:
-                  req=urllib.request.Request(url,headers={'User-Agent':UA,'Referer':base})
-                  with urllib.request.urlopen(req,timeout=20) as r:
-                      js=r.read().decode('utf-8','ignore')
+                  with urllib.request.urlopen(req, timeout=25) as r:
+                      body = r.read().decode('utf-8', 'ignore')
+                      print('REQUEST', url.split('?')[0], 'STATUS', r.status, 'BYTES', len(body))
+                      return json.loads(body)
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode('utf-8', 'ignore')
+                  print('REQUEST', url.split('?')[0], 'STATUS', exc.code, 'BYTES', len(body), 'PREFIX', body[:180].replace('\n',' '))
+                  return None
               except Exception as exc:
-                  print('SCRIPT_FAIL',url,type(exc).__name__,str(exc)[:120])
-                  continue
-              low=js.lower()
-              if any(x in low for x in ['fetch(','/api/','shortcode','play_count','view_count','reels']):
-                  inspect(url,js)
+                  print('REQUEST_FAIL', url.split('?')[0], type(exc).__name__, str(exc)[:180])
+                  return None
+
+          profile_url = BASE + '/api/v1/users/web_profile_info/?' + urllib.parse.urlencode({'username': USERNAME})
+          profile = get_json(profile_url)
+          user = profile.get('data', {}).get('user') if isinstance(profile, dict) else None
+          if isinstance(user, dict):
+              print('USER_KEYS', sorted(user.keys()))
+              print('USER_ID', user.get('id'))
+              for collection_name in ['edge_owner_to_timeline_media', 'edge_felix_video_timeline']:
+                  collection = user.get(collection_name) or {}
+                  edges = collection.get('edges') if isinstance(collection, dict) else None
+                  print('COLLECTION', collection_name, 'COUNT', len(edges) if isinstance(edges, list) else None)
+                  if not isinstance(edges, list):
+                      continue
+                  for edge in edges[:12]:
+                      node = edge.get('node') if isinstance(edge, dict) else None
+                      if not isinstance(node, dict):
+                          continue
+                      picked = {k: node.get(k) for k in [
+                          'shortcode','is_video','product_type','video_view_count','play_count',
+                          'thumbnail_src','display_url','taken_at_timestamp','edge_liked_by','edge_media_preview_like'
+                      ] if k in node}
+                      for key in ['thumbnail_src','display_url']:
+                          if isinstance(picked.get(key), str):
+                              picked[key] = picked[key].split('?')[0][:140]
+                      print('WEB_NODE_KEYS', sorted(node.keys()))
+                      print('WEB_NODE', json.dumps(picked, ensure_ascii=False))
+
+          user_id = user.get('id') if isinstance(user, dict) else None
+          if user_id:
+              for feed_url in [
+                  f'{BASE}/api/v1/feed/user/{user_id}/?count=24',
+                  f'{BASE}/api/v1/feed/user/{user_id}/username/?count=24',
+                  f'https://i.instagram.com/api/v1/feed/user/{user_id}/?count=24',
+              ]:
+                  feed = get_json(feed_url)
+                  if not isinstance(feed, dict):
+                      continue
+                  print('FEED_KEYS', sorted(feed.keys()))
+                  items = feed.get('items')
+                  print('FEED_COUNT', len(items) if isinstance(items, list) else None)
+                  if not isinstance(items, list):
+                      continue
+                  for item in items[:16]:
+                      if not isinstance(item, dict):
+                          continue
+                      code = item.get('code') or item.get('shortcode')
+                      if not code:
+                          continue
+                      picked = {k: item.get(k) for k in [
+                          'code','shortcode','media_type','product_type','play_count','view_count',
+                          'video_view_count','video_play_count','like_count','comment_count','taken_at'
+                      ] if k in item}
+                      image_versions = item.get('image_versions2') if isinstance(item.get('image_versions2'), dict) else {}
+                      candidates = image_versions.get('candidates') if isinstance(image_versions, dict) else None
+                      if isinstance(candidates, list) and candidates:
+                          picked['image_candidate'] = {
+                              'width': candidates[0].get('width'),
+                              'height': candidates[0].get('height'),
+                              'url': str(candidates[0].get('url','')).split('?')[0][:140],
+                          }
+                      additional = item.get('additional_candidates') if isinstance(item.get('additional_candidates'), dict) else None
+                      if additional:
+                          picked['additional_candidate_keys'] = sorted(additional.keys())
+                          for key, value in additional.items():
+                              if isinstance(value, dict) and value.get('url'):
+                                  picked[f'candidate_{key}'] = {
+                                      'width': value.get('width'), 'height': value.get('height'),
+                                      'url': str(value.get('url')).split('?')[0][:140],
+                                  }
+                      print('FEED_ITEM_KEYS', sorted(item.keys()))
+                      print('FEED_ITEM', json.dumps(picked, ensure_ascii=False))
+                  break
           PY
