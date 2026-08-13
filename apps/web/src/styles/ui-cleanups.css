@@ -31,3 +31,42 @@
   color: #302820;
   background: #fffdf9;
 }
+
+/* Reel covers are portrait assets inside compact horizontal cards. Keep the
+   actual Instagram cover fully visible and use a blurred copy only to fill
+   the unused sides instead of cropping the cover itself. */
+.library-page .reels-grid .reel-cover .reel-thumbnail-stack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #e9e3da;
+}
+
+.library-page .reels-grid .reel-cover .reel-thumbnail-backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: -12%;
+  width: 124% !important;
+  height: 124% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  filter: blur(16px);
+  opacity: 0.36;
+  transform: scale(1.08);
+}
+
+.library-page .reels-grid .reel-cover .reel-thumbnail-image {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.library-page .reels-grid .reel-card:hover .reel-thumbnail-backdrop,
+.library-page .reels-grid .reel-card:hover .reel-thumbnail-image {
+  transform: none;
+}
