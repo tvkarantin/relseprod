@@ -1,4 +1,4 @@
-name: Debug Instagram Edge Regions
+name: Debug Instagram Profile Markup
 
 on:
   push:
@@ -10,17 +10,9 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Instagram from Supabase regions
+      - name: Inspect markup from a working edge region
         run: |
           set -euo pipefail
-          regions=(
-            ap-northeast-1 ap-northeast-2 ap-south-1 ap-southeast-1 ap-southeast-2
-            ca-central-1 us-east-1 us-west-1 us-west-2
-            eu-central-1 eu-west-1 eu-west-2 eu-west-3 sa-east-1
-          )
-          for region in "${regions[@]}"; do
-            echo "=== $region ==="
-            curl --silent --show-error \
-              "https://tphahouachokghqlsczf.supabase.co/functions/v1/noop?forceFunctionRegion=$region" \
-              | python -c 'import json,sys; d=json.load(sys.stdin); print({"status":d.get("status"),"length":d.get("length"),"matches":d.get("matches")})'
-          done
+          curl --silent --show-error \
+            'https://tphahouachokghqlsczf.supabase.co/functions/v1/noop?forceFunctionRegion=ap-northeast-1' \
+            | python -c 'import json,sys; d=json.load(sys.stdin); print("status",d.get("status")); print("matches",d.get("matches")); print("snippet",d.get("snippet"))'
