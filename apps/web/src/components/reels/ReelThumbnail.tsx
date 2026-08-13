@@ -2,25 +2,24 @@ import { useEffect, useState } from 'react'
 
 interface ReelThumbnailProps {
   src: string | null
+  /** Kept for backwards compatibility; cards intentionally never use a video frame as a cover. */
   videoSrc?: string | null
   alt: string
 }
 
 /**
- * Thumbnail with a layered fallback.
+ * Render the actual Instagram cover without cropping it into the wide card.
  *
- * Instagram image CDN links often expire earlier than the reel itself. In
- * cards we can still show a real preview frame from the video before falling
- * back to the neutral placeholder.
+ * A blurred copy fills the horizontal card background while the real cover is
+ * shown in full above it. If the cover cannot be loaded we deliberately show
+ * a placeholder instead of seeking the first frame of the Reel.
  */
-export function ReelThumbnail({ src, videoSrc = null, alt }: ReelThumbnailProps) {
-  const [media, setMedia] = useState<'image' | 'video' | 'placeholder'>(
-    src ? 'image' : videoSrc ? 'video' : 'placeholder',
-  )
+export function ReelThumbnail({ src, alt }: ReelThumbnailProps) {
+  const [media, setMedia] = useState<'image' | 'placeholder'>(src ? 'image' : 'placeholder')
 
   useEffect(() => {
-    setMedia(src ? 'image' : videoSrc ? 'video' : 'placeholder')
-  }, [src, videoSrc])
+    setMedia(src ? 'image' : 'placeholder')
+  }, [src])
 
   if (media === 'placeholder') {
     return (
@@ -30,32 +29,26 @@ export function ReelThumbnail({ src, videoSrc = null, alt }: ReelThumbnailProps)
     )
   }
 
-  if (media === 'video' && videoSrc) {
-    return (
-      <video
-        className="reel-thumbnail-video"
-        src={videoSrc}
-        muted
-        playsInline
-        preload="metadata"
-        aria-label={`${alt} — превью видео`}
-        onLoadedMetadata={(event) => {
-          const video = event.currentTarget
-          if (video.duration > 0) video.currentTime = Math.min(0.1, video.duration / 2)
-        }}
+  return (
+    <span className="reel-thumbnail-stack">
+      <img
+        className="reel-thumbnail-backdrop"
+        src={src ?? undefined}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+      />
+      <img
+        className="reel-thumbnail-image"
+        src={src ?? undefined}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
         onError={() => setMedia('placeholder')}
       />
-    )
-  }
-
-  return (
-    <img
-      src={src ?? undefined}
-      alt={alt}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setMedia(videoSrc ? 'video' : 'placeholder')}
-    />
+    </span>
   )
 }
