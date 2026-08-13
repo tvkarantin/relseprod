@@ -1,0 +1,18 @@
+name: Debug Instagram Edge HTML
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/debug-instagram-edge.yml'
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect edge HTML parser markers
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            'https://tphahouachokghqlsczf.supabase.co/functions/v1/noop'
+          echo
