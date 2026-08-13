@@ -1,4 +1,4 @@
-name: Verify Imginn Production Import
+name: Verify Instagram Media Proxy
 
 on:
   push:
@@ -10,12 +10,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Start nick_saraev production import
+      - name: Check video and thumbnail proxy
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"importMode":"popular"}' \
-            https://realsfinder-api.vercel.app/api/v1/competitors/7/parse
-          echo
+          video='https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?media=Db52rxbPh6i&forceFunctionRegion=ap-northeast-1'
+          thumb='https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=Db52rxbPh6i&forceFunctionRegion=ap-northeast-1'
+          echo 'VIDEO:'
+          curl --fail-with-body --silent --show-error -L --max-redirs 3 -o /dev/null -w '%{http_code} %{content_type}\n' "$video"
+          echo 'THUMBNAIL:'
+          curl --fail-with-body --silent --show-error -L --max-redirs 3 -o /dev/null -w '%{http_code} %{content_type}\n' "$thumb"
