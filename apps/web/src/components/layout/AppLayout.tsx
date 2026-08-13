@@ -16,6 +16,7 @@ import {
   Menu,
   Search,
   Star,
+  Users,
   X,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -29,6 +30,7 @@ import './realsflow-shell.css'
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Мои рилсы', icon: Home, end: true },
   { to: '/ideas', label: 'Идеи', icon: Lightbulb },
+  { to: '/competitors', label: 'Конкуренты', icon: Users },
   { to: '/library', label: 'Библиотека', icon: Library },
   { to: '/my-reels', label: 'Контент-план', icon: CalendarDays },
   { to: '/resources', label: 'Мои ресурсы', icon: Folder },
