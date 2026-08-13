@@ -59,6 +59,10 @@ jobs:
         working-directory: apps/web
         run: npm run typecheck
 
+      - name: Test frontend
+        working-directory: apps/web
+        run: npm run test
+
       - name: Build frontend
         working-directory: apps/web
         env:
@@ -97,7 +101,3 @@ jobs:
           git add -A
           git commit -m "build: web dist ${GITHUB_SHA}"
           git push --force origin HEAD:vercel-dist
-
-      - name: Test frontend
-        working-directory: apps/web
-        run: npm run test
