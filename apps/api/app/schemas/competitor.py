@@ -48,6 +48,7 @@ class CompetitorRead(APIModel):
 
     id: int
     active_job_id: int | None = Field(default=None, gt=0)
+    latest_job_id: int | None = Field(default=None, gt=0)
     instagram_username: str = Field(max_length=30)
     profile_url: str = Field(max_length=PROFILE_MAX_LENGTH)
     status: CompetitorStatus
