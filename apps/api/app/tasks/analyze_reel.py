@@ -8,7 +8,7 @@ from app.core.errors import AppError, ErrorCode, InternalError
 from app.database.session import get_session_factory
 from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_transcription import ReelTranscription
-from app.services.openrouter import OpenRouterService
+from app.services.localized_openrouter import LocalizedOpenRouterService
 from app.services.reel_analysis import ReelAnalysisService
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def analyze_reel_task(
 ) -> None:
     session = get_session_factory(settings)()
     service = ReelAnalysisService(session, settings)
-    openrouter = OpenRouterService(settings)
+    openrouter = LocalizedOpenRouterService(settings)
 
     try:
         service.mark_processing(analysis_id)

@@ -9,7 +9,7 @@ from app.core.errors import ActiveAnalysisAlreadyExistsError, InvalidAnalysisSta
 from app.database.session import get_session_factory
 from app.models.enums import TranscriptionStatus
 from app.models.reel import Reel
-from app.services.reel_analysis import ReelAnalysisService
+from app.services.localized_reel_analysis import LocalizedReelAnalysisService
 from app.tasks.analyze_reel import analyze_reel_task
 from app.tasks.transcribe_reel import transcribe_reel_job
 
@@ -49,7 +49,7 @@ def prepare_reel_task(
         ):
             return
 
-        service = ReelAnalysisService(session, settings)
+        service = LocalizedReelAnalysisService(session, settings)
         try:
             analysis = service.create_or_retry_analysis(reel_id, creator_profile)
         except InvalidAnalysisStateError:

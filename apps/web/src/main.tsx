@@ -22,6 +22,7 @@ import './styles/ui-cleanups.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
+import { LanguageProvider } from '@/i18n/LanguageProvider'
 
 const container = document.getElementById('root')
 if (!container) throw new Error('Root container #root not found')
@@ -30,11 +31,13 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={createQueryClient()}>
       <BrowserRouter>
-        <NotificationProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </NotificationProvider>
+        <LanguageProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </NotificationProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

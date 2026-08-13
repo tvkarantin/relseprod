@@ -1,50 +1,46 @@
 /** Display helpers. Unknown values render as an em dash, never as zero. */
 
+import { getAppLocale } from '@/i18n/LanguageProvider'
+
 export const EMPTY_VALUE = '—'
 
-const compactFormatter = new Intl.NumberFormat('ru-RU', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
-
-const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
-
-const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-/** 1200 → "1,2 тыс."; null → "—". */
+/** 1200 → compact locale-specific number; null → "—". */
 export function formatCompactNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return EMPTY_VALUE
-  return compactFormatter.format(value)
+  return new Intl.NumberFormat(getAppLocale(), {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
-/** Full number with thin spaces, e.g. "1 234 567". */
+/** Full locale-specific number. */
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return EMPTY_VALUE
-  return new Intl.NumberFormat('ru-RU').format(value)
+  return new Intl.NumberFormat(getAppLocale()).format(value)
 }
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return EMPTY_VALUE
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return EMPTY_VALUE
-  return dateFormatter.format(date)
+  return new Intl.DateTimeFormat(getAppLocale(), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
 }
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return EMPTY_VALUE
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return EMPTY_VALUE
-  return dateTimeFormatter.format(date)
+  return new Intl.DateTimeFormat(getAppLocale(), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 /** 28.5 → "0:29" (seconds are rounded to the nearest whole). */

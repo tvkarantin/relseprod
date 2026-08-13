@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
 import {
+  EN_PROFILE_DEFAULTS,
   loadCreatorProfile,
+  RU_PROFILE_DEFAULTS,
   saveCreatorProfile,
+  type AppLanguage,
   type CreatorProfile,
 } from '@/types/creatorProfile'
 
@@ -25,6 +28,40 @@ export function CreatorProfileDialog({ onClose, onSaved }: CreatorProfileDialogP
 
   const update = <Key extends keyof CreatorProfile>(key: Key, value: CreatorProfile[Key]) => {
     setProfile((current) => ({ ...current, [key]: value }))
+  }
+
+  const changeLanguage = (language: AppLanguage) => {
+    setProfile((current) => {
+      const toEnglish = language === 'en'
+      const currentFavoriteCtas = ctaText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+      const defaultCta = toEnglish ? EN_PROFILE_DEFAULTS.favoriteCta : RU_PROFILE_DEFAULTS.favoriteCta
+      const previousDefaultCta = toEnglish ? RU_PROFILE_DEFAULTS.favoriteCta : EN_PROFILE_DEFAULTS.favoriteCta
+      const shouldSwapCta =
+        currentFavoriteCtas.length === 1 && currentFavoriteCtas[0] === previousDefaultCta
+
+      if (shouldSwapCta) setCtaText(defaultCta)
+
+      return {
+        ...current,
+        language,
+        toneOfVoice:
+          current.toneOfVoice === (toEnglish ? RU_PROFILE_DEFAULTS.toneOfVoice : EN_PROFILE_DEFAULTS.toneOfVoice)
+            ? (toEnglish ? EN_PROFILE_DEFAULTS.toneOfVoice : RU_PROFILE_DEFAULTS.toneOfVoice)
+            : current.toneOfVoice,
+        profanity:
+          current.profanity === (toEnglish ? RU_PROFILE_DEFAULTS.profanity : EN_PROFILE_DEFAULTS.profanity)
+            ? (toEnglish ? EN_PROFILE_DEFAULTS.profanity : RU_PROFILE_DEFAULTS.profanity)
+            : current.profanity,
+        expertise:
+          current.expertise === (toEnglish ? RU_PROFILE_DEFAULTS.expertise : EN_PROFILE_DEFAULTS.expertise)
+            ? (toEnglish ? EN_PROFILE_DEFAULTS.expertise : RU_PROFILE_DEFAULTS.expertise)
+            : current.expertise,
+        favoriteCtas: shouldSwapCta ? [defaultCta] : current.favoriteCtas,
+      }
+    })
   }
 
   const handleSubmit = (event: FormEvent) => {
@@ -62,6 +99,13 @@ export function CreatorProfileDialog({ onClose, onSaved }: CreatorProfileDialogP
         </header>
 
         <div className="creator-profile-grid">
+          <label className="profile-field-wide">
+            <span>Язык интерфейса и сценариев</span>
+            <select value={profile.language} onChange={(e) => changeLanguage(e.target.value as AppLanguage)}>
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
+          </label>
           <label>
             <span>Ниша *</span>
             <input required value={profile.niche} onChange={(e) => update('niche', e.target.value)} placeholder="Например, продуктовый маркетинг" />
@@ -98,9 +142,15 @@ export function CreatorProfileDialog({ onClose, onSaved }: CreatorProfileDialogP
           <label>
             <span>Мат</span>
             <select value={profile.profanity} onChange={(e) => update('profanity', e.target.value)}>
-              <option>Без мата</option>
-              <option>Редко и только к месту</option>
-              <option>Допустим разговорный мат</option>
+              <option value={profile.language === 'en' ? EN_PROFILE_DEFAULTS.profanity : RU_PROFILE_DEFAULTS.profanity}>
+                {profile.language === 'en' ? EN_PROFILE_DEFAULTS.profanity : RU_PROFILE_DEFAULTS.profanity}
+              </option>
+              <option value={profile.language === 'en' ? 'Rarely, only when it fits' : 'Редко и только к месту'}>
+                {profile.language === 'en' ? 'Rarely, only when it fits' : 'Редко и только к месту'}
+              </option>
+              <option value={profile.language === 'en' ? 'Conversational profanity is okay' : 'Допустим разговорный мат'}>
+                {profile.language === 'en' ? 'Conversational profanity is okay' : 'Допустим разговорный мат'}
+              </option>
             </select>
           </label>
           <label>
@@ -109,7 +159,7 @@ export function CreatorProfileDialog({ onClose, onSaved }: CreatorProfileDialogP
           </label>
           <label className="profile-field-wide">
             <span>Любимые CTA · по одному на строку</span>
-            <textarea rows={3} value={ctaText} onChange={(e) => setCtaText(e.target.value)} placeholder="Сохрани, чтобы вернуться позже" />
+            <textarea rows={3} value={ctaText} onChange={(e) => setCtaText(e.target.value)} placeholder={profile.language === 'en' ? EN_PROFILE_DEFAULTS.favoriteCta : RU_PROFILE_DEFAULTS.favoriteCta} />
           </label>
         </div>
 

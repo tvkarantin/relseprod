@@ -5,6 +5,8 @@ import { retryReelAnalysis, startReelAnalysis } from '@/api/analysis'
 import { queryKeys } from '@/api/queryKeys'
 import { ErrorState, LoadingState } from '@/components/feedback/States'
 import { useReelAnalysisPolling } from '@/hooks/useReelAnalysisPolling'
+import { useLanguage } from '@/i18n/LanguageProvider'
+import { loadCreatorProfile } from '@/types/creatorProfile'
 import type { TranscriptionSummary } from '@/types/transcription'
 
 import { ReelAnalysisPreview } from './ReelAnalysisPreview'
@@ -54,6 +56,7 @@ export function ReelAnalysisControls({
   initialValues,
 }: ReelAnalysisControlsProps) {
   const queryClient = useQueryClient()
+  const { language } = useLanguage()
   const { analysis, isLoading, error } = useReelAnalysisPolling(reelId)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false)
@@ -63,21 +66,27 @@ export function ReelAnalysisControls({
   const [applyCta, setApplyCta] = useState(false)
 
   const startMutation = useMutation({
-    mutationFn: () => startReelAnalysis(reelId),
+    mutationFn: () => startReelAnalysis(reelId, loadCreatorProfile()),
     onSuccess: () => {
+      setWasApplied(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.analysis(reelId) })
     },
   })
 
   const retryMutation = useMutation({
-    mutationFn: () => retryReelAnalysis(reelId),
+    mutationFn: () => retryReelAnalysis(reelId, loadCreatorProfile()),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.analysis(reelId) })
     },
   })
 
+  const analysisMatchesLanguage =
+    !analysis ||
+    analysis.status !== 'completed' ||
+    analysis.promptVersion === `v3-localized-${language}`
+
   const alreadyApplied = useMemo(() => {
-    if (!analysis || analysis.status !== 'completed') return false
+    if (!analysis || analysis.status !== 'completed' || !analysisMatchesLanguage) return false
     const hasSuggestion = Boolean(
       analysis.suggestedHook || analysis.suggestedScript || analysis.suggestedCta,
     )
@@ -87,7 +96,7 @@ export function ReelAnalysisControls({
       sameText(initialValues.script, analysis.suggestedScript) &&
       sameText(initialValues.cta, analysis.suggestedCta)
     )
-  }, [analysis, initialValues])
+  }, [analysis, analysisMatchesLanguage, initialValues])
 
   const handleOpenApplyModal = () => {
     if (!analysis) return
@@ -148,9 +157,7 @@ export function ReelAnalysisControls({
 
   if (!analysis) {
     return (
-      <WorkflowCard
-        status={<><i />Перевести речь и разложить её по структуре сценария</>}
-      >
+      <WorkflowCard status={<><i />Перевести речь и разложить её по структуре сценария</>}>
         <button
           type="button"
           className="workflow-button workflow-button-primary"
@@ -190,9 +197,7 @@ export function ReelAnalysisControls({
 
   if (analysis.status === 'failed') {
     return (
-      <WorkflowCard
-        status={<><i className="is-error" />{analysis.errorMessage || 'Не удалось выполнить разбор'}</>}
-      >
+      <WorkflowCard status={<><i className="is-error" />{analysis.errorMessage || 'Не удалось выполнить разбор'}</>}>
         <button
           type="button"
           className="workflow-button workflow-button-primary"
@@ -200,6 +205,21 @@ export function ReelAnalysisControls({
           disabled={retryMutation.isPending}
         >
           {retryMutation.isPending ? 'Запускаем…' : 'Повторить'}
+        </button>
+      </WorkflowCard>
+    )
+  }
+
+  if (!analysisMatchesLanguage) {
+    return (
+      <WorkflowCard status={<><i />Результат сделан на другом языке</>}>
+        <button
+          type="button"
+          className="workflow-button workflow-button-primary"
+          onClick={() => startMutation.mutate()}
+          disabled={startMutation.isPending}
+        >
+          {startMutation.isPending ? 'Пересобираем…' : 'Пересобрать на выбранном языке'}
         </button>
       </WorkflowCard>
     )
