@@ -26,6 +26,7 @@ from app.schemas.common import ErrorResponse, HealthResponse, ServiceInfo
 logger = logging.getLogger("app.main")
 
 API_V1_PREFIX = "/api/v1"
+VERCEL_CORS_ORIGIN_REGEX = r"^https://realsfinder(?:-[a-z0-9-]+)?\.vercel\.app$"
 
 DESCRIPTION = """
 Backend для Reels Finder — сервиса поиска и анализа Instagram Reels конкурентов.
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_origin_regex=VERCEL_CORS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Authorization", "Content-Type", "X-Requested-With"],

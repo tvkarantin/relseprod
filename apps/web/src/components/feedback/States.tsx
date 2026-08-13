@@ -36,7 +36,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       <h3>{network ? 'Нет связи с сервером' : 'Не удалось загрузить данные'}</h3>
       <p>
         {network
-          ? 'Проверьте, что backend запущен на http://localhost:8000, и попробуйте снова.'
+          ? 'Backend API временно недоступен. Проверьте деплой сервера и попробуйте снова.'
           : getErrorMessage(error)}
       </p>
       {onRetry ? (
