@@ -1,4 +1,4 @@
-name: Refresh Nick Saraev reel metadata
+name: Inspect Nick Saraev Instagram metadata
 
 on:
   push:
@@ -7,12 +7,11 @@ on:
       - '.github/workflows/reimport-nick-saraev.yml'
 
 jobs:
-  refresh:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Start production re-import
+      - name: Fetch Tokyo Instagram metadata probe
         run: |
           set -euo pipefail
           curl --fail-with-body --silent --show-error \
-            -X POST \
-            'https://realsfinder-api.vercel.app/api/v1/competitors/7/parse'
+            'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-meta-probe?username=nick_saraev&forceFunctionRegion=ap-northeast-1'
