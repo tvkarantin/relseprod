@@ -21,25 +21,16 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import textwrap
 
           parsing = Path('apps/api/app/services/parsing.py')
           text = parsing.read_text()
-          old = '''        selected = select_reels_for_import(
-              normalized,
-              mode=job.import_mode,
-              excluded_shortcodes=existing_shortcodes,
-              excluded_instagram_ids=existing_instagram_ids,
-          )
-          logger.info(
-              "Job %s: selected %s reels for import from %s normalized candidates",
-              job.id,
-              len(selected),
-              len(normalized),
-          )
-
-          result = self.importer.import_reels(self.session, competitor, selected)
-          '''
-          new = '''        selected_new = select_reels_for_import(
+          start_marker = '        selected = select_reels_for_import(\n'
+          end_marker = '        result = self.importer.import_reels(self.session, competitor, selected)\n'
+          start = text.index(start_marker)
+          end = text.index(end_marker, start) + len(end_marker)
+          body = textwrap.dedent('''
+          selected_new = select_reels_for_import(
               normalized,
               mode=job.import_mode,
               excluded_shortcodes=existing_shortcodes,
@@ -77,27 +68,33 @@ jobs:
           )
 
           result = self.importer.import_reels(self.session, competitor, selected)
-          '''
-          if old not in text:
-              raise SystemExit('parsing.py target block not found')
-          parsing.write_text(text.replace(old, new, 1))
+          ''').strip('\n')
+          replacement = textwrap.indent(body, '        ') + '\n'
+          parsing.write_text(text[:start] + replacement + text[end:])
 
           test = Path('apps/api/tests/test_import_flow.py')
           text = test.read_text()
-          replacements = {
-              '    assert (result.created, result.updated) == (1, 0)\n': '    assert (result.created, result.updated) == (1, 2)\n',
-              '    assert job["reelsUpdated"] == 0\n': '    assert job["reelsUpdated"] == 2\n',
-              '    assert refreshed.views_count == 1000\n': '    assert refreshed.views_count == 99_999\n',
-              '    assert refreshed.likes_count == 100\n': '    assert refreshed.likes_count == 888\n',
-              '    assert refreshed.caption == "Подпись AAA"\n': '    assert refreshed.caption == "Новая подпись"\n',
-              "    # Existing external data and the user's script are untouched.\n": "    # Instagram-owned metadata refreshes while the user's script stays untouched.\n",
-          }
-          for old_value, new_value in replacements.items():
-              if old_value not in text:
-                  raise SystemExit(f'test target not found: {old_value!r}')
-              text = text.replace(old_value, new_value, 1)
+          replacements = [
+              ('    assert (result.created, result.updated) == (1, 0)\n', '    assert (result.created, result.updated) == (1, 2)\n'),
+              ('    assert job["reelsUpdated"] == 0\n', '    assert job["reelsUpdated"] == 2\n'),
+              ('    assert refreshed.views_count == 1000\n', '    assert refreshed.views_count == 99_999\n'),
+              ('    assert refreshed.likes_count == 100\n', '    assert refreshed.likes_count == 888\n'),
+              ('    assert refreshed.caption == "Подпись AAA"\n', '    assert refreshed.caption == "Новая подпись"\n'),
+              ("    # Existing external data and the user's script are untouched.\n", "    # Instagram-owned metadata refreshes while the user's script stays untouched.\n"),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'test target not found: {old!r}')
+              text = text.replace(old, new, 1)
           test.write_text(text)
           PY
+
+      - name: Run focused backend tests
+        working-directory: apps/api
+        run: |
+          python -m pip install -q -e '.[dev]'
+          python -m ruff check app/services/parsing.py tests/test_import_flow.py
+          python -m pytest tests/test_import_flow.py -q
 
       - name: Commit fix and remove temporary workflow
         run: |
