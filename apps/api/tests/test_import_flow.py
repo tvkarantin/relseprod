@@ -180,21 +180,21 @@ def test_second_import_skips_existing_reels_and_imports_the_next_candidates(
     with make_apify(updated_items) as apify:
         result = run_import(db_session, second_job, apify)
 
-    assert (result.created, result.updated) == (1, 0)
+    assert (result.created, result.updated) == (1, 2)
 
     job = client.get(f"{JOBS}/{second_job}").json()
     assert job["reelsCreated"] == 1
-    assert job["reelsUpdated"] == 0
+    assert job["reelsUpdated"] == 2
 
     competitor = client.get(f"{COMPETITORS}/{competitor_id}").json()
     assert competitor["reelsCount"] == 3, "no duplicates were created"
 
     db_session.expire_all()
     refreshed = db_session.query(Reel).filter(Reel.shortcode == "AAA").one()
-    assert refreshed.views_count == 1000
-    assert refreshed.likes_count == 100
-    assert refreshed.caption == "Подпись AAA"
-    # Existing external data and the user's script are untouched.
+    assert refreshed.views_count == 99_999
+    assert refreshed.likes_count == 888
+    assert refreshed.caption == "Новая подпись"
+    # Instagram-owned metadata refreshes while the user's script stays untouched.
     assert refreshed.content.hook == "Мой хук"
     assert refreshed.content.script == "Мой сценарий"
     assert refreshed.content.cta == "Мой призыв"

@@ -342,16 +342,40 @@ class ParsingService:
         existing_shortcodes, existing_instagram_ids = ReelRepository(
             self.session
         ).identity_sets_for_competitor(competitor.id)
-        selected = select_reels_for_import(
+        selected_new = select_reels_for_import(
             normalized,
             mode=job.import_mode,
             excluded_shortcodes=existing_shortcodes,
             excluded_instagram_ids=existing_instagram_ids,
         )
+
+        existing_candidates = []
+        seen_shortcodes: set[str] = set()
+        seen_instagram_ids: set[str] = set()
+        for reel in normalized:
+            matches_existing = bool(
+                (reel.shortcode and reel.shortcode in existing_shortcodes)
+                or (reel.instagram_id and reel.instagram_id in existing_instagram_ids)
+            )
+            if not matches_existing:
+                continue
+            if reel.shortcode and reel.shortcode in seen_shortcodes:
+                continue
+            if reel.instagram_id and reel.instagram_id in seen_instagram_ids:
+                continue
+            existing_candidates.append(reel)
+            if reel.shortcode:
+                seen_shortcodes.add(reel.shortcode)
+            if reel.instagram_id:
+                seen_instagram_ids.add(reel.instagram_id)
+
+        selected = [*existing_candidates, *selected_new]
         logger.info(
-            "Job %s: selected %s reels for import from %s normalized candidates",
+            "Job %s: refreshing %s existing reels and importing %s new reels "
+            "from %s normalized candidates",
             job.id,
-            len(selected),
+            len(existing_candidates),
+            len(selected_new),
             len(normalized),
         )
 
