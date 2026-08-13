@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 
+import './ReelThumbnail.css'
+
 interface ReelThumbnailProps {
   src: string | null
   /** Kept for backwards compatibility; cards intentionally never use a video frame as a cover. */
