@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { createCompetitor, startImport } from '@/api/competitors'
 import { queryKeys } from '@/api/queryKeys'
@@ -71,6 +72,7 @@ interface ImportCompetitorDialogProps {
 
 export function ImportCompetitorDialog({ onClose }: ImportCompetitorDialogProps) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const toast = useToast()
   const { addNotification } = useNotifications()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -89,13 +91,14 @@ export function ImportCompetitorDialog({ onClose }: ImportCompetitorDialogProps)
       void queryClient.invalidateQueries({ queryKey: queryKeys.competitors.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary() })
-      toast.info(`Импорт @${competitor.instagramUsername} запущен`)
+      toast.info(`Импорт @${competitor.instagramUsername} запущен — показываю прогресс`)
       addNotification({
         kind: 'import',
         title: 'Импорт запущен',
-        description: `Рилсы @${competitor.instagramUsername} скоро появятся в библиотеке`,
+        description: `Статус @${competitor.instagramUsername} открыт в разделе «Конкуренты». После завершения Reels появятся в библиотеке и ленте идей.`,
       })
       onClose()
+      navigate('/competitors')
     },
     onError: (error) => {
       const message = getCompetitorFormError(error) || getErrorMessage(error)
@@ -159,7 +162,7 @@ export function ImportCompetitorDialog({ onClose }: ImportCompetitorDialogProps)
           <div>
             <h2 id="import-dialog-title">Добавить конкурента</h2>
             <p id="import-dialog-description">
-              Добавьте Instagram-аккаунт конкурента, чтобы импортировать его рилсы через Apify.
+              Добавьте Instagram-аккаунт. После запуска вы сразу увидите живой статус импорта.
             </p>
           </div>
         </div>
