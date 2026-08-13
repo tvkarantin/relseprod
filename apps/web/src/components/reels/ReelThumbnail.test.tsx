@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { ReelThumbnail } from './ReelThumbnail'
 
 describe('ReelThumbnail', () => {
-  it('falls back from a broken image to a video frame', () => {
-    render(
+  it('shows a placeholder instead of falling back to the first video frame', () => {
+    const { container } = render(
       <ReelThumbnail
         src="https://cdn.example.com/expired.jpg"
         videoSrc="https://cdn.example.com/reel.mp4"
@@ -15,23 +15,20 @@ describe('ReelThumbnail', () => {
 
     fireEvent.error(screen.getByRole('img', { name: 'Тестовый рилс' }))
 
-    const video = screen.getByLabelText('Тестовый рилс — превью видео')
-    expect(video).toBeInTheDocument()
-    expect(video).toHaveAttribute('src', 'https://cdn.example.com/reel.mp4')
+    expect(screen.getByRole('img', { name: 'Тестовый рилс — обложка недоступна' })).toBeInTheDocument()
+    expect(container.querySelector('video')).not.toBeInTheDocument()
   })
 
-  it('shows the placeholder only when both preview sources fail', () => {
-    render(
+  it('shows a placeholder when the Instagram cover is missing', () => {
+    const { container } = render(
       <ReelThumbnail
-        src="https://cdn.example.com/expired.jpg"
-        videoSrc="https://cdn.example.com/expired.mp4"
+        src={null}
+        videoSrc="https://cdn.example.com/reel.mp4"
         alt="Тестовый рилс"
       />,
     )
 
-    fireEvent.error(screen.getByRole('img', { name: 'Тестовый рилс' }))
-    fireEvent.error(screen.getByLabelText('Тестовый рилс — превью видео'))
-
     expect(screen.getByRole('img', { name: 'Тестовый рилс — обложка недоступна' })).toBeInTheDocument()
+    expect(container.querySelector('video')).not.toBeInTheDocument()
   })
 })
