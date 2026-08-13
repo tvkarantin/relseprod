@@ -31,6 +31,25 @@ function getCategoryFromReel(reel: Reel): Category {
   return 'default'
 }
 
+function getCardThumbnailUrl(reel: Reel): string | null {
+  if (!reel.thumbnailUrl) return null
+
+  try {
+    const url = new URL(reel.thumbnailUrl)
+    if (
+      url.protocol === 'https:' &&
+      url.hostname.endsWith('.supabase.co') &&
+      url.pathname === '/functions/v1/instagram-imginn'
+    ) {
+      return reel.thumbnailUrl
+    }
+  } catch {
+    // Invalid/legacy URLs continue through the backend proxy, which fails safely.
+  }
+
+  return getReelThumbnailUrl(reel.id)
+}
+
 export function ReelCard({ reel, viewMode = 'grid' }: { reel: Reel; viewMode?: 'grid' | 'list' }) {
   const title = reel.caption ? truncate(reel.caption, viewMode === 'list' ? 120 : 80) : 'Без описания'
   const category = getCategoryFromReel(reel)
@@ -40,7 +59,7 @@ export function ReelCard({ reel, viewMode = 'grid' }: { reel: Reel; viewMode?: '
     <article className={`reel-card surface${viewMode === 'list' ? ' list-view' : ''}`}>
       <Link to={`/reels/${reel.id}`} className="reel-cover" aria-label={`Открыть рилс: ${title}`}>
         <ReelThumbnail
-          src={reel.thumbnailUrl ? getReelThumbnailUrl(reel.id) : null}
+          src={getCardThumbnailUrl(reel)}
           videoSrc={reel.videoUrl}
           alt={title}
         />
