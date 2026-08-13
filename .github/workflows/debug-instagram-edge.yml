@@ -1,4 +1,4 @@
-name: Debug Pictame Lookup
+name: Verify Imginn Production Import
 
 on:
   push:
@@ -7,12 +7,15 @@ on:
       - '.github/workflows/debug-instagram-edge.yml'
 
 jobs:
-  debug:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Pictame lookup routes
+      - name: Start nick_saraev production import
         run: |
           set -euo pipefail
-          curl --silent --show-error \
-            'https://tphahouachokghqlsczf.supabase.co/functions/v1/noop?forceFunctionRegion=ap-northeast-1'
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"importMode":"popular"}' \
+            https://realsfinder-api.vercel.app/api/v1/competitors/6/parse
           echo
