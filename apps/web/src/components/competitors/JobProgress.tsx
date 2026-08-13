@@ -11,12 +11,12 @@ import { getErrorMessage } from '@/utils/errors'
 
 const STAGE_LABELS: Record<number, string> = {
   0: 'Задача создана',
-  10: 'Запуск фоновой задачи',
-  20: 'Запуск Apify Actor',
-  30: 'Actor запущен',
-  50: 'Ожидание завершения Actor',
-  70: 'Данные получены',
-  85: 'Сохранение рилсов',
+  10: 'Запускаем импорт',
+  20: 'Подключаемся к Instagram',
+  30: 'Источник Instagram запущен',
+  50: 'Получаем рилсы',
+  70: 'Рилсы получены',
+  85: 'Отбираем и сохраняем рилсы',
   100: 'Импорт завершён',
 }
 
@@ -74,7 +74,7 @@ export function JobProgress({
   const retry = useMutation({
     mutationFn: () => retryJob(jobId),
     onSuccess: (started) => {
-      toast.info('Задача перезапущена')
+      toast.info('Импорт перезапущен')
       void queryClient.invalidateQueries({ queryKey: queryKeys.competitors.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.jobs.details(started.jobId) })
       onRestarted(started.jobId)
@@ -95,7 +95,7 @@ export function JobProgress({
   if (!job) return null
   if (job.status === 'completed') return null
   const safeProgress = Math.min(100, Math.max(0, job.progress))
-  const isWaitingForApify = job.status === 'running' && safeProgress >= 30 && safeProgress < 70
+  const isFetchingInstagram = job.status === 'running' && safeProgress >= 20 && safeProgress < 70
 
   return (
     <div
@@ -125,9 +125,9 @@ export function JobProgress({
         />
       </div>
 
-      {isWaitingForApify ? (
+      {isFetchingInstagram ? (
         <p className="job-progress-note">
-          Apify обрабатывает профиль. Обычно это занимает от 30 секунд до нескольких минут.
+          Получаем данные из Instagram. Сначала используется бесплатный источник, резервный включается только если он не ответил.
         </p>
       ) : null}
 
