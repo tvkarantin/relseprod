@@ -8,6 +8,7 @@ export function makeCompetitor(overrides: Partial<Competitor> = {}): Competitor 
   return {
     id: 1,
     activeJobId: null,
+    latestJobId: null,
     instagramUsername: 'example',
     profileUrl: 'https://www.instagram.com/example/',
     status: 'ready',
