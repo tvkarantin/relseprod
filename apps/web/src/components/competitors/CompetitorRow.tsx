@@ -10,7 +10,7 @@ import { formatDateTime, formatNumber } from '@/utils/format'
 
 interface CompetitorRowProps {
   competitor: Competitor
-  /** Job started in this session, if any. */
+  /** Job started in this session, or the latest persisted job when backend exposes it. */
   jobId: number | null
   isStarting: boolean
   onStartImport: (competitor: Competitor) => void
@@ -28,11 +28,10 @@ export function CompetitorRow({
   onJobRestarted,
   onJobSettled,
 }: CompetitorRowProps) {
-  // A competitor left in queued/parsing (e.g. after a page reload) still shows
-  // as busy even though we have no job id to poll.
   const isBusyByStatus = competitor.status === 'queued' || competitor.status === 'parsing'
   const [isJobActive, setJobActive] = useState(false)
   const isBusy = isStarting || isJobActive || isBusyByStatus
+  const hasFallbackFailure = competitor.status === 'error' && jobId === null
 
   useEffect(() => {
     if (jobId === null) setJobActive(false)
@@ -77,7 +76,11 @@ export function CompetitorRow({
             disabled={isBusy}
             onClick={() => onStartImport(competitor)}
           >
-            {isBusy ? 'Импорт идёт…' : 'Импортировать Reels'}
+            {isBusy
+              ? 'Импорт идёт…'
+              : competitor.status === 'error'
+                ? 'Повторить импорт'
+                : 'Импортировать Reels'}
           </Button>
           <Button
             small
@@ -99,6 +102,21 @@ export function CompetitorRow({
           onRestarted={onJobRestarted}
           onSettled={onJobSettled}
         />
+      ) : null}
+
+      {hasFallbackFailure ? (
+        <div className="job-panel" role="status" aria-live="polite">
+          <div className="job-progress-meta">
+            <div>
+              <strong>Последний импорт завершился ошибкой</strong>
+              <span>@{competitor.instagramUsername}</span>
+            </div>
+            <strong className="job-progress-percent">0 Reels</strong>
+          </div>
+          <p className="job-progress-note">
+            Ничего не импортировано. Нажмите «Повторить импорт» — прогресс нового запуска будет показан здесь по этапам.
+          </p>
+        </div>
       ) : null}
     </>
   )
