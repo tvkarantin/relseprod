@@ -78,7 +78,6 @@ def test_health_returns_503_error_envelope_when_database_is_down(app: FastAPI) -
     assert response.status_code == 503
     error = assert_error_envelope(response.json(), ErrorCode.DATABASE_ERROR)
     assert error["details"] == {"database": "disconnected"}
-    # No driver internals, SQL or file paths leak to the client.
     assert "OperationalError" not in response.text
     assert "SELECT 1" not in response.text
 
@@ -211,6 +210,7 @@ def test_competitor_schema_serializes_camel_case(db_session) -> None:
     assert set(payload) == {
         "id",
         "activeJobId",
+        "latestJobId",
         "instagramUsername",
         "profileUrl",
         "status",
@@ -221,6 +221,7 @@ def test_competitor_schema_serializes_camel_case(db_session) -> None:
     }
     assert payload["instagramUsername"] == "camel"
     assert payload["activeJobId"] is None
+    assert payload["latestJobId"] is None
     assert payload["reelsCount"] == 7
     assert payload["status"] == "ready"
     assert payload["lastParsedAt"] is None
