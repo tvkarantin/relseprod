@@ -1,0 +1,225 @@
+/* Final landing feedback pass: orange contrast, real Reel media, richer competitor atmosphere. */
+
+:root {
+  --rf-orange: #f05a2a;
+  --rf-orange-hover: #d94b20;
+}
+
+/* Keep the light hero, but make dark CTA blocks orange and force readable white copy. */
+.rf3-header:not(.is-scrolled) .rf3-logo-mark,
+.rf3-header-cta,
+.rf3-primary-button,
+.rf3-reel-bookmark,
+.rf3-work-saved,
+.rf3-price-card.is-pro > a {
+  color: #fff !important;
+  background: var(--rf-orange) !important;
+  border-color: var(--rf-orange) !important;
+}
+
+.rf3-header-cta:hover,
+.rf3-primary-button:hover,
+.rf3-price-card.is-pro > a:hover {
+  color: #fff !important;
+  background: var(--rf-orange-hover) !important;
+  border-color: var(--rf-orange-hover) !important;
+}
+
+.rf3-header-cta *,
+.rf3-primary-button * {
+  color: currentColor !important;
+}
+
+.rf3-price-card.is-pro {
+  border-color: rgba(240, 90, 42, .55) !important;
+}
+
+.rf3-viral-card > strong,
+.rf3-work-kicker,
+.rf3-eyebrow {
+  color: var(--rf-orange) !important;
+}
+
+/* HERO MEDIA — use a real Reel from the current RealsFinder data set instead of a stock visual. */
+.rf3-main-reel > img {
+  content: url('https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=Dbn6ElTvw_W&forceFunctionRegion=ap-northeast-1&username=nick_saraev');
+  object-position: center;
+}
+
+.rf3-side-thumb-one > img {
+  content: url('https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=DblTPmfPCpB&forceFunctionRegion=ap-northeast-1&username=nick_saraev');
+}
+
+.rf3-side-thumb-two > img {
+  content: url('https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=DbyJNRdPyCj&forceFunctionRegion=ap-northeast-1&username=nick_saraev');
+}
+
+.rf3-reel-stats strong,
+.rf3-reel-stats span {
+  display: none;
+}
+
+.rf3-reel-stats::after {
+  content: '422 994 просмотров · x13.3';
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.rf3-reel-copy > p {
+  font-size: 0;
+}
+
+.rf3-reel-copy > p::after {
+  content: '5 Claude Code plugins, которые реально ускоряют работу';
+  display: block;
+  max-width: 260px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.rf3-avatar {
+  font-size: 0 !important;
+}
+
+.rf3-avatar::after {
+  content: 'NS';
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rf3-creator-card strong,
+.rf3-creator-card small,
+.rf3-viral-card > small,
+.rf3-viral-card > strong {
+  font-size: 0;
+}
+
+.rf3-creator-card strong::after {
+  content: '@nick_saraev';
+  font-size: 13.5px;
+}
+
+.rf3-creator-card small::after {
+  content: 'реальный Reel из мониторинга';
+  font-size: 11px;
+}
+
+.rf3-viral-card > small::after {
+  content: 'Выше среднего аккаунта';
+  font-size: 11.5px;
+}
+
+.rf3-viral-card > strong::after {
+  content: 'x13.3';
+  font-size: 31px;
+}
+
+.rf3-main-reel,
+.rf3-side-thumb,
+.rf3-creator-card,
+.rf3-viral-card {
+  will-change: transform;
+}
+
+.rf3-main-reel {
+  transition: transform 80ms linear, box-shadow 180ms ease !important;
+}
+
+.rf3-side-thumb-one,
+.rf3-side-thumb-two,
+.rf3-creator-card,
+.rf3-viral-card {
+  transition: transform 110ms linear !important;
+}
+
+/* SECOND BLOCK — denser, less sterile. Use real metrics from the same Reel as ambient product signals. */
+.rf3-competitors-sticky::before,
+.rf3-competitors-sticky::after {
+  width: max-content !important;
+  min-width: 1450px;
+  opacity: .82;
+  letter-spacing: .11em;
+}
+
+.rf3-competitors-sticky::before {
+  content: 'АНОМАЛЬНЫЙ РОСТ   ·   422K ПРОСМОТРОВ   ·   +13.3× К СРЕДНЕМУ   ·   11.3% ВОВЛЕЧЕНИЕ   ·   1 364 ПРОСМОТРОВ/Ч   ·   HOOK   ·   CTA   ·   СОХРАНЕНИЯ   ·   ПЕРЕСЫЛКИ   ·   VIRAL SCORE 82   ·   СИЛЬНЫЙ СИГНАЛ';
+  animation: rf3-signal-left 30s linear infinite;
+}
+
+.rf3-competitors-sticky::after {
+  content: 'INSTAGRAM REELS   ·   YOUTUBE SHORTS   ·   РОСТ ЗА 24 ЧАСА   ·   СКОРОСТЬ НАБОРА   ·   СРЕДНИЕ ПОКАЗАТЕЛИ   ·   ФОРМАТ   ·   ТЕМА   ·   ДЛИТЕЛЬНОСТЬ   ·   ПУБЛИКАЦИЯ   ·   КОНКУРЕНТЫ   ·   ТРЕНДЫ';
+  animation: rf3-signal-right 36s linear infinite;
+}
+
+.rf3-competitor-panel {
+  position: relative;
+  overflow: visible !important;
+}
+
+.rf3-competitor-panel::before,
+.rf3-competitor-panel::after {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(240, 90, 42, .2);
+  border-radius: 999px;
+  color: #8e3b1d;
+  background: rgba(255, 247, 241, .94);
+  box-shadow: 0 10px 28px rgba(55, 34, 22, .08);
+  font-size: 10.5px;
+  font-weight: 720;
+  letter-spacing: .02em;
+  pointer-events: none;
+}
+
+.rf3-competitor-panel::before {
+  content: 'Viral Score 82  ·  сильный сигнал';
+  right: 7%;
+  top: -18px;
+  transform: rotate(1.5deg);
+}
+
+.rf3-competitor-panel::after {
+  content: '11.3% ER  ·  1 364 просмотров/ч';
+  left: 23%;
+  bottom: -19px;
+  transform: rotate(-1.2deg);
+}
+
+.rf3-competitor-row.is-primary {
+  border-color: rgba(240, 90, 42, .32) !important;
+  background: #fff7f2 !important;
+}
+
+.rf3-viral-badge,
+.rf3-comp-score {
+  color: #fff !important;
+  background: var(--rf-orange) !important;
+}
+
+@keyframes rf3-signal-left {
+  from { transform: translateX(-48%); }
+  to { transform: translateX(-55%); }
+}
+
+@keyframes rf3-signal-right {
+  from { transform: translateX(-52%); }
+  to { transform: translateX(-45%); }
+}
+
+@media (max-width: 900px) {
+  .rf3-competitor-panel::before,
+  .rf3-competitor-panel::after {
+    display: none;
+  }
+}
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .rf3-competitors-sticky::before,
+  .rf3-competitors-sticky::after {
+    animation: none;
+  }
+}
