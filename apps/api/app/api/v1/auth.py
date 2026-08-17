@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hmac
+from typing import Annotated
 
-from fastapi import APIRouter, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from app.api.auth_deps import CurrentUser
 from app.api.deps import DbSession
@@ -32,6 +34,7 @@ from app.services.telegram_auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+Database = Annotated[Session, Depends(DbSession)]
 
 
 def _settings(request: Request) -> Settings:
@@ -62,7 +65,7 @@ def auth_config(request: Request) -> AuthConfigResponse:
 @router.post("/telegram/webhook", response_model=TelegramWebhookResponse)
 def telegram_webhook(
     request: Request,
-    db: DbSession,
+    db: Database,
     payload: dict[str, object],
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ) -> TelegramWebhookResponse:
@@ -124,7 +127,7 @@ def telegram_webhook(
 @router.post("/telegram/exchange", response_model=AuthSessionResponse)
 def telegram_exchange(
     request: Request,
-    db: DbSession,
+    db: Database,
     body: TelegramExchangeRequest,
 ) -> AuthSessionResponse:
     settings = _settings(request)
@@ -143,7 +146,7 @@ def auth_me(user: CurrentUser) -> AuthUserResponse:
 
 
 @router.delete("/session", status_code=status.HTTP_204_NO_CONTENT)
-def logout(request: Request, db: DbSession, _user: CurrentUser) -> Response:
+def logout(request: Request, db: Database, _user: CurrentUser) -> Response:
     token = _raw_bearer(request)
     if token:
         db.execute(delete(AuthSession).where(AuthSession.token_hash == hash_token(token)))
