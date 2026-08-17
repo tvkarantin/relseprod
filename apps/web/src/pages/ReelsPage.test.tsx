@@ -134,7 +134,7 @@ describe('ReelsPage', () => {
     renderWithProviders(<ReelsPage />, { route: '/reels?page=3' })
     await screen.findByText('Как снимать рилсы')
 
-    await user.type(screen.getByLabelText(/Поиск по заголовку/), 'маркетинг')
+    await user.type(screen.getByLabelText(/Поиск по библиотеке/), 'маркетинг')
 
     await waitFor(
       () =>
@@ -178,13 +178,13 @@ describe('ReelsPage', () => {
 
     await waitFor(() =>
       expect(mockedReels.fetchReels).toHaveBeenCalledWith(
-        { competitorId: 2, search: 'test', sort: 'views', page: 2, limit: 8 },
+        { competitorId: 2, search: 'test', sort: 'date', page: 2, limit: 10 },
         expect.anything(),
       ),
     )
   })
 
-  it('requests global popularity sorting from the server', async () => {
+  it('requests the selected sorting from the server', async () => {
     const user = userEvent.setup()
     mockedReels.fetchReels.mockResolvedValue(page([makeReel()]))
 
@@ -192,7 +192,7 @@ describe('ReelsPage', () => {
     await screen.findByText('Как снимать рилсы')
 
     expect(mockedReels.fetchReels).toHaveBeenCalledWith(
-      expect.objectContaining({ sort: 'views' }),
+      expect.objectContaining({ sort: 'date' }),
       expect.anything(),
     )
 
@@ -247,7 +247,7 @@ describe('ReelsPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<ReelsPage />, { route: '/reels' })
 
-    await user.click(await screen.findByRole('button', { name: '+ Импорт' }))
+    await user.click(await screen.findByRole('button', { name: '+ Добавить ссылку' }))
 
     expect(screen.getByRole('dialog', { name: 'Добавить конкурента' })).toBeInTheDocument()
     expect(screen.getByLabelText('Instagram-аккаунт или ссылка')).toBeInTheDocument()
