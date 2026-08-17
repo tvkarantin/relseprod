@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -21,6 +22,8 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
+import { fetchTelegramAvatarObjectUrl } from '@/api/auth'
+import { useAuth } from '@/auth/AuthProvider'
 import { UsageLimitsCard } from '@/components/layout/UsageLimitsCard'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useNotifications } from '@/components/notifications/notificationContext'
@@ -37,14 +40,38 @@ const NAV_ITEMS = [
   { to: '/subscription', label: 'Подписка', icon: Star },
 ] as const
 
+function initialsFor(name: string): string {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+  return initials || 'R'
+}
+
+function initialsAvatar(name: string): string {
+  const initials = initialsFor(name)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="#171717"/><text x="48" y="56" text-anchor="middle" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="white">${initials}</text></svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 export function AppLayout() {
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [isNotificationsOpen, setNotificationsOpen] = useState(false)
   const [isProfileOpen, setProfileOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const notificationAnchorRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { notifications } = useNotifications()
+  const { user } = useAuth()
   const hasUnreadNotifications = notifications.some((item) => item.unread)
+
+  const displayName = user?.displayName || 'Автор'
+  const primaryProfileLabel = user?.telegramUsername
+    ? `@${user.telegramUsername}`
+    : displayName
+  const fallbackAvatarUrl = useMemo(() => initialsAvatar(displayName), [displayName])
 
   useEffect(() => {
     setMenuOpen(false)
@@ -70,6 +97,28 @@ export function AppLayout() {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [isNotificationsOpen])
+
+  useEffect(() => {
+    setAvatarUrl(null)
+    if (!user?.hasAvatar) return
+
+    const controller = new AbortController()
+    let objectUrl: string | null = null
+    void fetchTelegramAvatarObjectUrl(controller.signal)
+      .then((nextUrl) => {
+        if (controller.signal.aborted) return
+        objectUrl = nextUrl
+        setAvatarUrl(nextUrl)
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) console.warn('Could not load Telegram avatar', error)
+      })
+
+    return () => {
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [user?.id, user?.hasAvatar])
 
   const handleShellPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.currentTarget.style.setProperty('--rf-cursor-x', `${event.clientX}px`)
@@ -146,8 +195,8 @@ export function AppLayout() {
           </button>
 
           <button type="button" className="rf-profile-button" onClick={() => setProfileOpen(true)} aria-label="Открыть профиль">
-            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85" alt="" />
-            <span><strong>Андрей</strong><small>Автор</small></span>
+            <img src={avatarUrl ?? fallbackAvatarUrl} alt="" />
+            <span><strong>{primaryProfileLabel}</strong><small>{displayName}</small></span>
             <ChevronDown size={15} aria-hidden="true" />
           </button>
         </div>
