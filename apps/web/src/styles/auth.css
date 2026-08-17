@@ -1,0 +1,147 @@
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: #f4f4f1;
+  color: #111;
+}
+
+.auth-card {
+  width: min(100%, 440px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 32px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 22px 70px rgba(17, 17, 17, 0.08);
+}
+
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  color: inherit;
+  text-decoration: none;
+  margin-bottom: 48px;
+}
+
+.auth-brand-mark {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+}
+
+.auth-icon {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 22px;
+  border-radius: 15px;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+}
+
+.auth-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(30px, 6vw, 40px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.auth-card > p {
+  margin: 0 0 28px;
+  color: #696966;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.auth-primary,
+.auth-secondary {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-primary {
+  background: #111;
+  color: #fff;
+}
+
+.auth-primary:hover {
+  transform: translateY(-1px);
+}
+
+.auth-secondary {
+  color: #111;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+}
+
+.auth-security {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+  color: #858580;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-security svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.auth-warning {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f1f1ee;
+  color: #555550;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.auth-callback-card {
+  align-items: center;
+  text-align: center;
+}
+
+.auth-callback-card .auth-primary,
+.auth-callback-card .auth-secondary {
+  width: 100%;
+}
+
+.auth-spinner {
+  margin-bottom: 22px;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 520px) {
+  .auth-card {
+    padding: 26px 22px;
+    border-radius: 18px;
+  }
+
+  .auth-brand {
+    margin-bottom: 38px;
+  }
+}
