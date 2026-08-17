@@ -21,7 +21,9 @@ import './styles/realsflow-theme.css'
 import './styles/ui-cleanups.css'
 import './styles/archive-one-theme.css'
 import './styles/landing-motion-fixes.css'
+import './styles/auth.css'
 
+import { AuthProvider } from '@/auth/AuthProvider'
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
 
@@ -32,11 +34,13 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={createQueryClient()}>
       <BrowserRouter>
-        <NotificationProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </NotificationProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

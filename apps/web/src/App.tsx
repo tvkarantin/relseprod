@@ -4,8 +4,11 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { fetchCompetitors } from '@/api/competitors'
 import { queryKeys } from '@/api/queryKeys'
+import { RequireAuth } from '@/auth/RequireAuth'
 import { useJobPolling } from '@/hooks/useJobPolling'
 import { LandingPage } from '@/pages/LandingPage'
+import { LoginPage } from '@/pages/LoginPage'
+import { TelegramAuthCallbackPage } from '@/pages/TelegramAuthCallbackPage'
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
@@ -47,26 +50,31 @@ export function App() {
     <Suspense fallback={<div className="route-loading" role="status">Загружаем рабочее пространство…</div>}>
       <Routes>
         <Route index element={<LandingPage />} />
-        <Route
-          element={
-            <>
-              <ImportJobsWatcher />
-              <AppLayout />
-            </>
-          }
-        >
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="ideas" element={<IdeaFeedPage />} />
-          <Route path="competitors" element={<CompetitorsPage />} />
-          <Route path="library" element={<ReelsPage />} />
-          <Route path="reels" element={<Navigate to="/ideas" replace />} />
-          <Route path="youtube-monitoring" element={<YouTubeMonitoringPage />} />
-          <Route path="reels/:reelId" element={<ReelDetailsPage />} />
-          <Route path="my-reels" element={<MyReelsPage />} />
-          <Route path="resources" element={<ResourcesPage />} />
-          <Route path="subscription" element={<SubscriptionPage />} />
-          <Route path="ai-dashboard" element={<AiDashboardPage />} />
-          <Route path="*" element={<NotFoundPage />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="auth/telegram" element={<TelegramAuthCallbackPage />} />
+
+        <Route element={<RequireAuth />}>
+          <Route
+            element={
+              <>
+                <ImportJobsWatcher />
+                <AppLayout />
+              </>
+            }
+          >
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="ideas" element={<IdeaFeedPage />} />
+            <Route path="competitors" element={<CompetitorsPage />} />
+            <Route path="library" element={<ReelsPage />} />
+            <Route path="reels" element={<Navigate to="/ideas" replace />} />
+            <Route path="youtube-monitoring" element={<YouTubeMonitoringPage />} />
+            <Route path="reels/:reelId" element={<ReelDetailsPage />} />
+            <Route path="my-reels" element={<MyReelsPage />} />
+            <Route path="resources" element={<ResourcesPage />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="ai-dashboard" element={<AiDashboardPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
         </Route>
       </Routes>
     </Suspense>

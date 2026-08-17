@@ -5,6 +5,7 @@
  * external call goes through our own backend.
  */
 
+import { getAuthToken } from '@/auth/storage'
 import { ERROR_CODES, type ApiErrorBody } from '@/types/api'
 
 const DEFAULT_TIMEOUT_MS = 20_000
@@ -146,10 +147,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   let response: Response
   try {
+    const authToken = getAuthToken()
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers: {
         Accept: 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
