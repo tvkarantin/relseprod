@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from app.core.config import Settings
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
+REGISTER_CALLBACK = "register_realsfinder"
 
 
 @dataclass(slots=True, frozen=True)
@@ -108,18 +109,18 @@ def build_login_url(settings: Settings, raw_code: str) -> str:
     )
 
 
-def send_registration_button(
+def send_start_screen(
     settings: Settings,
     *,
     chat_id: int,
-    login_url: str,
     existing_user: bool,
 ) -> None:
-    button_text = "Войти в RealsFinder" if existing_user else "Зарегистрироваться"
+    button_text = "Войти через Telegram" if existing_user else "Зарегистрироваться"
     text = (
-        "Аккаунт уже найден. Нажми кнопку ниже, чтобы войти."
-        if existing_user
-        else "Готово. Нажми кнопку ниже — Telegram-аккаунт станет твоим профилем RealsFinder."
+        "RealsFinder\n\n"
+        "Этот бот используется для регистрации и входа в RealsFinder через Telegram.\n\n"
+        "Мы используем только данные твоего Telegram-профиля: имя, @username и аватар. "
+        "Никаких паролей и кодов вводить не нужно."
     )
     _telegram_call(
         settings,
@@ -128,7 +129,54 @@ def send_registration_button(
             "chat_id": chat_id,
             "text": text,
             "reply_markup": {
-                "inline_keyboard": [[{"text": button_text, "url": login_url}]],
+                "inline_keyboard": [
+                    [{"text": button_text, "callback_data": REGISTER_CALLBACK}],
+                ],
+            },
+        },
+    )
+
+
+def answer_callback_query(
+    settings: Settings,
+    *,
+    callback_query_id: str,
+) -> None:
+    """Stop Telegram's callback loading indicator immediately."""
+    _telegram_call(
+        settings,
+        "answerCallbackQuery",
+        {"callback_query_id": callback_query_id},
+    )
+
+
+def send_confirmation_screen(
+    settings: Settings,
+    *,
+    chat_id: int,
+    message_id: int,
+    login_url: str,
+    existing_user: bool,
+) -> None:
+    title = "Подтверди вход" if existing_user else "Подтверди регистрацию"
+    action = "войти" if existing_user else "создать аккаунт"
+    text = (
+        f"{title}\n\n"
+        f"Нажимая кнопку ниже, ты подтверждаешь, что хочешь {action} в RealsFinder "
+        "через этот Telegram-аккаунт.\n\n"
+        "После подтверждения ты вернёшься в RealsFinder."
+    )
+    _telegram_call(
+        settings,
+        "editMessageText",
+        {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+            "reply_markup": {
+                "inline_keyboard": [
+                    [{"text": "Подтвердить и вернуться", "url": login_url}],
+                ],
             },
         },
     )
@@ -138,7 +186,10 @@ def send_start_hint(settings: Settings, *, chat_id: int) -> None:
     _telegram_call(
         settings,
         "sendMessage",
-        {"chat_id": chat_id, "text": "Нажми /start, чтобы войти или зарегистрироваться."},
+        {
+            "chat_id": chat_id,
+            "text": "Нажми /start — бот проведёт регистрацию или вход через Telegram.",
+        },
     )
 
 
