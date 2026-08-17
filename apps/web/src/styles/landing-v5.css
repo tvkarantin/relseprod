@@ -1,6 +1,5 @@
-/* Single real Instagram Reel in the hero. Let Instagram provide the real username/avatar/media chrome. */
+/* Single real Reel in hero, rendered as native video so the landing never depends on a fragile Instagram iframe. */
 .rf3-side-thumb,
-.rf3-creator-card,
 .rf3-reel-topline,
 .rf3-reel-copy,
 .rf3-reel-bookmark {
@@ -20,16 +19,73 @@
   overflow: hidden;
   border: 1px solid #ded8cd !important;
   border-radius: 28px !important;
-  background: #fff;
+  background: #111;
   box-shadow: 0 38px 86px -34px rgba(25, 22, 18, .4) !important;
 }
 
 .rf3-real-instagram-embed {
+  display: none !important;
+}
+
+.rf3-real-reel-video {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  object-position: center;
   border: 0;
-  background: #fff;
+  background: #111;
+}
+
+.rf3-creator-card {
+  display: flex !important;
+  left: 1% !important;
+  right: auto !important;
+  bottom: 92px !important;
+  top: auto !important;
+  min-width: 190px;
+  z-index: 8;
+}
+
+.rf3-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 50% !important;
+  background: #e9e3da !important;
+  font-size: 0 !important;
+}
+
+.rf3-avatar::after,
+.rf3-creator-card strong::after,
+.rf3-creator-card small::after,
+.rf3-viral-card > small::after,
+.rf3-viral-card > strong::after {
+  content: none !important;
+}
+
+.rf3-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.rf3-creator-card strong {
+  display: block;
+  color: #171512 !important;
+  font-size: 13.5px !important;
+  line-height: 1.15;
+}
+
+.rf3-creator-card small {
+  display: block;
+  margin-top: 3px;
+  color: #817b72 !important;
+  font-size: 11px !important;
+  line-height: 1.2;
 }
 
 .rf3-viral-card {
@@ -37,13 +93,25 @@
   bottom: 80px !important;
 }
 
+.rf3-viral-card > small {
+  color: #7f786f !important;
+  font-size: 11.5px !important;
+}
+
+.rf3-viral-card > strong {
+  color: var(--rf-orange) !important;
+  font-size: 29px !important;
+}
+
 @media (max-width: 900px) {
   .rf3-hero-composition { min-height: 600px; }
   .rf3-main-reel { width: min(370px, 92%); height: 590px; }
+  .rf3-creator-card { left: 0 !important; bottom: 82px !important; }
 }
 
 @media (max-width: 620px) {
   .rf3-hero-composition { min-height: 560px; }
   .rf3-main-reel { width: min(350px, 94vw); height: 560px; border-radius: 22px !important; }
-  .rf3-viral-card { right: 4px !important; bottom: 46px !important; }
+  .rf3-creator-card { left: 4px !important; bottom: 74px !important; transform: scale(.92); transform-origin: left bottom; }
+  .rf3-viral-card { right: 4px !important; bottom: 46px !important; transform: scale(.9); transform-origin: right bottom; }
 }
