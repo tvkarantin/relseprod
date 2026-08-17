@@ -23,6 +23,7 @@ import './styles/archive-one-theme.css'
 import './styles/landing-motion-fixes.css'
 import './styles/landing-v2.css'
 import './styles/product-scale.css'
+import './styles/landing-v3.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
