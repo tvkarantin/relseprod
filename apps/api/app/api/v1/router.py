@@ -10,7 +10,16 @@ from sqlalchemy.orm import Session
 from app import __version__
 from app.api.auth_deps import require_current_user
 from app.api.deps import DbSession, check_database
-from app.api.v1 import auth, analysis, competitors, dashboard, jobs, monitoring, reels, transcriptions
+from app.api.v1 import (
+    analysis,
+    auth,
+    competitors,
+    dashboard,
+    jobs,
+    monitoring,
+    reels,
+    transcriptions,
+)
 from app.schemas.common import HealthResponse, ServiceInfo
 
 api_router = APIRouter()
