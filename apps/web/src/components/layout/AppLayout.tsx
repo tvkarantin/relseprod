@@ -10,7 +10,7 @@ import {
   ChevronDown,
   CircleHelp,
   Folder,
-  Home,
+  LayoutGrid,
   Library,
   Lightbulb,
   Menu,
@@ -28,12 +28,12 @@ import { CreatorProfileDialog } from '@/components/profile/CreatorProfileDialog'
 import './realsflow-shell.css'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Мои рилсы', icon: Home, end: true },
+  { to: '/dashboard', label: 'Обзор', icon: LayoutGrid, end: true },
   { to: '/ideas', label: 'Идеи', icon: Lightbulb },
   { to: '/competitors', label: 'Конкуренты', icon: Users },
   { to: '/library', label: 'Библиотека', icon: Library },
   { to: '/my-reels', label: 'Контент-план', icon: CalendarDays },
-  { to: '/resources', label: 'Мои ресурсы', icon: Folder },
+  { to: '/resources', label: 'Мои сервисы', icon: Folder },
   { to: '/subscription', label: 'Подписка', icon: Star },
 ] as const
 
@@ -83,19 +83,11 @@ export function AppLayout() {
     >
       <aside className="rf-sidebar" aria-label="Основная навигация">
         <div className="rf-sidebar-head">
-          <NavLink
-            to="/dashboard"
-            className="rf-brand"
-            aria-label="RealsFlow — мои рилсы"
-          >
-            RealsFlow
+          <NavLink to="/dashboard" className="rf-brand" aria-label="RealsFinder — обзор">
+            <span className="rf-brand-mark" aria-hidden="true">R</span>
+            <span>RealsFinder</span>
           </NavLink>
-          <button
-            type="button"
-            className="rf-sidebar-close"
-            aria-label="Закрыть меню"
-            onClick={() => setMenuOpen(false)}
-          >
+          <button type="button" className="rf-sidebar-close" aria-label="Закрыть меню" onClick={() => setMenuOpen(false)}>
             <X size={20} />
           </button>
         </div>
@@ -108,11 +100,9 @@ export function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end={'end' in item ? item.end : false}
-                className={({ isActive }) =>
-                  `rf-nav-item ${isActive ? 'is-active' : ''}`
-                }
+                className={({ isActive }) => `rf-nav-item ${isActive ? 'is-active' : ''}`}
               >
-                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+                <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
                 <span>{item.label}</span>
               </NavLink>
             )
@@ -123,31 +113,16 @@ export function AppLayout() {
         <UsageLimitsCard />
       </aside>
 
-      <button
-        type="button"
-        className="rf-sidebar-backdrop"
-        aria-label="Закрыть меню"
-        onClick={() => setMenuOpen(false)}
-      />
+      <button type="button" className="rf-sidebar-backdrop" aria-label="Закрыть меню" onClick={() => setMenuOpen(false)} />
 
       <header className="rf-topbar">
-        <button
-          type="button"
-          className="rf-mobile-menu"
-          aria-label="Открыть меню"
-          aria-expanded={isMenuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <Menu size={21} />
+        <button type="button" className="rf-mobile-menu" aria-label="Открыть меню" aria-expanded={isMenuOpen} onClick={() => setMenuOpen((open) => !open)}>
+          <Menu size={20} />
         </button>
 
         <label className="rf-search">
-          <Search size={19} aria-hidden="true" />
-          <input
-            type="search"
-            placeholder="Поиск по сценариям, идеям и ресурсам"
-            aria-label="Поиск"
-          />
+          <Search size={16} aria-hidden="true" />
+          <input type="search" placeholder="Поиск по роликам, тексту или аккаунтам" aria-label="Поиск" />
           <kbd>⌘K</kbd>
         </label>
 
@@ -161,43 +136,26 @@ export function AppLayout() {
               aria-expanded={isNotificationsOpen}
               onClick={() => setNotificationsOpen((open) => !open)}
             >
-              <Bell size={20} strokeWidth={1.8} />
+              <Bell size={18} strokeWidth={1.8} />
             </button>
-            {isNotificationsOpen ? (
-              <NotificationPanel onClose={() => setNotificationsOpen(false)} />
-            ) : null}
+            {isNotificationsOpen ? <NotificationPanel onClose={() => setNotificationsOpen(false)} /> : null}
           </div>
 
           <button type="button" className="rf-icon-button" aria-label="Помощь">
-            <CircleHelp size={20} strokeWidth={1.8} />
+            <CircleHelp size={18} strokeWidth={1.8} />
           </button>
 
-          <button
-            type="button"
-            className="rf-profile-button"
-            onClick={() => setProfileOpen(true)}
-            aria-label="Открыть профиль"
-          >
-            <img
-              src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85"
-              alt=""
-            />
-            <span>
-              <strong>Андрей</strong>
-              <small>Автор</small>
-            </span>
-            <ChevronDown size={16} aria-hidden="true" />
+          <button type="button" className="rf-profile-button" onClick={() => setProfileOpen(true)} aria-label="Открыть профиль">
+            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=96&h=96&q=85" alt="" />
+            <span><strong>Андрей</strong><small>Автор</small></span>
+            <ChevronDown size={15} aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      <main className="rf-main">
-        <Outlet />
-      </main>
+      <main className="rf-main"><Outlet /></main>
 
-      {isProfileOpen ? (
-        <CreatorProfileDialog onClose={() => setProfileOpen(false)} />
-      ) : null}
+      {isProfileOpen ? <CreatorProfileDialog onClose={() => setProfileOpen(false)} /> : null}
     </div>
   )
 }
