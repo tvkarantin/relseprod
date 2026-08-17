@@ -38,7 +38,11 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _telegram_call(settings: Settings, method: str, payload: dict[str, object]) -> dict[str, object]:
+def _telegram_call(
+    settings: Settings,
+    method: str,
+    payload: dict[str, object],
+) -> dict[str, object]:
     if not settings.telegram_bot_token:
         raise RuntimeError("Telegram bot is not configured")
     url = f"{TELEGRAM_API_BASE}/bot{settings.telegram_bot_token}/{method}"
