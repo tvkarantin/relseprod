@@ -6,16 +6,20 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from app.core.config import Settings
 from app.database.base import utcnow
 from app.models.auth import AppUser, AuthSession, TelegramLoginChallenge
 from app.schemas.auth import AuthSessionResponse, AuthUserResponse
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.core.config import Settings
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
 
