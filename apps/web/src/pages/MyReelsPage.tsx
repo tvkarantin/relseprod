@@ -52,6 +52,25 @@ function reelTitle(reel: Reel): string {
   return reel.content.hook || reel.caption || `Рилс #${reel.id}`
 }
 
+function getContentPlanThumbnailUrl(reel: Reel): string | null {
+  if (!reel.thumbnailUrl) return null
+
+  try {
+    const url = new URL(reel.thumbnailUrl)
+    if (
+      url.protocol === 'https:' &&
+      url.hostname.endsWith('.supabase.co') &&
+      url.pathname === '/functions/v1/instagram-imginn'
+    ) {
+      return reel.thumbnailUrl
+    }
+  } catch {
+    // Legacy or malformed media URLs continue through the backend's safe proxy.
+  }
+
+  return getReelThumbnailUrl(reel.id)
+}
+
 function downloadContentPlan(reels: Reel[]): void {
   const csv = `\uFEFF${buildContentPlanCsv(reels)}`
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
@@ -115,7 +134,7 @@ function ContentPlanCard({
       <div className="content-plan-card-media">
         <Link to={`/reels/${reel.id}`} aria-label={`Открыть рилс: ${title}`}>
           <ReelThumbnail
-            src={reel.thumbnailUrl ? getReelThumbnailUrl(reel.id) : null}
+            src={getContentPlanThumbnailUrl(reel)}
             videoSrc={reel.videoUrl}
             alt={title}
           />
@@ -166,6 +185,7 @@ export function MyReelsPage() {
   const reelsQuery = useQuery({
     queryKey: queryKeys.reels.contentPlan(),
     queryFn: ({ signal }) => fetchAllMyReels(signal),
+    staleTime: 30_000,
   })
 
   const moveReel = useMutation({
