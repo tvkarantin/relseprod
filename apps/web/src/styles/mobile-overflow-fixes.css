@@ -1,0 +1,59 @@
+/* Mobile viewport guardrails. Keep legacy global body styles from leaking around the app. */
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100%;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  background: #f5f2ec !important;
+  background-image: none !important;
+  background-attachment: scroll !important;
+}
+
+body::before {
+  display: none !important;
+  content: none !important;
+}
+
+#root {
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+.rf3-page,
+.rf-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (max-width: 620px) {
+  .rf3-hero-composition {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: auto !important;
+  }
+
+  .rf3-main-reel {
+    max-width: calc(100vw - 28px);
+  }
+
+  .rf-sidebar {
+    width: min(280px, calc(100vw - 44px));
+    max-width: calc(100vw - 44px);
+  }
+
+  .rf-topbar,
+  .rf-main {
+    width: 100%;
+    max-width: 100%;
+  }
+}
