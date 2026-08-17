@@ -31,6 +31,8 @@ from app.database.base import Base
 from app.database.session import enable_sqlite_foreign_keys, register_unicode_lower
 from app.main import create_app
 from app.models import (
+    AppUser,
+    AuthSession,
     Competitor,
     MonitoredChannel,
     MonitoredVideo,
@@ -39,6 +41,7 @@ from app.models import (
     Reel,
     ReelContent,
     ReelTranscription,
+    TelegramLoginChallenge,
     TopicVideo,
     VideoStatisticsSnapshot,
     YouTubeQuotaLog,
@@ -52,6 +55,9 @@ if TYPE_CHECKING:
 
 # Child tables first so foreign keys are never violated.
 CLEANUP_ORDER = (
+    AuthSession,
+    TelegramLoginChallenge,
+    AppUser,
     VideoStatisticsSnapshot,
     TopicVideo,
     MonitoredVideo,
@@ -83,6 +89,7 @@ def settings(database_url: str) -> Settings:
     return Settings(
         app_env="testing",
         database_url=database_url,
+        auth_required=False,
         apify_api_token="",
         apify_actor_id="",
         cors_origins=["http://localhost:4173"],
@@ -106,6 +113,9 @@ def engine(settings: Settings) -> Generator[Engine, None, None]:
     command.upgrade(alembic_cfg, "head")
 
     assert set(Base.metadata.tables) == {
+        "app_users",
+        "auth_sessions",
+        "telegram_login_challenges",
         "competitors",
         "reels",
         "reel_content",
