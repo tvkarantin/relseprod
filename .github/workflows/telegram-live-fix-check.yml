@@ -1,0 +1,45 @@
+name: Telegram live fix check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+      - working-directory: apps/api
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - working-directory: apps/api
+        run: python -m ruff check .
+      - working-directory: apps/api
+        run: python -m pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - working-directory: apps/web
+        run: npm ci
+      - working-directory: apps/web
+        run: npm run lint
+      - working-directory: apps/web
+        run: npm run typecheck
+      - working-directory: apps/web
+        run: npm run test
+      - working-directory: apps/web
+        run: npm run build
