@@ -44,6 +44,18 @@ class Settings(BaseSettings):
     # development override and takes precedence when it is explicitly non-SQLite.
     postgres_url: str = ""
 
+    # Telegram-first authentication. Keep AUTH_REQUIRED=false until the bot
+    # secrets and webhook are configured, so deploying the code cannot lock out
+    # the existing production workspace by accident.
+    auth_required: bool = False
+    frontend_url: str = "https://realsfinder.vercel.app"
+    public_api_url: str = "https://realsfinder-api.vercel.app"
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+    telegram_webhook_secret: str = ""
+    telegram_login_ttl_seconds: int = Field(default=600, ge=60, le=3600)
+    auth_session_ttl_days: int = Field(default=30, ge=1, le=365)
+
     youtube_api_key: str = ""
     youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
     youtube_monitoring_enabled: bool = True
@@ -135,6 +147,15 @@ class Settings(BaseSettings):
             msg = f"apify_actor_input_style must be one of {sorted(allowed)}"
             raise ValueError(msg)
         return normalized
+
+    @property
+    def telegram_configured(self) -> bool:
+        """Whether the bot can accept signed webhooks and send login links."""
+        return bool(
+            self.telegram_bot_token.strip()
+            and self.telegram_bot_username.strip()
+            and self.telegram_webhook_secret.strip()
+        )
 
     @property
     def is_sqlite(self) -> bool:
