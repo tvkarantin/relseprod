@@ -23,7 +23,9 @@ TELEGRAM_API_BASE = "https://api.telegram.org"
 REGISTER_CALLBACK = "register_realsfinder"
 DEFAULT_FRONTEND_URL = "https://realsfinder-github.vercel.app"
 DEFAULT_PUBLIC_API_URL = "https://realsfinder-api.vercel.app"
-DEFAULT_BOT_AVATAR_URL = "https://realsfinder-github.vercel.app/assets/overview-logo.png"
+DEFAULT_BOT_AVATAR_URL = (
+    "https://realsfinder-github.vercel.app/assets/overview-logo.png"
+)
 _SECRET_RE = re.compile(r"^[A-Za-z0-9_-]{1,256}$")
 logger = logging.getLogger(__name__)
 
@@ -53,15 +55,20 @@ class TelegramConfig:
         return f"{self.public_api_url.rstrip('/')}/api/v1/auth/telegram/webhook"
 
 
+def _env_url(name: str, default: str) -> str:
+    return (os.getenv(name, "").strip() or default).rstrip("/")
+
+
 def get_telegram_config() -> TelegramConfig:
     """Load Telegram settings directly from Vercel/server environment variables."""
     return TelegramConfig(
         bot_token=os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
         webhook_secret=os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip(),
-        frontend_url=(os.getenv("FRONTEND_URL", "").strip() or DEFAULT_FRONTEND_URL).rstrip("/"),
-        public_api_url=(os.getenv("PUBLIC_API_URL", "").strip() or DEFAULT_PUBLIC_API_URL).rstrip("/"),
+        frontend_url=_env_url("FRONTEND_URL", DEFAULT_FRONTEND_URL),
+        public_api_url=_env_url("PUBLIC_API_URL", DEFAULT_PUBLIC_API_URL),
         bot_avatar_url=(
-            os.getenv("TELEGRAM_BOT_AVATAR_URL", "").strip() or DEFAULT_BOT_AVATAR_URL
+            os.getenv("TELEGRAM_BOT_AVATAR_URL", "").strip()
+            or DEFAULT_BOT_AVATAR_URL
         ),
     )
 
@@ -86,9 +93,14 @@ def _telegram_call(
         response = client.post(url, json=payload or {})
         response.raise_for_status()
         body = response.json()
+
     if not isinstance(body, dict) or body.get("ok") is not True:
         description = body.get("description") if isinstance(body, dict) else None
-        message = description if isinstance(description, str) else "unknown Telegram API error"
+        message = (
+            description
+            if isinstance(description, str)
+            else "unknown Telegram API error"
+        )
         raise RuntimeError(f"Telegram {method} failed: {message}")
     return body.get("result")
 
@@ -111,9 +123,12 @@ def _set_bot_avatar_if_missing(config: TelegramConfig, bot_id: int) -> None:
         "getUserProfilePhotos",
         {"user_id": bot_id, "offset": 0, "limit": 1},
     )
-    if isinstance(photos, dict) and isinstance(photos.get("total_count"), int):
-        if int(photos["total_count"]) > 0:
-            return
+    if (
+        isinstance(photos, dict)
+        and isinstance(photos.get("total_count"), int)
+        and photos["total_count"] > 0
+    ):
+        return
 
     with httpx.Client(timeout=20, follow_redirects=True) as client:
         logo_response = client.get(config.bot_avatar_url)
@@ -140,6 +155,7 @@ def _set_bot_avatar_if_missing(config: TelegramConfig, bot_id: int) -> None:
         )
         response.raise_for_status()
         body = response.json()
+
     if not isinstance(body, dict) or body.get("ok") is not True:
         raise RuntimeError("Telegram setMyProfilePhoto failed")
 
@@ -151,20 +167,27 @@ def _configure_bot_profile(config: TelegramConfig, bot_id: int) -> None:
             "setMyDescription",
             {
                 "description": (
-                    "Бот RealsFinder используется для быстрой регистрации и входа в сервис "
-                    "через Telegram. Пароли и коды вводить не нужно."
+                    "Бот RealsFinder используется для быстрой регистрации и входа "
+                    "в сервис через Telegram. Пароли и коды вводить не нужно."
                 )
             },
         ),
         (
             "setMyShortDescription",
-            {"short_description": "Регистрация и вход в RealsFinder через Telegram."},
+            {
+                "short_description": (
+                    "Регистрация и вход в RealsFinder через Telegram."
+                )
+            },
         ),
         (
             "setMyCommands",
             {
                 "commands": [
-                    {"command": "start", "description": "Регистрация или вход в RealsFinder"}
+                    {
+                        "command": "start",
+                        "description": "Регистрация или вход в RealsFinder",
+                    }
                 ]
             },
         ),
@@ -173,7 +196,11 @@ def _configure_bot_profile(config: TelegramConfig, bot_id: int) -> None:
         try:
             _telegram_call(config, method, payload)
         except (httpx.HTTPError, RuntimeError, ValueError):
-            logger.warning("Could not configure Telegram profile via %s", method, exc_info=True)
+            logger.warning(
+                "Could not configure Telegram profile via %s",
+                method,
+                exc_info=True,
+            )
 
     try:
         _set_bot_avatar_if_missing(config, bot_id)
@@ -269,11 +296,12 @@ def _decode_signed(
         if not hmac.compare_digest(provided_signature, expected_signature):
             raise InvalidTelegramToken("Invalid signature")
         claims = json.loads(_b64_decode(encoded))
-    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+    except (TypeError, ValueError) as exc:
         raise InvalidTelegramToken("Invalid signed token") from exc
 
     if not isinstance(claims, dict) or claims.get("k") != expected_kind:
         raise InvalidTelegramToken("Unexpected token kind")
+
     expires_at = claims.get("exp")
     issued_at = claims.get("iat")
     now = int(time.time())
@@ -281,6 +309,7 @@ def _decode_signed(
         raise InvalidTelegramToken("Token expired")
     if not isinstance(issued_at, int) or issued_at > now + 60:
         raise InvalidTelegramToken("Invalid issue time")
+
     telegram_id = claims.get("tg")
     if not isinstance(telegram_id, int) or telegram_id <= 0:
         raise InvalidTelegramToken("Invalid Telegram user")
@@ -295,10 +324,11 @@ def _clean_optional_text(value: object, *, limit: int) -> str | None:
 
 
 def create_login_code(config: TelegramConfig, sender: dict[str, object]) -> str:
-    """Create a short-lived signed confirmation code from Telegram webhook user data."""
+    """Create a short-lived signed confirmation code from Telegram webhook data."""
     telegram_id = sender.get("id")
     if not isinstance(telegram_id, int) or telegram_id <= 0:
         raise ValueError("Telegram sender has no valid id")
+
     now = int(time.time())
     first_name = _clean_optional_text(sender.get("first_name"), limit=64) or "Telegram"
     claims: dict[str, object] = {
@@ -319,7 +349,8 @@ def create_login_code(config: TelegramConfig, sender: dict[str, object]) -> str:
 
 
 def build_confirmation_url(config: TelegramConfig, login_code: str) -> str:
-    return f"{config.frontend_url}/auth/telegram#code={quote(login_code, safe='')}"
+    encoded_code = quote(login_code, safe="")
+    return f"{config.frontend_url}/auth/telegram#code={encoded_code}"
 
 
 def exchange_login_code(
@@ -340,8 +371,12 @@ def exchange_login_code(
         value = login.get(key)
         if isinstance(value, str) and value:
             session_claims[key] = value
+
     session_token = _encode_signed(config, session_claims)
-    return session_token, int(session_claims["exp"]), user_from_claims(session_claims)
+    expires_at = session_claims["exp"]
+    if not isinstance(expires_at, int):
+        raise RuntimeError("Invalid Telegram session expiry")
+    return session_token, expires_at, user_from_claims(session_claims)
 
 
 def decode_session(config: TelegramConfig, token: str) -> dict[str, object]:
@@ -349,9 +384,12 @@ def decode_session(config: TelegramConfig, token: str) -> dict[str, object]:
 
 
 def user_from_claims(claims: dict[str, object]) -> dict[str, object]:
-    first_name = claims.get("fn") if isinstance(claims.get("fn"), str) else "Telegram"
-    last_name = claims.get("ln") if isinstance(claims.get("ln"), str) else None
-    username = claims.get("un") if isinstance(claims.get("un"), str) else None
+    first_name_value = claims.get("fn")
+    last_name_value = claims.get("ln")
+    username_value = claims.get("un")
+    first_name = first_name_value if isinstance(first_name_value, str) else "Telegram"
+    last_name = last_name_value if isinstance(last_name_value, str) else None
+    username = username_value if isinstance(username_value, str) else None
     parts = [first_name, last_name or ""]
     display_name = " ".join(part for part in parts if part).strip()
     return {
@@ -372,13 +410,19 @@ def send_start_screen(config: TelegramConfig, *, chat_id: int) -> None:
             "chat_id": chat_id,
             "text": (
                 "RealsFinder\n\n"
-                "Этот бот используется для регистрации и входа в RealsFinder через Telegram.\n\n"
-                "Нажми кнопку ниже. Мы получим только имя, @username и аватар твоего "
-                "Telegram-профиля — без паролей и кодов."
+                "Этот бот используется для регистрации и входа в RealsFinder "
+                "через Telegram.\n\n"
+                "Нажми кнопку ниже. Мы получим только имя, @username и аватар "
+                "твоего Telegram-профиля — без паролей и кодов."
             ),
             "reply_markup": {
                 "inline_keyboard": [
-                    [{"text": "Зарегистрироваться", "callback_data": REGISTER_CALLBACK}]
+                    [
+                        {
+                            "text": "Зарегистрироваться",
+                            "callback_data": REGISTER_CALLBACK,
+                        }
+                    ]
                 ]
             },
         },
@@ -389,7 +433,10 @@ def send_start_hint(config: TelegramConfig, *, chat_id: int) -> None:
     _telegram_call(
         config,
         "sendMessage",
-        {"chat_id": chat_id, "text": "Нажми /start, чтобы зарегистрироваться в RealsFinder."},
+        {
+            "chat_id": chat_id,
+            "text": "Нажми /start, чтобы зарегистрироваться в RealsFinder.",
+        },
     )
 
 
@@ -416,12 +463,18 @@ def send_confirmation_screen(
             "message_id": message_id,
             "text": (
                 "Подтверди регистрацию\n\n"
-                "Нажимая кнопку ниже, ты подтверждаешь регистрацию в RealsFinder через "
-                "этот Telegram-аккаунт.\n\nПосле подтверждения ты вернёшься в RealsFinder."
+                "Нажимая кнопку ниже, ты подтверждаешь регистрацию в RealsFinder "
+                "через этот Telegram-аккаунт.\n\n"
+                "После подтверждения ты вернёшься в RealsFinder."
             ),
             "reply_markup": {
                 "inline_keyboard": [
-                    [{"text": "Подтвердить и вернуться", "url": confirmation_url}]
+                    [
+                        {
+                            "text": "Подтвердить и вернуться",
+                            "url": confirmation_url,
+                        }
+                    ]
                 ]
             },
         },
@@ -437,6 +490,7 @@ def telegram_avatar(config: TelegramConfig, telegram_id: int) -> tuple[bytes, st
     )
     if not isinstance(photos, dict):
         raise FileNotFoundError("Telegram profile has no photo")
+
     photo_sets = photos.get("photos")
     if not isinstance(photo_sets, list) or not photo_sets:
         raise FileNotFoundError("Telegram profile has no photo")
@@ -446,6 +500,7 @@ def telegram_avatar(config: TelegramConfig, telegram_id: int) -> tuple[bytes, st
     largest = first_set[-1]
     if not isinstance(largest, dict):
         raise FileNotFoundError("Telegram profile has no photo")
+
     file_id = largest.get("file_id")
     if not isinstance(file_id, str) or not file_id:
         raise FileNotFoundError("Telegram profile has no photo")
