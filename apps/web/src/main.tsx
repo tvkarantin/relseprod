@@ -19,6 +19,8 @@ import './styles/landing.css'
 import './styles/library-fixes.css'
 import './styles/realsflow-theme.css'
 import './styles/ui-cleanups.css'
+import './styles/archive-one-theme.css'
+import './styles/landing-motion-fixes.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'

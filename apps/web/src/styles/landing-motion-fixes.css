@@ -1,0 +1,8 @@
+/* Keep the hero composition positioned correctly in browsers that do not support
+   arithmetic between unitless custom properties and lengths inside calc().
+   The floating motion still runs through the individual translate property. */
+.rf3-main-reel { transform: translate(-50%, -50%); }
+.rf3-side-thumb-one { transform: rotate(-5deg); }
+.rf3-side-thumb-two { transform: rotate(3deg); }
+.rf3-creator-card,
+.rf3-viral-card { transform: none; }
