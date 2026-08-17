@@ -30,6 +30,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const TEST_AUTH_CONTEXT: AuthContextValue = {
+  config: {
+    authRequired: false,
+    telegramEnabled: false,
+    botUsername: null,
+    botUrl: null,
+  },
+  user: null,
+  loading: false,
+  exchangeTelegram: async () => {
+    throw new Error('Telegram exchange is unavailable without AuthProvider')
+  },
+  logout: async () => undefined,
+  refreshUser: async () => undefined,
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AuthConfig | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -101,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext)
-  if (!value) throw new Error('useAuth must be used inside AuthProvider')
-  return value
+  if (value) return value
+  if (import.meta.env.MODE === 'test') return TEST_AUTH_CONTEXT
+  throw new Error('useAuth must be used inside AuthProvider')
 }
