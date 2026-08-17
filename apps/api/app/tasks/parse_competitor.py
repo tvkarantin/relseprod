@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _prepare_imported_reel(reel_id: int, settings: Settings) -> None:
-    """Prepare one newly imported reel without failing the parent import job."""
+    """Prepare one imported reel without failing the parent import job."""
     try:
         prepare_reel_task(reel_id, settings, creator_profile=None, apply_to_content=True)
     except Exception:
@@ -31,12 +31,13 @@ def _prepare_imported_reel(reel_id: int, settings: Settings) -> None:
 
 
 def parse_competitor_job(job_id: int, settings: Settings | None = None) -> None:
-    """Run import and immediately prepare every newly created reel.
+    """Run import and immediately prepare every imported or refreshed reel.
 
     Safe to pass directly to ``BackgroundTasks.add_task``: it takes only
-    primitives, opens and closes its own session, and never raises. New reels
-    are transcribed and analyzed automatically; successful analysis populates
-    hook/script/CTA and moves the reel into the working content list.
+    primitives, opens and closes its own session, and never raises. Reels are
+    transcribed and analyzed automatically; successful analysis populates
+    hook/script/CTA and moves the reel into the working content list. Re-import
+    also retries previously failed preparation without duplicating completed work.
     """
     active_settings = settings or get_settings()
     session = get_session_factory(active_settings)()
@@ -46,15 +47,15 @@ def parse_competitor_job(job_id: int, settings: Settings | None = None) -> None:
         service = ParsingService(session, settings=active_settings, apify=apify)
         result = service.run_job(job_id)
 
-        if result.created_reel_ids:
-            worker_count = min(3, len(result.created_reel_ids))
+        if result.processed_reel_ids:
+            worker_count = min(3, len(result.processed_reel_ids))
             with ThreadPoolExecutor(
                 max_workers=worker_count,
                 thread_name_prefix="reel-prepare",
             ) as executor:
                 futures = [
                     executor.submit(_prepare_imported_reel, reel_id, active_settings)
-                    for reel_id in result.created_reel_ids
+                    for reel_id in result.processed_reel_ids
                 ]
                 for future in futures:
                     future.result()
