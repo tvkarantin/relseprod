@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from app.core.errors import ActiveAnalysisAlreadyExistsError, InvalidAnalysisStateError
+from app.core.errors import ActiveAnalysisAlreadyExistsError, AppError, InvalidAnalysisStateError
 from app.database.session import get_session_factory
 from app.models.enums import TranscriptionStatus
 from app.models.reel import Reel
 from app.services.reel_analysis import ReelAnalysisService
+from app.services.transcriptions import TranscriptionService
 from app.tasks.analyze_reel import analyze_reel_task
 from app.tasks.transcribe_reel import transcribe_reel_job
 
@@ -22,17 +23,37 @@ if TYPE_CHECKING:
 def prepare_reel_task(
     reel_id: int,
     settings: Settings,
-    creator_profile: dict[str, Any],
+    creator_profile: dict[str, Any] | None = None,
+    *,
+    apply_to_content: bool = True,
 ) -> None:
-    """Run every preparation stage sequentially, safely reusing completed work."""
+    """Run every preparation stage sequentially, safely reusing completed work.
+
+    The task is intentionally self-starting: callers only need a reel id. When
+    the reel does not have a transcription row yet, one is created and queued
+    before Deepgram and OpenRouter are invoked.
+    """
     session_factory = get_session_factory(settings)
     session = session_factory()
     try:
         reel = session.get(Reel, reel_id)
-        if reel is None or reel.transcription is None:
+        if reel is None:
             return
-        transcription_id = reel.transcription.id
-        transcription_status = reel.transcription.status
+
+        transcription = reel.transcription
+        if transcription is None:
+            try:
+                transcription = TranscriptionService(session, settings).start_transcription(reel_id)
+            except AppError as exc:
+                logger.warning(
+                    "Could not queue automatic transcription for reel %s: %s",
+                    reel_id,
+                    exc.code,
+                )
+                return
+
+        transcription_id = transcription.id
+        transcription_status = transcription.status
     finally:
         session.close()
 
@@ -53,7 +74,8 @@ def prepare_reel_task(
         try:
             analysis = service.create_or_retry_analysis(reel_id, creator_profile)
         except InvalidAnalysisStateError:
-            service.apply_existing_result_to_content(reel_id)
+            if apply_to_content:
+                service.apply_existing_result_to_content(reel_id)
             return
         except ActiveAnalysisAlreadyExistsError:
             return
@@ -68,5 +90,5 @@ def prepare_reel_task(
         analysis_id,
         settings,
         creator_profile=creator_profile,
-        apply_to_content=True,
+        apply_to_content=apply_to_content,
     )
