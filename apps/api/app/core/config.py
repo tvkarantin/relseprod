@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # secrets and webhook are configured, so deploying the code cannot lock out
     # the existing production workspace by accident.
     auth_required: bool = False
-    frontend_url: str = "https://realsfinder.vercel.app"
+    frontend_url: str = "https://realsfinder-vercel.vercel.app"
     public_api_url: str = "https://realsfinder-api.vercel.app"
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
