@@ -27,6 +27,7 @@ import './styles/product-scale.css'
 import './styles/landing-v3.css'
 import './styles/landing-v4.css'
 import './styles/landing-v5.css'
+import './styles/mobile-overflow-fixes.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
