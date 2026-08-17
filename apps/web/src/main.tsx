@@ -22,6 +22,7 @@ import './styles/ui-cleanups.css'
 import './styles/archive-one-theme.css'
 import './styles/landing-motion-fixes.css'
 import './styles/landing-v2.css'
+import './styles/product-scale.css'
 
 import { ToastProvider } from '@/components/feedback/ToastProvider'
 import { NotificationProvider } from '@/components/notifications/NotificationProvider'
