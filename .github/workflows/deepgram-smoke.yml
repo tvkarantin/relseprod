@@ -1,0 +1,39 @@
+name: Deepgram smoke test
+
+on:
+  push:
+    branches:
+      - agent/deepgram-smoke
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Retry known failed transcription
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS -X POST \
+            https://realsfinder-api.vercel.app/api/v1/reels/5/transcription/retry \
+            -o /tmp/retry.json
+          cat /tmp/retry.json
+
+      - name: Wait for Deepgram result
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            body="$(curl --fail-with-body -sS https://realsfinder-api.vercel.app/api/v1/reels/5/transcription)"
+            echo "$body"
+            status="$(printf '%s' "$body" | jq -r '.status // empty')"
+            error_code="$(printf '%s' "$body" | jq -r '.errorCode // .error_code // empty')"
+            if [ "$status" = "completed" ]; then
+              exit 0
+            fi
+            if [ "$status" = "failed" ]; then
+              echo "Transcription failed: $error_code" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for transcription" >&2
+          exit 1
