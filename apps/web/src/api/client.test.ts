@@ -99,7 +99,7 @@ describe('request', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error.isNetworkError).toBe(true)
-    expect(error.message).toContain('backend')
+    expect(error.message).toContain('Не удалось связаться с сервером')
   })
 
   it('propagates an external abort instead of masking it', async () => {
