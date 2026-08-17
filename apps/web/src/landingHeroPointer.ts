@@ -1,7 +1,5 @@
 const POINTER_QUERY = '(pointer: fine) and (prefers-reduced-motion: no-preference)'
 
-const REAL_REEL_VIDEO =
-  'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?media=DMpuiXeubFY&forceFunctionRegion=ap-northeast-1'
 const REAL_REEL_POSTER =
   'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=DMpuiXeubFY&forceFunctionRegion=ap-northeast-1&username=garyvee'
 const CREATOR_AVATAR =
@@ -21,23 +19,17 @@ function hydrateRealHeroReel(): boolean {
     ':scope > img, :scope > video, :scope > iframe',
   )
 
-  if (!reel.querySelector('.rf3-real-reel-video')) {
-    const video = document.createElement('video')
-    video.className = 'rf3-real-reel-video'
-    video.src = REAL_REEL_VIDEO
-    video.poster = REAL_REEL_POSTER
-    video.muted = true
-    video.loop = true
-    video.autoplay = true
-    video.playsInline = true
-    video.preload = 'metadata'
-    video.setAttribute('aria-label', 'Instagram Reel @garyvee')
-    video.addEventListener('canplay', () => {
-      void video.play().catch(() => undefined)
-    })
+  if (!reel.querySelector('.rf3-real-reel-preview')) {
+    const image = document.createElement('img')
+    image.className = 'rf3-real-reel-preview'
+    image.src = REAL_REEL_POSTER
+    image.alt = 'Превью Instagram Reel @garyvee'
+    image.loading = 'eager'
+    image.decoding = 'async'
+    image.referrerPolicy = 'no-referrer'
 
-    if (currentMedia) currentMedia.replaceWith(video)
-    else reel.prepend(video)
+    if (currentMedia) currentMedia.replaceWith(image)
+    else reel.prepend(image)
   }
 
   const creatorCard = document.querySelector<HTMLElement>('.rf3-creator-card')
@@ -53,6 +45,7 @@ function hydrateRealHeroReel(): boolean {
       image.src = CREATOR_AVATAR
       image.alt = 'Gary Vaynerchuk'
       image.loading = 'eager'
+      image.decoding = 'async'
       image.referrerPolicy = 'no-referrer'
       avatar.append(image)
     }
