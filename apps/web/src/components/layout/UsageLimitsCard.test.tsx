@@ -53,6 +53,6 @@ describe('UsageLimitsCard', () => {
 
     expect(screen.getByText('Дневной лимит закончился')).toBeInTheDocument()
     expect(screen.getByText('Осталось 48%')).toBeInTheDocument()
-    expect(screen.getByText('Недельный лимит AI')).toBeInTheDocument()
+    expect(screen.getByText('Недельный лимит')).toBeInTheDocument()
   })
 })
