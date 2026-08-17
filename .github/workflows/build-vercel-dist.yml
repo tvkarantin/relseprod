@@ -88,6 +88,23 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Prepare Vercel prebuilt output
+        run: |
+          rm -rf .vercel/output
+          mkdir -p .vercel/output/static
+          cp -R apps/web/dist/. .vercel/output/static/
+          rm -f .vercel/output/static/vercel.json
+          cat > .vercel/output/config.json <<'EOF'
+          {
+            "version": 3,
+            "routes": [
+              { "src": "^/api/(.*)$", "dest": "https://realsfinder-api.vercel.app/api/$1" },
+              { "handle": "filesystem" },
+              { "src": "^/.*$", "dest": "/index.html" }
+            ]
+          }
+          EOF
+
       - name: Deploy frontend to Vercel production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -98,7 +115,7 @@ jobs:
             echo "::error::Missing VERCEL_TOKEN repository secret"
             exit 1
           fi
-          npx --yes vercel@latest deploy apps/web/dist --prod --yes --token "$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Publish production dist branch
         run: |
