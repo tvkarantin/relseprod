@@ -77,7 +77,7 @@ export function RegistrationModal({ open, onClose }: RegistrationModalProps) {
 
         <div className="rf-signup-brand" aria-hidden="true">R</div>
         <h2 id="rf-signup-title">Создать аккаунт</h2>
-        <p className="rf-signup-subtitle">Введи почту — и сразу переходи в RealsFinder.</p>
+        <p className="rf-signup-subtitle">Введи почту — и сразу переходи в RealsFlow.</p>
 
         <form className="rf-signup-form" onSubmit={handleSubmit} noValidate>
           <label htmlFor="rf-signup-email">Email</label>

@@ -22,9 +22,9 @@ const AiDashboardPage = lazy(() => import('@/features/ai-dashboard').then((modul
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
 const PUBLIC_URL = 'https://realsfinder-github.vercel.app/'
-const LANDING_TITLE = 'RealsFinder — поиск идей и анализ Reels конкурентов'
+const LANDING_TITLE = 'RealsFlow — поиск идей и анализ Reels конкурентов'
 const LANDING_DESCRIPTION =
-  'RealsFinder помогает находить растущие Instagram Reels и YouTube Shorts у конкурентов, разбирать Hook, структуру и CTA и превращать сильные идеи в собственный контент.'
+  'RealsFlow помогает находить растущие Instagram Reels и YouTube Shorts у конкурентов, разбирать Hook, структуру и CTA и превращать сильные идеи в собственный контент.'
 
 function setMeta(selector: string, attribute: 'name' | 'property', key: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(selector)
@@ -69,8 +69,8 @@ function RouteSeo() {
       return
     }
 
-    document.title = 'RealsFinder — рабочее пространство'
-    setMeta('meta[name="description"]', 'name', 'description', 'Рабочее пространство RealsFinder.')
+    document.title = 'RealsFlow — рабочее пространство'
+    setMeta('meta[name="description"]', 'name', 'description', 'Рабочее пространство RealsFlow.')
     setMeta('meta[name="robots"]', 'name', 'robots', 'noindex, nofollow, noarchive')
     setCanonical(null)
   }, [location.pathname])

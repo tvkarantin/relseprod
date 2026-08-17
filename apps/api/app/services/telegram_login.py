@@ -117,7 +117,7 @@ def _bot_identity(config: TelegramConfig) -> tuple[int, str]:
 
 
 def _set_bot_avatar_if_missing(config: TelegramConfig, bot_id: int) -> None:
-    """Set the RealsFinder logo as bot avatar if the bot does not have one yet."""
+    """Set the RealsFlow logo as bot avatar if the bot does not have one yet."""
     photos = _telegram_call(
         config,
         "getUserProfilePhotos",
@@ -162,12 +162,12 @@ def _set_bot_avatar_if_missing(config: TelegramConfig, bot_id: int) -> None:
 
 def _configure_bot_profile(config: TelegramConfig, bot_id: int) -> None:
     operations: tuple[tuple[str, dict[str, object]], ...] = (
-        ("setMyName", {"name": "RealsFinder"}),
+        ("setMyName", {"name": "RealsFlow"}),
         (
             "setMyDescription",
             {
                 "description": (
-                    "Бот RealsFinder используется для быстрой регистрации и входа "
+                    "Бот RealsFlow используется для быстрой регистрации и входа "
                     "в сервис через Telegram. Пароли и коды вводить не нужно."
                 )
             },
@@ -176,7 +176,7 @@ def _configure_bot_profile(config: TelegramConfig, bot_id: int) -> None:
             "setMyShortDescription",
             {
                 "short_description": (
-                    "Регистрация и вход в RealsFinder через Telegram."
+                    "Регистрация и вход в RealsFlow через Telegram."
                 )
             },
         ),
@@ -186,7 +186,7 @@ def _configure_bot_profile(config: TelegramConfig, bot_id: int) -> None:
                 "commands": [
                     {
                         "command": "start",
-                        "description": "Регистрация или вход в RealsFinder",
+                        "description": "Регистрация или вход в RealsFlow",
                     }
                 ]
             },
@@ -409,8 +409,8 @@ def send_start_screen(config: TelegramConfig, *, chat_id: int) -> None:
         {
             "chat_id": chat_id,
             "text": (
-                "RealsFinder\n\n"
-                "Этот бот используется для регистрации и входа в RealsFinder "
+                "RealsFlow\n\n"
+                "Этот бот используется для регистрации и входа в RealsFlow "
                 "через Telegram.\n\n"
                 "Нажми кнопку ниже. Мы получим только имя, @username и аватар "
                 "твоего Telegram-профиля — без паролей и кодов."
@@ -435,7 +435,7 @@ def send_start_hint(config: TelegramConfig, *, chat_id: int) -> None:
         "sendMessage",
         {
             "chat_id": chat_id,
-            "text": "Нажми /start, чтобы зарегистрироваться в RealsFinder.",
+            "text": "Нажми /start, чтобы зарегистрироваться в RealsFlow.",
         },
     )
 
@@ -463,9 +463,9 @@ def send_confirmation_screen(
             "message_id": message_id,
             "text": (
                 "Подтверди регистрацию\n\n"
-                "Нажимая кнопку ниже, ты подтверждаешь регистрацию в RealsFinder "
+                "Нажимая кнопку ниже, ты подтверждаешь регистрацию в RealsFlow "
                 "через этот Telegram-аккаунт.\n\n"
-                "После подтверждения ты вернёшься в RealsFinder."
+                "После подтверждения ты вернёшься в RealsFlow."
             ),
             "reply_markup": {
                 "inline_keyboard": [

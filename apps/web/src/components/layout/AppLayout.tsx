@@ -83,9 +83,9 @@ export function AppLayout() {
     >
       <aside className="rf-sidebar" aria-label="Основная навигация">
         <div className="rf-sidebar-head">
-          <NavLink to="/dashboard" className="rf-brand" aria-label="RealsFinder — обзор">
+          <NavLink to="/dashboard" className="rf-brand" aria-label="RealsFlow — обзор">
             <span className="rf-brand-mark" aria-hidden="true">R</span>
-            <span>RealsFinder</span>
+            <span>RealsFlow</span>
           </NavLink>
           <button type="button" className="rf-sidebar-close" aria-label="Закрыть меню" onClick={() => setMenuOpen(false)}>
             <X size={20} />

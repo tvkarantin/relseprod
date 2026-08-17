@@ -40,7 +40,7 @@
   color: var(--rf-orange) !important;
 }
 
-/* HERO MEDIA — use a real Reel from the current RealsFinder data set instead of a stock visual. */
+/* HERO MEDIA — use a real Reel from the current RealsFlow data set instead of a stock visual. */
 .rf3-main-reel > img {
   content: url('https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=Dbn6ElTvw_W&forceFunctionRegion=ap-northeast-1&username=nick_saraev');
   object-position: center;

@@ -382,9 +382,9 @@ export function LandingPage() {
     <main className="rf3-page" id="top" ref={root}>
       <header className={`rf3-header ${headerScrolled ? 'is-scrolled' : ''}`}>
         <div className="rf3-header-inner">
-          <a className="rf3-brand" href="#top" aria-label="RealsFinder, начало страницы">
+          <a className="rf3-brand" href="#top" aria-label="RealsFlow, начало страницы">
             <Logo />
-            <strong>RealsFinder</strong>
+            <strong>RealsFlow</strong>
           </a>
           <nav aria-label="Навигация по лендингу">
             <a href="#features">Возможности</a>
@@ -425,7 +425,7 @@ export function LandingPage() {
               <SectionHeading
                 eyebrow="Конкуренты"
                 title="Не угадывай, что снимать. Смотри, что уже растёт"
-                description="Добавь нужные аккаунты один раз. RealsFinder соберёт свежие Reels и покажет ролики, которые заметно обгоняют обычные результаты автора."
+                description="Добавь нужные аккаунты один раз. RealsFlow соберёт свежие Reels и покажет ролики, которые заметно обгоняют обычные результаты автора."
               />
               <ul className="rf3-benefits">
                 <li><Check size={14} /> Новые публикации автоматически попадают в библиотеку</li>
@@ -549,7 +549,7 @@ export function LandingPage() {
               </article>
             ))}
           </div>
-          <div className="rf3-platform-label"><Instagram size={16} /> Instagram Reels <span>·</span><Logo /> RealsFinder <span>·</span><Youtube size={17} /> YouTube Shorts</div>
+          <div className="rf3-platform-label"><Instagram size={16} /> Instagram Reels <span>·</span><Logo /> RealsFlow <span>·</span><Youtube size={17} /> YouTube Shorts</div>
           <div className="rf3-marquee"><div>{[...THUMBS, ...THUMBS].map((thumb, index) => <img src={thumb} alt="" key={`${thumb}-${index}`} />)}</div></div>
         </div>
       </section>
@@ -586,12 +586,12 @@ export function LandingPage() {
 
       <footer className="rf3-footer">
         <div className="rf3-container rf3-footer-grid">
-          <div><a href="#top" className="rf3-brand"><Logo /><strong>RealsFinder</strong></a><p>Сервис для поиска сильных Reels и Shorts: мониторинг конкурентов, анализ механик, библиотека идей и контент-план.</p></div>
+          <div><a href="#top" className="rf3-brand"><Logo /><strong>RealsFlow</strong></a><p>Сервис для поиска сильных Reels и Shorts: мониторинг конкурентов, анализ механик, библиотека идей и контент-план.</p></div>
           <div><strong>Product</strong><a href="#features">Возможности</a><a href="#pricing">Тарифы</a></div>
           <div><strong>Company</strong><a href="mailto:hello@realsfinder.app">Контакты</a></div>
           <div><strong>Legal</strong><a href="#top">Privacy</a><a href="#top">Terms</a></div>
         </div>
-        <div className="rf3-footer-bottom"><div className="rf3-container"><span>© 2026 RealsFinder</span><span>Идеи, которые уже доказали результат</span></div></div>
+        <div className="rf3-footer-bottom"><div className="rf3-container"><span>© 2026 RealsFlow</span><span>Идеи, которые уже доказали результат</span></div></div>
       </footer>
     </main>
   )
