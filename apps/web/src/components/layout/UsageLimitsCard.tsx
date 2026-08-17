@@ -178,7 +178,7 @@ function formatReset(kind: LimitKind, resetAt: string): string {
 function LimitRow({ kind, value }: { kind: LimitKind; value: UsageLimitValue }) {
   const remaining = clampPercent(value.remainingPercent)
   const exhausted = remaining === 0
-  const title = kind === 'daily' ? 'Дневной лимит AI' : 'Недельный лимит AI'
+  const title = kind === 'daily' ? 'Дневной лимит' : 'Недельный лимит'
 
   return (
     <div className={`rf-limit-row ${exhausted ? 'is-exhausted' : ''}`}>
@@ -236,9 +236,9 @@ export function UsageLimitsCard({
   if (!visible) return null
 
   return (
-    <aside className="rf-usage-card" data-testid="usage-limits-card" aria-label="Лимиты AI">
+    <aside className="rf-usage-card" data-testid="usage-limits-card" aria-label="Лимиты">
       <div className="rf-usage-title">
-        <strong>Лимиты AI</strong>
+        <strong>Лимиты</strong>
         <span>Сколько осталось</span>
       </div>
 
