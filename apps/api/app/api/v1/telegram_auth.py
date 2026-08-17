@@ -70,7 +70,10 @@ def _telegram_http_error(exc: Exception) -> HTTPException:
         detail = f"Telegram API rejected the request (HTTP {exc.response.status_code})"
     else:
         detail = str(exc) or "Telegram bot is unavailable"
-    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=detail,
+    )
 
 
 def _bearer_token(request: Request) -> str | None:
@@ -83,7 +86,7 @@ def _bearer_token(request: Request) -> str | None:
 
 @router.get("/start")
 def telegram_start() -> RedirectResponse:
-    """Configure the bot/webhook if needed and redirect to the actual bot username."""
+    """Configure the bot/webhook and redirect to the actual bot username."""
     config = get_telegram_config()
     try:
         username = ensure_bot_ready(config)
@@ -170,7 +173,9 @@ def telegram_webhook(
             return TelegramWebhookResponse()
 
         text = message.get("text")
-        command = text.split(maxsplit=1)[0].split("@", maxsplit=1)[0] if isinstance(text, str) else ""
+        command = ""
+        if isinstance(text, str):
+            command = text.split(maxsplit=1)[0].split("@", maxsplit=1)[0]
         if command == "/start":
             send_start_screen(config, chat_id=chat_id)
         else:
@@ -182,7 +187,7 @@ def telegram_webhook(
 
 @router.post("/exchange", response_model=TelegramExchangeResponse)
 def telegram_exchange(body: TelegramExchangeRequest) -> TelegramExchangeResponse:
-    """Exchange the signed Telegram confirmation for a long-lived browser session."""
+    """Exchange the signed Telegram confirmation for a browser session."""
     config = get_telegram_config()
     try:
         token, expires_at, user = exchange_login_code(config, body.code)
