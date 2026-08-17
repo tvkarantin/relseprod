@@ -1,0 +1,202 @@
+/* Product-feedback pass: keep the light original direction, preserve the larger interactive hero,
+   remove decorative chrome, and make the workflow feel like the product itself. */
+
+/* HERO — back to the warm/light original, without the dark slab or decorative rings. */
+.rf3-header:not(.is-scrolled) .rf3-brand strong,
+.rf3-header:not(.is-scrolled) nav,
+.rf3-header:not(.is-scrolled) .rf3-login {
+  color: #2f2c27;
+}
+.rf3-header:not(.is-scrolled) nav a:hover,
+.rf3-header:not(.is-scrolled) .rf3-login:hover {
+  color: #0b0b0c;
+}
+.rf3-header:not(.is-scrolled) .rf3-logo-mark {
+  color: #fff;
+  background: #0b0b0c;
+}
+.rf3-header-cta {
+  color: #fff;
+  background: #0b0b0c;
+  box-shadow: 0 8px 22px rgba(11, 11, 12, .12);
+}
+.rf3-header-cta:hover { background: #24211d; }
+
+.rf3-hero {
+  color: #171512;
+  background: #f5f2ec;
+}
+.rf3-hero-badge {
+  border-color: #e5dfd4;
+  color: #4a4640;
+  background: rgba(255,255,255,.76);
+  box-shadow: 0 3px 12px rgba(31,26,20,.04);
+}
+.rf3-hero h1 { color: #11100e; }
+.rf3-hero-copy > p {
+  max-width: 600px;
+  color: #67635c;
+}
+.rf3-primary-button {
+  color: #fff;
+  background: #0b0b0c;
+  box-shadow: 0 12px 28px rgba(17,16,14,.15);
+}
+.rf3-primary-button:hover { background: #292620; }
+.rf3-secondary-button {
+  border-color: #d8d2c7;
+  color: #171512;
+  background: rgba(255,255,255,.66);
+}
+.rf3-secondary-button:hover {
+  border-color: #bfb8ab;
+  color: #171512;
+  background: #fff;
+}
+.rf3-hero-trust { color: #8e8980; }
+.rf3-hero-trust svg { color: #24211d; }
+.rf3-hero-trust span { color: #cbc5ba; }
+
+/* Remove the oval/ring decoration completely. The composition itself is the visual. */
+.rf3-hero-ring { display: none !important; }
+.rf3-main-reel { border-color: #d7d0c4; box-shadow: 0 42px 90px -34px rgba(25,22,18,.42); }
+.rf3-side-thumb { border-color: #ded8cd; box-shadow: 0 20px 44px rgba(25,22,18,.12); }
+.rf3-creator-card,
+.rf3-viral-card { border-color: #e0dad0; background: rgba(255,255,255,.96); }
+
+/* SECOND BLOCK — more editorial/analytical atmosphere instead of empty background. */
+.rf3-competitors-sticky { position: sticky; }
+.rf3-competitors-sticky::before,
+.rf3-competitors-sticky::after {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  width: min(1320px, calc(100% - 48px));
+  transform: translateX(-50%);
+  overflow: hidden;
+  color: rgba(23,21,18,.19);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.rf3-competitors-sticky::before {
+  content: 'АНОМАЛЬНЫЙ РОСТ   ·   ПРОСМОТРЫ   ·   УДЕРЖАНИЕ   ·   СОХРАНЕНИЯ   ·   ПЕРЕСЫЛКИ   ·   ТЕМП   ·   HOOK   ·   CTA   ·   ВОВЛЕЧЕНИЕ   ·   VIRAL SCORE';
+  top: 84px;
+}
+.rf3-competitors-sticky::after {
+  content: 'REELS   ·   SHORTS   ·   НОВЫЕ ПУБЛИКАЦИИ   ·   ФОРМАТЫ   ·   ТЕМЫ   ·   КОНКУРЕНТЫ   ·   ТРЕНДЫ   ·   РОСТ ЗА 24 ЧАСА   ·   СРЕДНИЕ ПОКАЗАТЕЛИ';
+  bottom: 68px;
+  text-align: right;
+}
+.rf3-competitors-sticky > .rf3-container { position: relative; z-index: 1; }
+.rf3-competitors .rf3-section-description::after {
+  content: 'Охваты  ·  удержание  ·  динамика просмотров  ·  сохранения  ·  пересылки  ·  частота публикаций';
+  display: block;
+  margin-top: 18px;
+  color: #918b81;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: .025em;
+}
+
+/* LIBRARY — remove the marketing block completely from the visible landing. */
+.rf3-library { display: none !important; }
+
+/* WORKFLOW — no large white framed container. The product stages live directly on the canvas. */
+.rf3-workflow { background: #f2f1ec; }
+.rf3-workflow-layout {
+  grid-template-columns: 1fr;
+  gap: 28px;
+  margin-top: 46px;
+}
+.rf3-workflow-stage-wrap {
+  height: 450px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rf3-work-stage {
+  padding: 0 24px;
+}
+.rf3-work-stage-inner,
+.rf3-mini-kanban,
+.rf3-mini-editor {
+  width: min(820px, 100%);
+}
+.rf3-work-save-stage {
+  grid-template-columns: 210px minmax(0,1fr);
+  gap: 42px;
+}
+.rf3-work-reel {
+  border-radius: 18px;
+  box-shadow: 0 24px 48px rgba(31,27,22,.13);
+}
+.rf3-work-save-stage h3 { font-size: 30px; }
+.rf3-work-save-stage p:last-child { font-size: 15px; }
+.rf3-mini-kanban { gap: 14px; }
+.rf3-mini-column {
+  min-height: 300px;
+  padding: 13px;
+  border-radius: 15px;
+}
+.rf3-mini-plan-card img { height: 96px; }
+.rf3-mini-editor { grid-template-columns: 190px minmax(0,1fr); gap: 24px; }
+.rf3-mini-editor aside img { height: 230px; }
+.rf3-mini-editor-fields label > div {
+  min-height: 58px;
+  padding: 11px 12px;
+  font-size: 12px;
+}
+.rf3-work-steps {
+  grid-template-columns: repeat(6, minmax(0,1fr));
+  gap: 10px;
+  width: min(1040px, 100%);
+  margin: 0 auto;
+}
+.rf3-work-step {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: start;
+  padding-top: 12px;
+  border-top: 1px solid #d8d2c7;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.rf3-work-step span {
+  width: auto;
+  height: auto;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #e6512a;
+  background: transparent;
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .rf3-competitors-sticky::before,
+  .rf3-competitors-sticky::after { display: none; }
+  .rf3-workflow-stage-wrap { height: 430px; }
+  .rf3-work-steps { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 620px) {
+  .rf3-header:not(.is-scrolled) .rf3-brand strong { color: #171512; }
+  .rf3-workflow-layout { margin-top: 30px; }
+  .rf3-workflow-stage-wrap { height: 520px; }
+  .rf3-work-stage { padding: 0; }
+  .rf3-work-save-stage { grid-template-columns: 1fr; gap: 18px; }
+  .rf3-work-reel { width: 150px; margin: 0 auto; }
+  .rf3-mini-kanban { grid-template-columns: 1fr; }
+  .rf3-mini-column { min-height: auto; }
+  .rf3-mini-editor { grid-template-columns: 1fr; }
+  .rf3-mini-editor aside { display: none; }
+  .rf3-work-steps { grid-template-columns: repeat(2,1fr); }
+}
