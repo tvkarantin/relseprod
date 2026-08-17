@@ -46,6 +46,7 @@ class ImportResult:
     updated: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
+    created_reel_ids: list[int] = field(default_factory=list)
 
     @property
     def total_processed(self) -> int:
@@ -78,9 +79,10 @@ class ReelImporter:
         for reel in reels:
             try:
                 with session.begin_nested():
-                    created = self._import_one(session, repository, competitor, reel)
-                if created:
+                    created_reel = self._import_one(session, repository, competitor, reel)
+                if created_reel is not None:
                     result.created += 1
+                    result.created_reel_ids.append(created_reel.id)
                 else:
                     result.updated += 1
             except SQLAlchemyError as exc:
@@ -109,16 +111,15 @@ class ReelImporter:
         repository: ReelRepository,
         competitor: Competitor,
         reel: NormalizedReel,
-    ) -> bool:
-        """Create or update a single reel. Returns ``True`` when created."""
+    ) -> Reel | None:
+        """Create or update a single reel and return the newly created row."""
         existing = self._find_existing(repository, competitor.id, reel)
 
         if existing is None:
-            self._create(session, competitor, reel)
-            return True
+            return self._create(session, competitor, reel)
 
         self._update_external_fields(existing, reel)
-        return False
+        return None
 
     @staticmethod
     def _find_existing(
