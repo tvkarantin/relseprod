@@ -12,6 +12,7 @@ import '@fontsource/geist/latin-600.css'
 import '@fontsource/geist/latin-700.css'
 
 import { App } from './App'
+import { installLandingHeroPointer } from './landingHeroPointer'
 import { createQueryClient } from './queryClient'
 import './styles.css'
 import './styles/monitoring.css'
@@ -44,3 +45,5 @@ createRoot(container).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+
+installLandingHeroPointer()
