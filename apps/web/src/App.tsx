@@ -4,8 +4,8 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { fetchCompetitors } from '@/api/competitors'
 import { queryKeys } from '@/api/queryKeys'
+import { LandingRegistrationGate } from '@/components/auth/LandingRegistrationGate'
 import { useJobPolling } from '@/hooks/useJobPolling'
-import { LandingPage } from '@/pages/LandingPage'
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
@@ -104,7 +104,7 @@ export function App() {
     <Suspense fallback={<div className="route-loading" role="status">Загружаем рабочее пространство…</div>}>
       <RouteSeo />
       <Routes>
-        <Route index element={<LandingPage />} />
+        <Route index element={<LandingRegistrationGate />} />
         <Route
           element={
             <>
