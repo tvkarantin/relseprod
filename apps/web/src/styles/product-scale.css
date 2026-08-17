@@ -1,0 +1,38 @@
+/* Desktop product density: make the workspace feel close to 110% browser zoom
+   without affecting mobile/tablet layouts. */
+@media (min-width: 1180px) {
+  .rf-shell {
+    zoom: 1.1;
+    width: 90.9091%;
+    min-height: 90.9091dvh;
+  }
+
+  .rf-sidebar {
+    height: 90.9091dvh;
+  }
+}
+
+@supports not (zoom: 1.1) {
+  @media (min-width: 1180px) {
+    .rf-shell {
+      width: 100%;
+      min-height: 100dvh;
+      grid-template-columns: 242px minmax(0, 1fr);
+      grid-template-rows: 66px minmax(0, 1fr);
+      font-size: 1.06em;
+    }
+
+    .rf-sidebar {
+      height: 100dvh;
+      padding: 14px 12px 16px;
+    }
+
+    .rf-topbar {
+      padding: 11px 30px;
+    }
+
+    .rf-main {
+      padding: 20px 30px 52px;
+    }
+  }
+}
