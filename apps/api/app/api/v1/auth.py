@@ -21,15 +21,18 @@ from app.schemas.auth import (
     TelegramWebhookResponse,
 )
 from app.services.telegram_auth import (
+    REGISTER_CALLBACK,
     TelegramUserData,
+    answer_callback_query,
     build_login_url,
     create_login_challenge,
     exchange_login_challenge,
     get_latest_avatar_file_id,
     get_telegram_avatar,
     hash_token,
-    send_registration_button,
+    send_confirmation_screen,
     send_start_hint,
+    send_start_screen,
     to_user_response,
 )
 
@@ -47,6 +50,23 @@ def _raw_bearer(request: Request) -> str | None:
     if scheme.lower() != "bearer" or not token.strip():
         return None
     return token.strip()
+
+
+def _telegram_user(sender: dict[str, object]) -> TelegramUserData | None:
+    telegram_id = sender.get("id")
+    if not isinstance(telegram_id, int):
+        return None
+    first_name = sender.get("first_name")
+    username = sender.get("username")
+    last_name = sender.get("last_name")
+    language_code = sender.get("language_code")
+    return TelegramUserData(
+        telegram_id=telegram_id,
+        username=username if isinstance(username, str) else None,
+        first_name=first_name if isinstance(first_name, str) and first_name else "Telegram",
+        last_name=last_name if isinstance(last_name, str) else None,
+        language_code=language_code if isinstance(language_code, str) else None,
+    )
 
 
 @router.get("/config", response_model=AuthConfigResponse)
@@ -78,6 +98,50 @@ def telegram_webhook(
     ):
         raise HTTPException(status_code=403, detail="Invalid Telegram webhook secret")
 
+    callback_query = payload.get("callback_query")
+    if isinstance(callback_query, dict):
+        callback_id = callback_query.get("id")
+        callback_data = callback_query.get("data")
+        sender = callback_query.get("from")
+        message = callback_query.get("message")
+        if not isinstance(callback_id, str):
+            return TelegramWebhookResponse()
+
+        answer_callback_query(settings, callback_query_id=callback_id)
+        if callback_data != REGISTER_CALLBACK:
+            return TelegramWebhookResponse()
+        if not isinstance(sender, dict) or not isinstance(message, dict):
+            return TelegramWebhookResponse()
+
+        telegram_user = _telegram_user(sender)
+        chat = message.get("chat")
+        message_id = message.get("message_id")
+        if telegram_user is None or not isinstance(chat, dict) or not isinstance(message_id, int):
+            return TelegramWebhookResponse()
+        chat_id = chat.get("id")
+        if not isinstance(chat_id, int):
+            return TelegramWebhookResponse()
+
+        existing_user = (
+            db.scalar(select(AppUser.id).where(AppUser.telegram_id == telegram_user.telegram_id))
+            is not None
+        )
+        avatar_file_id = get_latest_avatar_file_id(settings, telegram_user.telegram_id)
+        raw_code = create_login_challenge(
+            db,
+            settings,
+            telegram_user,
+            avatar_file_id=avatar_file_id,
+        )
+        send_confirmation_screen(
+            settings,
+            chat_id=chat_id,
+            message_id=message_id,
+            login_url=build_login_url(settings, raw_code),
+            existing_user=existing_user,
+        )
+        return TelegramWebhookResponse()
+
     message = payload.get("message")
     if not isinstance(message, dict):
         return TelegramWebhookResponse()
@@ -86,8 +150,8 @@ def telegram_webhook(
     if not isinstance(chat, dict) or not isinstance(sender, dict):
         return TelegramWebhookResponse()
     chat_id = chat.get("id")
-    telegram_id = sender.get("id")
-    if not isinstance(chat_id, int) or not isinstance(telegram_id, int):
+    telegram_user = _telegram_user(sender)
+    if not isinstance(chat_id, int) or telegram_user is None:
         return TelegramWebhookResponse()
 
     text = message.get("text")
@@ -96,31 +160,12 @@ def telegram_webhook(
         send_start_hint(settings, chat_id=chat_id)
         return TelegramWebhookResponse()
 
-    first_name = sender.get("first_name")
-    username = sender.get("username")
-    last_name = sender.get("last_name")
-    language_code = sender.get("language_code")
-    telegram_user = TelegramUserData(
-        telegram_id=telegram_id,
-        username=username if isinstance(username, str) else None,
-        first_name=first_name if isinstance(first_name, str) and first_name else "Telegram",
-        last_name=last_name if isinstance(last_name, str) else None,
-        language_code=language_code if isinstance(language_code, str) else None,
-    )
-    avatar_file_id = get_latest_avatar_file_id(settings, telegram_id)
     existing_user = (
-        db.scalar(select(AppUser.id).where(AppUser.telegram_id == telegram_id)) is not None
+        db.scalar(select(AppUser.id).where(AppUser.telegram_id == telegram_user.telegram_id)) is not None
     )
-    raw_code = create_login_challenge(
-        db,
-        settings,
-        telegram_user,
-        avatar_file_id=avatar_file_id,
-    )
-    send_registration_button(
+    send_start_screen(
         settings,
         chat_id=chat_id,
-        login_url=build_login_url(settings, raw_code),
         existing_user=existing_user,
     )
     return TelegramWebhookResponse()
