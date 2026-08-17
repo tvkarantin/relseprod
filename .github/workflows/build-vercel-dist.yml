@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: realsfinder-production-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend-tests:
@@ -43,7 +47,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
@@ -116,17 +120,3 @@ jobs:
             exit 1
           fi
           npx --yes vercel@latest deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
-
-      - name: Publish production dist branch
-        run: |
-          rm -rf /tmp/realsfinder-vercel-dist
-          cp -R apps/web/dist /tmp/realsfinder-vercel-dist
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --orphan vercel-dist
-          git rm -rf . || true
-          git clean -fdx
-          cp -R /tmp/realsfinder-vercel-dist/. .
-          git add -A
-          git commit -m "build: web dist ${GITHUB_SHA}"
-          git push --force origin HEAD:vercel-dist
