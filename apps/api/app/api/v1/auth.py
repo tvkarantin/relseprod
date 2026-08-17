@@ -108,7 +108,9 @@ def telegram_webhook(
         language_code=language_code if isinstance(language_code, str) else None,
     )
     avatar_file_id = get_latest_avatar_file_id(settings, telegram_id)
-    existing_user = db.scalar(select(AppUser.id).where(AppUser.telegram_id == telegram_id)) is not None
+    existing_user = (
+        db.scalar(select(AppUser.id).where(AppUser.telegram_id == telegram_id)) is not None
+    )
     raw_code = create_login_challenge(
         db,
         settings,
@@ -135,7 +137,10 @@ def telegram_exchange(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ссылка для входа недействительна или уже использована. Нажми /start в боте ещё раз.",
+            detail=(
+                "Ссылка для входа недействительна или уже использована. "
+                "Нажми /start в боте ещё раз."
+            ),
         )
     return result
 
