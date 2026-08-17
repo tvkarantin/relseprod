@@ -109,8 +109,10 @@ export function ReelFilters({
             <option value="youtube">YouTube</option>
           </select>
         </div>
-      ) : competitors.length > 0 ? (
-        <div className="filter-select-wrap">
+      ) : null}
+
+      {competitors.length > 0 ? (
+        <div className="filter-select-wrap library-competitor-select">
           <span className="filter-select-icon" aria-hidden="true">
             <IconPeople />
           </span>
