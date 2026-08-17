@@ -99,8 +99,8 @@ describe('ReelsPage', () => {
 
     renderWithProviders(<ReelsPage />, { route: '/reels' })
 
-    expect(await screen.findByText('Из YouTube-мониторинга')).toBeInTheDocument()
-    expect(screen.getByText('Видео из мониторинга')).toBeInTheDocument()
+    expect(await screen.findByText('Видео из мониторинга')).toBeInTheDocument()
+    expect(screen.getByText('YouTube автор')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Открыть видео на YouTube/ })).toHaveAttribute(
       'href',
       'https://youtube.com/watch?v=youtube-7',
