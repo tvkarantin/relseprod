@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /ideas
+Disallow: /competitors
+Disallow: /library
+Disallow: /reels/
+Disallow: /youtube-monitoring
+Disallow: /my-reels
+Disallow: /resources
+Disallow: /subscription
+Disallow: /ai-dashboard
+
+Sitemap: https://realsfinder-github.vercel.app/sitemap.xml
