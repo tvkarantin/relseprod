@@ -113,6 +113,7 @@ export function ReelsPage() {
   const competitorsQuery = useQuery({
     queryKey: queryKeys.competitors.list(),
     queryFn: ({ signal }) => fetchCompetitors(signal),
+    staleTime: 120_000,
   })
 
   const query = {
@@ -122,14 +123,21 @@ export function ReelsPage() {
     page: urlPage,
     limit: pageSize,
   }
+  const shouldLoadReels = urlSource !== 'youtube'
+  const shouldLoadLibrary = urlSource !== 'instagram' && urlPage === 1 && !urlCompetitorId
+
   const reelsQuery = useQuery({
     queryKey: queryKeys.reels.list(query),
     queryFn: ({ signal }) => fetchReels(query, signal),
     placeholderData: (previous) => previous,
+    enabled: shouldLoadReels,
+    staleTime: 30_000,
   })
   const libraryVideosQuery = useQuery({
     queryKey: ['monitoring', 'library'],
     queryFn: ({ signal }) => monitoringApi.libraryVideos(signal),
+    enabled: shouldLoadLibrary,
+    staleTime: 60_000,
   })
 
   const page = reelsQuery.data
@@ -181,6 +189,12 @@ export function ReelsPage() {
     )
   }
   const hasVisibleContent = displayedItems.length > 0 || displayedLibraryVideos.length > 0
+  const isLoading =
+    (shouldLoadReels && reelsQuery.isLoading) ||
+    (shouldLoadLibrary && libraryVideosQuery.isLoading)
+  const primaryError = urlSource === 'youtube' ? libraryVideosQuery.error : reelsQuery.error
+  const isPrimaryError =
+    urlSource === 'youtube' ? libraryVideosQuery.isError : reelsQuery.isError
 
   return (
     <div className="page-content library-page">
@@ -252,11 +266,17 @@ export function ReelsPage() {
         </div>
       </div>
 
-      {reelsQuery.isLoading || libraryVideosQuery.isLoading ? (
+      {isLoading ? (
         <ReelCardSkeletons count={10} />
-      ) : reelsQuery.isError ? (
-        <ErrorState error={reelsQuery.error} onRetry={() => void reelsQuery.refetch()} />
-      ) : !page || !hasVisibleContent ? (
+      ) : isPrimaryError ? (
+        <ErrorState
+          error={primaryError}
+          onRetry={() => {
+            if (urlSource === 'youtube') void libraryVideosQuery.refetch()
+            else void reelsQuery.refetch()
+          }}
+        />
+      ) : !hasVisibleContent ? (
         <ReelsEmptyState
           title={hasFilters ? 'Ничего не найдено' : 'Здесь пока пусто'}
           description={
@@ -321,7 +341,7 @@ export function ReelsPage() {
             ))}
           </div>
 
-          {page.total > 0 ? (
+          {page && page.total > 0 ? (
             <Pagination
               page={page.page}
               pages={page.pages}
