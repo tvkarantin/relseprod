@@ -29,9 +29,9 @@ def prepare_reel_task(
 ) -> None:
     """Run every preparation stage sequentially, safely reusing completed work.
 
-    The task is intentionally self-starting: callers only need a reel id. When
-    the reel does not have a transcription row yet, one is created and queued
-    before Deepgram and OpenRouter are invoked.
+    The task is intentionally self-starting: callers only need a reel id. A
+    missing transcription is created, and a failed one is re-queued, before
+    Deepgram and OpenRouter are invoked.
     """
     session_factory = get_session_factory(settings)
     session = session_factory()
@@ -41,16 +41,19 @@ def prepare_reel_task(
             return
 
         transcription = reel.transcription
-        if transcription is None:
-            try:
-                transcription = TranscriptionService(session, settings).start_transcription(reel_id)
-            except AppError as exc:
-                logger.warning(
-                    "Could not queue automatic transcription for reel %s: %s",
-                    reel_id,
-                    exc.code,
-                )
-                return
+        transcription_service = TranscriptionService(session, settings)
+        try:
+            if transcription is None:
+                transcription = transcription_service.start_transcription(reel_id)
+            elif transcription.status == TranscriptionStatus.FAILED:
+                transcription = transcription_service.retry_transcription(reel_id)
+        except AppError as exc:
+            logger.warning(
+                "Could not queue automatic transcription for reel %s: %s",
+                reel_id,
+                exc.code,
+            )
+            return
 
         transcription_id = transcription.id
         transcription_status = transcription.status
