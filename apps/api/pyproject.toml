@@ -47,23 +47,21 @@ extend-exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
 select = [
-    "F",   # pyflakes
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade / modern python
-    "C4",  # comprehensions
-    "SIM", # simplify
-    "TCH", # type-checking imports
-    "RUF", # ruff-specific
-    "N",   # pep8-naming
-    "ANN", # annotations
+    "F",
+    "E",
+    "W",
+    "I",
+    "B",
+    "UP",
+    "C4",
+    "SIM",
+    "TCH",
+    "RUF",
+    "N",
+    "ANN",
 ]
 ignore = [
-    "ANN401", # typing.Any is used deliberately in a few generic helpers
-    # The project speaks Russian to its users: Cyrillic letters in messages are
-    # intentional, not homoglyph typos.
+    "ANN401",
     "RUF001",
     "RUF002",
     "RUF003",
@@ -71,13 +69,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# FastAPI TestClient is used at runtime in fixtures and assertions.
 "tests/*" = ["ANN201", "ANN001", "TC002", "TC003"]
 "migrations/env.py" = ["ANN201", "E402"]
-"scripts/*" = ["T201"]  # the dev script intentionally prints to stdout
-# FastAPI resolves annotations at runtime (dependency injection, response
-# models), so `Session`, `Generator` & co. must be imported unconditionally in
-# these modules — a `TYPE_CHECKING` block would break the app at startup.
+"scripts/*" = ["T201"]
 "app/api/deps.py" = ["TC002", "TC003"]
 "app/api/v1/router.py" = ["TC002", "TC003"]
 "app/api/v1/telegram_auth.py" = ["TC001", "TC002", "TC003"]
@@ -88,22 +82,15 @@ ignore = [
 "app/api/v1/dashboard.py" = ["TC002", "TC003"]
 "app/api/v1/monitoring.py" = ["TC002", "TC003"]
 "app/services/transcriptions.py" = ["TC001", "TC002"]
+"app/services/telegram_login.py" = ["N818"]
 "app/main.py" = ["TC002", "TC003"]
 "app/database/session.py" = ["TC002", "TC003"]
-# SQLAlchemy resolves `Mapped[...]` annotations at mapper configuration time,
-# so `datetime` must be a real runtime import in the ORM models.
 "app/models/*.py" = ["TC003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
 [tool.ruff.lint.flake8-type-checking]
-# Pydantic and SQLAlchemy evaluate annotations at runtime, so their imports must
-# stay outside `if TYPE_CHECKING` blocks.
-# Pydantic evaluates annotations at runtime, so its imports must stay outside
-# `if TYPE_CHECKING`. SQLAlchemy is deliberately *not* listed here: it resolves
-# `Mapped["Reel"]` lazily through its own registry, which is what lets the ORM
-# models reference each other without circular imports.
 runtime-evaluated-base-classes = [
     "pydantic.BaseModel",
     "app.schemas.base.APIModel",

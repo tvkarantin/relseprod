@@ -38,6 +38,31 @@ jobs:
         working-directory: apps/api
         run: python -m pytest
 
+  deploy-backend:
+    needs: backend-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Deploy backend to Vercel production
+        working-directory: apps/api
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_dbSmvb6n3SjBzoggnorPzBVI
+          VERCEL_PROJECT_ID: prj_MJwGKXuKQt4h2rZZoGtZ2RyBsL7G
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Missing VERCEL_TOKEN repository secret"
+            exit 1
+          fi
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+
   build:
     runs-on: ubuntu-latest
     steps:
