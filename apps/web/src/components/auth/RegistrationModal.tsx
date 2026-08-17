@@ -2,6 +2,7 @@ import { Send, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { API_URL } from '@/api/client'
 import '@/styles/registration-modal.css'
 
 type RegistrationModalProps = {
@@ -9,26 +10,15 @@ type RegistrationModalProps = {
   onClose: () => void
 }
 
-function getTelegramBotUrl() {
-  const explicitUrl = import.meta.env.VITE_TELEGRAM_BOT_URL?.trim()
-  if (explicitUrl) return explicitUrl
-
-  const username = import.meta.env.VITE_TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, '')
-  return username ? `https://t.me/${username}?start=web` : null
-}
-
 export function RegistrationModal({ open, onClose }: RegistrationModalProps) {
   const navigate = useNavigate()
   const emailRef = useRef<HTMLInputElement>(null)
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
-  const [telegramError, setTelegramError] = useState('')
-  const telegramBotUrl = getTelegramBotUrl()
 
   useEffect(() => {
     if (!open) {
       setError('')
-      setTelegramError('')
       return
     }
 
@@ -70,12 +60,7 @@ export function RegistrationModal({ open, onClose }: RegistrationModalProps) {
   }
 
   const handleTelegramClick = () => {
-    setTelegramError('')
-    if (!telegramBotUrl) {
-      setTelegramError('Telegram-бот ещё не подключён к этому окружению')
-      return
-    }
-    window.location.assign(telegramBotUrl)
+    window.location.assign(`${API_URL}/auth/telegram/start`)
   }
 
   return (
@@ -120,7 +105,6 @@ export function RegistrationModal({ open, onClose }: RegistrationModalProps) {
           <Send size={17} />
           Войти через Telegram
         </button>
-        {telegramError ? <p className="rf-signup-telegram-error">{telegramError}</p> : null}
 
         <p className="rf-signup-note">Без карты. Регистрация занимает несколько секунд.</p>
       </section>
