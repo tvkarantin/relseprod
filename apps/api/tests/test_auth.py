@@ -12,7 +12,10 @@ from app.models.auth import AppUser, AuthSession, TelegramLoginChallenge
 from app.services.telegram_auth import hash_token
 
 
-def test_exchange_creates_user_and_single_use_session(client: TestClient, db_session: Session) -> None:
+def test_exchange_creates_user_and_single_use_session(
+    client: TestClient,
+    db_session: Session,
+) -> None:
     raw_code = "test-telegram-login-code-1234567890"
     db_session.add(
         TelegramLoginChallenge(
