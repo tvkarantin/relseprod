@@ -64,6 +64,7 @@ def test_response_uses_camel_case_only(client: TestClient) -> None:
     assert set(body) == {
         "id",
         "activeJobId",
+        "latestJobId",
         "instagramUsername",
         "profileUrl",
         "status",
