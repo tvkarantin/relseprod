@@ -6,11 +6,13 @@ import ipaddress
 import os
 import subprocess
 from dataclasses import dataclass
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 import httpx
 
 _ALLOWED_HOST_SUFFIXES = (".cdninstagram.com", ".fbcdn.net")
+_TRUSTED_EDGE_HOST = "tphahouachokghqlsczf.supabase.co"
+_TRUSTED_EDGE_PATH = "/functions/v1/instagram-imginn"
 _MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024
 _REQUEST_HEADERS = {
     "User-Agent": (
@@ -111,6 +113,66 @@ def _is_allowed_instagram_media_url(url: str) -> bool:
     )
 
 
+def _is_trusted_edge_thumbnail_url(url: str) -> bool:
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() != _TRUSTED_EDGE_HOST
+        or parsed.path != _TRUSTED_EDGE_PATH
+    ):
+        return False
+    thumbnail_values = parse_qs(parsed.query).get("thumbnail", [])
+    return any(value.strip() for value in thumbnail_values)
+
+
+def _response_media_type(response: httpx.Response) -> str:
+    declared = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if declared.startswith("image/"):
+        return declared
+    detected = _image_media_type(response.content)
+    if detected is None:
+        raise ReelThumbnailFetchError("Thumbnail response is not an image")
+    return detected
+
+
+def _validate_thumbnail_response(response: httpx.Response) -> ReelThumbnailPayload:
+    if response.status_code != 200:
+        raise ReelThumbnailFetchError("Thumbnail request failed")
+    if len(response.content) > _MAX_THUMBNAIL_BYTES:
+        raise ReelThumbnailFetchError("Thumbnail is too large")
+    return ReelThumbnailPayload(
+        content=response.content,
+        media_type=_response_media_type(response),
+    )
+
+
+def _fetch_trusted_edge_thumbnail(
+    url: str,
+    *,
+    client: httpx.Client | None = None,
+) -> ReelThumbnailPayload:
+    owns_client = client is None
+    active_client = client or httpx.Client(
+        timeout=httpx.Timeout(12.0, connect=5.0),
+        follow_redirects=True,
+    )
+    try:
+        response = active_client.get(url, headers=_REQUEST_HEADERS)
+    except httpx.HTTPError as exc:
+        raise ReelThumbnailFetchError("Thumbnail request failed") from exc
+    finally:
+        if owns_client:
+            active_client.close()
+
+    final_host = (urlsplit(str(response.url)).hostname or "").lower()
+    final_host_allowed = final_host == _TRUSTED_EDGE_HOST or any(
+        final_host.endswith(suffix) for suffix in _ALLOWED_HOST_SUFFIXES
+    )
+    if not final_host_allowed:
+        raise ReelThumbnailFetchError("Thumbnail redirected to an unsupported host")
+    return _validate_thumbnail_response(response)
+
+
 def fetch_reel_thumbnail(
     url: str,
     *,
@@ -118,9 +180,14 @@ def fetch_reel_thumbnail(
 ) -> ReelThumbnailPayload:
     """Fetch one Instagram thumbnail with browser-like headers.
 
-    Both the stored URL and the final redirect target are restricted to known
-    Instagram CDN domains so this proxy cannot be used for arbitrary requests.
+    Stored thumbnails may be either direct Instagram CDN links or URLs produced
+    by the project's own Supabase Edge media function. Every accepted host and
+    redirect target is allow-listed so this endpoint cannot become an arbitrary
+    HTTP proxy.
     """
+    if _is_trusted_edge_thumbnail_url(url):
+        return _fetch_trusted_edge_thumbnail(url, client=client)
+
     if not _is_allowed_instagram_media_url(url):
         raise ReelThumbnailFetchError("Unsupported thumbnail host")
 
@@ -147,10 +214,4 @@ def fetch_reel_thumbnail(
     if final_host not in {"images.weserv.nl", "weserv.nl"}:
         raise ReelThumbnailFetchError("Thumbnail redirected to an unsupported host")
 
-    media_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-    if not media_type.startswith("image/"):
-        raise ReelThumbnailFetchError("Thumbnail response is not an image")
-    if len(response.content) > _MAX_THUMBNAIL_BYTES:
-        raise ReelThumbnailFetchError("Thumbnail is too large")
-
-    return ReelThumbnailPayload(content=response.content, media_type=media_type)
+    return _validate_thumbnail_response(response)
