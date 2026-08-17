@@ -1,5 +1,5 @@
 import { Send, X } from 'lucide-react'
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import '@/styles/registration-modal.css'
@@ -26,7 +26,11 @@ export function RegistrationModal({ open, onClose }: RegistrationModalProps) {
   const telegramBotUrl = getTelegramBotUrl()
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setError('')
+      setTelegramError('')
+      return
+    }
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
