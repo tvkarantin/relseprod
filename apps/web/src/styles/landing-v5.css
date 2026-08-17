@@ -1,0 +1,49 @@
+/* Single real Instagram Reel in the hero. Let Instagram provide the real username/avatar/media chrome. */
+.rf3-side-thumb,
+.rf3-creator-card,
+.rf3-reel-topline,
+.rf3-reel-copy,
+.rf3-reel-bookmark {
+  display: none !important;
+}
+
+.rf3-hero-composition {
+  min-height: 650px;
+  display: grid;
+  place-items: center;
+}
+
+.rf3-main-reel {
+  width: min(390px, 88%);
+  height: 625px;
+  aspect-ratio: auto !important;
+  overflow: hidden;
+  border: 1px solid #ded8cd !important;
+  border-radius: 28px !important;
+  background: #fff;
+  box-shadow: 0 38px 86px -34px rgba(25, 22, 18, .4) !important;
+}
+
+.rf3-real-instagram-embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.rf3-viral-card {
+  right: 0 !important;
+  bottom: 80px !important;
+}
+
+@media (max-width: 900px) {
+  .rf3-hero-composition { min-height: 600px; }
+  .rf3-main-reel { width: min(370px, 92%); height: 590px; }
+}
+
+@media (max-width: 620px) {
+  .rf3-hero-composition { min-height: 560px; }
+  .rf3-main-reel { width: min(350px, 94vw); height: 560px; border-radius: 22px !important; }
+  .rf3-viral-card { right: 4px !important; bottom: 46px !important; }
+}
