@@ -5,6 +5,7 @@ Alembic autogenerate relies on.
 """
 
 from app.database.base import Base
+from app.models.auth import AppUser, AuthSession, TelegramLoginChallenge
 from app.models.competitor import Competitor
 from app.models.enums import (
     CompetitorStatus,
@@ -28,6 +29,8 @@ from app.models.reel_content import ReelContent
 from app.models.reel_transcription import ReelTranscription
 
 __all__ = [
+    "AppUser",
+    "AuthSession",
     "Base",
     "Competitor",
     "CompetitorStatus",
@@ -42,6 +45,7 @@ __all__ = [
     "ReelContent",
     "ReelImportMode",
     "ReelTranscription",
+    "TelegramLoginChallenge",
     "TopicVideo",
     "TranscriptionStatus",
     "VideoStatisticsSnapshot",
