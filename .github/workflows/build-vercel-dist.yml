@@ -88,6 +88,19 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Deploy frontend to Vercel production
+        working-directory: apps/web/dist
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_dbSmvb6n3SjBzoggnorPzBVI
+          VERCEL_PROJECT_ID: prj_xKs3JgvKrdyKi2a9vpRhRjjGP4HR
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Missing VERCEL_TOKEN repository secret"
+            exit 1
+          fi
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+
       - name: Publish production dist branch
         run: |
           rm -rf /tmp/realsfinder-vercel-dist
