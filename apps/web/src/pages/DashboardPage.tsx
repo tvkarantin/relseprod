@@ -1,34 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  BookOpen,
-  Clapperboard,
+  ArrowRight,
+  Bookmark,
   Eye,
-  FileText,
   Instagram,
-  Lightbulb,
   Plus,
   RefreshCw,
-  Send,
+  TrendingUp,
   Users,
   Video,
   Youtube,
 } from 'lucide-react'
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { apiClient, buildQuery } from '@/api/client'
 import { queryKeys } from '@/api/queryKeys'
-import { fetchAllMyReels, fetchDashboardSummary } from '@/api/reels'
+import { fetchDashboardSummary, fetchReels, getReelThumbnailUrl } from '@/api/reels'
 import { formatNumber } from '@/utils/format'
 import './dashboard-realsflow.css'
-import './dashboard-account.css'
 
 type SocialPlatform = 'instagram' | 'youtube'
 
@@ -51,69 +41,6 @@ interface SocialAccountSummary {
 
 const SOCIAL_ACCOUNT_STORAGE_KEY = 'realsflow:connected-social-account:v1'
 
-function setSpotlight(event: ReactPointerEvent<HTMLElement>) {
-  const element = event.currentTarget
-  const rect = element.getBoundingClientRect()
-  const x = ((event.clientX - rect.left) / rect.width) * 100
-  const y = ((event.clientY - rect.top) / rect.height) * 100
-  element.style.setProperty('--glow-x', `${x.toFixed(1)}%`)
-  element.style.setProperty('--glow-y', `${y.toFixed(1)}%`)
-}
-
-function SpotlightCard({
-  children,
-  className = '',
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <article
-      className={`rf-spotlight-card ${className}`}
-      onPointerMove={setSpotlight}
-    >
-      {children}
-    </article>
-  )
-}
-
-function TypeName({ value }: { value: string }) {
-  const [visible, setVisible] = useState('')
-
-  useEffect(() => {
-    let index = 0
-    setVisible('')
-    const timer = window.setInterval(() => {
-      index += 1
-      setVisible(value.slice(0, index))
-      if (index >= value.length) window.clearInterval(timer)
-    }, 120)
-    return () => window.clearInterval(timer)
-  }, [value])
-
-  return (
-    <span className="rf-typed-name">
-      {visible}
-      <i aria-hidden="true" />
-    </span>
-  )
-}
-
-function getGreeting(hour: number) {
-  if (hour < 12) return 'Доброе утро'
-  if (hour < 18) return 'Добрый день'
-  return 'Добрый вечер'
-}
-
-function formatToday(date: Date) {
-  const label = new Intl.DateTimeFormat('ru-RU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-  }).format(date)
-  return label.charAt(0).toUpperCase() + label.slice(1)
-}
-
 function loadConnectedSocialAccount(): ConnectedSocialAccount | null {
   if (typeof window === 'undefined') return null
   try {
@@ -125,10 +52,7 @@ function loadConnectedSocialAccount(): ConnectedSocialAccount | null {
       typeof parsed.identifier === 'string' &&
       parsed.identifier.trim()
     ) {
-      return {
-        platform: parsed.platform,
-        identifier: parsed.identifier.trim(),
-      }
+      return { platform: parsed.platform, identifier: parsed.identifier.trim() }
     }
   } catch {
     return null
@@ -145,14 +69,8 @@ function saveConnectedSocialAccount(account: ConnectedSocialAccount | null) {
   window.localStorage.setItem(SOCIAL_ACCOUNT_STORAGE_KEY, JSON.stringify(account))
 }
 
-async function fetchSocialAccountSummary(
-  account: ConnectedSocialAccount,
-  signal?: AbortSignal,
-): Promise<SocialAccountSummary> {
-  const query = buildQuery({
-    platform: account.platform,
-    identifier: account.identifier,
-  })
+async function fetchSocialAccountSummary(account: ConnectedSocialAccount, signal?: AbortSignal): Promise<SocialAccountSummary> {
+  const query = buildQuery({ platform: account.platform, identifier: account.identifier })
   return apiClient.get<SocialAccountSummary>(`/dashboard/social-account${query}`, signal)
 }
 
@@ -165,27 +83,18 @@ export function DashboardPage() {
     queryKey: queryKeys.dashboard.summary(),
     queryFn: ({ signal }) => fetchDashboardSummary(signal),
   })
-  const contentPlanQuery = useQuery({
-    queryKey: queryKeys.reels.contentPlan(),
-    queryFn: ({ signal }) => fetchAllMyReels(signal),
+  const viralQuery = useQuery({
+    queryKey: ['dashboard', 'viral-reels'],
+    queryFn: ({ signal }) => fetchReels({ sort: 'viral', page: 1, limit: 8 }, signal),
   })
 
-  const [connectedAccount, setConnectedAccount] = useState<ConnectedSocialAccount | null>(
-    loadConnectedSocialAccount,
-  )
+  const [connectedAccount, setConnectedAccount] = useState<ConnectedSocialAccount | null>(loadConnectedSocialAccount)
   const [isConnectOpen, setConnectOpen] = useState(false)
-  const [draftPlatform, setDraftPlatform] = useState<SocialPlatform>(
-    connectedAccount?.platform ?? 'instagram',
-  )
+  const [draftPlatform, setDraftPlatform] = useState<SocialPlatform>(connectedAccount?.platform ?? 'instagram')
   const [draftIdentifier, setDraftIdentifier] = useState(connectedAccount?.identifier ?? '')
 
   const accountQuery = useQuery({
-    queryKey: [
-      'dashboard',
-      'social-account',
-      connectedAccount?.platform ?? 'none',
-      connectedAccount?.identifier ?? '',
-    ],
+    queryKey: ['dashboard', 'social-account', connectedAccount?.platform ?? 'none', connectedAccount?.identifier ?? ''],
     queryFn: ({ signal }) => {
       if (!connectedAccount) throw new Error('Аккаунт не подключён')
       return fetchSocialAccountSummary(connectedAccount, signal)
@@ -195,43 +104,13 @@ export function DashboardPage() {
   })
 
   const summary = summaryQuery.data
-  const publishedCount = useMemo(
-    () =>
-      contentPlanQuery.data?.filter(
-        (reel) => reel.content.contentStatus === 'published',
-      ).length,
-    [contentPlanQuery.data],
-  )
-
-  const stats = useMemo(
-    () => [
-      {
-        label: 'Новые идеи',
-        value: summary?.ideasCount,
-        note: 'В ленте идей',
-        icon: Lightbulb,
-      },
-      {
-        label: 'Сценарии',
-        value: summary?.scriptsCount,
-        note: 'В работе',
-        icon: FileText,
-      },
-      {
-        label: 'Готово к съёмке',
-        value: summary?.readyCount,
-        note: 'Готовы к следующему шагу',
-        icon: Clapperboard,
-      },
-      {
-        label: 'Опубликовано',
-        value: publishedCount,
-        note: 'В контент-плане',
-        icon: Send,
-      },
-    ],
-    [publishedCount, summary],
-  )
+  const reels = viralQuery.data?.items ?? []
+  const metrics = [
+    { label: 'Конкурентов', value: summary?.competitorsCount, delta: summary?.activeJobsCount ? `${summary.activeJobsCount} обновляется` : 'активны' },
+    { label: 'Найдено роликов', value: summary?.reelsCount, delta: 'в библиотеке' },
+    { label: 'Идей в работе', value: summary ? summary.ideasCount + summary.scriptsCount : undefined, delta: 'на подготовке' },
+    { label: 'Готово', value: summary?.readyCount, delta: 'к съёмке' },
+  ]
 
   const handleConnect = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -245,9 +124,7 @@ export function DashboardPage() {
 
   const openConnect = (platform: SocialPlatform) => {
     setDraftPlatform(platform)
-    setDraftIdentifier(
-      connectedAccount?.platform === platform ? connectedAccount.identifier : '',
-    )
+    setDraftIdentifier(connectedAccount?.platform === platform ? connectedAccount.identifier : '')
     setConnectOpen(true)
   }
 
@@ -258,216 +135,142 @@ export function DashboardPage() {
     setDraftIdentifier('')
   }
 
-  const now = new Date()
   const account = accountQuery.data
-  const AccountPlatformIcon =
-    (account?.platform ?? connectedAccount?.platform) === 'youtube' ? Youtube : Instagram
+  const AccountPlatformIcon = (account?.platform ?? connectedAccount?.platform) === 'youtube' ? Youtube : Instagram
 
   return (
-    <div className="rf-dashboard-page">
-      <section className="rf-hero">
-        <div className="rf-hero-copy">
-          <div className="rf-day-chip">
-            <span>☀</span>
-            <strong>{formatToday(now)}</strong>
-            <i />
-            Хорошего дня!
-          </div>
-          <h1>
-            {getGreeting(now.getHours())},
-            <br />
-            <TypeName value="Андрей" />
-          </h1>
-          <p>
-            RealsFlow помогает управлять идеями, сценариями
-            <br className="rf-desktop-break" /> и контентом — от задумки до публикации.
-          </p>
-          <div className="rf-hero-actions">
-            <Link to="/ideas" className="rf-primary-button">
-              <Plus size={19} /> Создать сценарий
-            </Link>
-            <Link to="/library" className="rf-secondary-button">
-              <BookOpen size={19} /> Открыть библиотеку
-            </Link>
-          </div>
+    <div className="rf-overview-page">
+      <section className="rf-overview-head">
+        <div>
+          <h1>Обзор</h1>
+          <p>Самое важное по вашим конкурентам и контенту</p>
         </div>
-
-        <div
-          className="rf-story-stack"
-          aria-label="Анимированная схема от идеи к рилсу"
-          onPointerMove={setSpotlight}
-        >
-          <div className="rf-orbit-line" />
-          <div className="rf-story-card rf-story-card-back">
-            <span>контент</span>
-          </div>
-          <div className="rf-story-card rf-story-card-mid">
-            <span>сценарий</span>
-          </div>
-          <div className="rf-story-card rf-story-card-front">
-            <div className="rf-play">▶</div>
-            <em>Идея</em>
-            <b>→ сценарий</b>
-            <b>→ рилс</b>
-          </div>
-          <div className="rf-spark">✦</div>
+        <div className="rf-overview-head-actions">
+          <Link to="/library" className="rf-overview-secondary"><Bookmark size={14} /> Библиотека</Link>
+          <Link to="/competitors" className="rf-overview-primary"><Plus size={15} /> Добавить конкурента</Link>
         </div>
       </section>
 
-      <section className="rf-stat-grid" aria-label="Сводка">
-        {stats.map(({ label, value, note, icon: Icon }) => (
-          <SpotlightCard key={label} className="rf-stat-card">
-            <div className="rf-stat-top">
-              <Icon size={21} />
-              <span>{label}</span>
-            </div>
-            <strong>{value === undefined ? '—' : formatNumber(value)}</strong>
-            <small>{note}</small>
-          </SpotlightCard>
+      <section className="rf-overview-metrics" aria-label="Сводка">
+        {metrics.map((metric, index) => (
+          <article className="rf-overview-metric" style={{ animationDelay: `${index * 55}ms` }} key={metric.label}>
+            <span>{metric.label}</span>
+            <div><strong>{metric.value === undefined ? '—' : formatNumber(metric.value)}</strong><small>{metric.delta}</small></div>
+          </article>
         ))}
       </section>
 
-      <section className="rf-account-section" aria-labelledby="rf-account-title">
-        <div className="rf-account-heading">
-          <div>
-            <span className="rf-account-kicker">Аналитика</span>
-            <h2 id="rf-account-title">Ваш аккаунт</h2>
-            <p>Подключи Instagram или YouTube и смотри главные цифры без лишних отчётов.</p>
+      <div className="rf-overview-grid">
+        <section className="rf-overview-viral">
+          <div className="rf-overview-section-head">
+            <div><h2>Новые вирусные ролики</h2><p>Лучшие ролики по коэффициенту виральности</p></div>
+            <Link to="/library">Все ролики <ArrowRight size={13} /></Link>
           </div>
 
+          {viralQuery.isLoading ? (
+            <div className="rf-overview-reels is-loading">Загружаем ролики…</div>
+          ) : reels.length ? (
+            <div className="rf-overview-reels">
+              {reels.slice(0, 6).map((reel, index) => (
+                <Link
+                  to={`/reels/${reel.id}`}
+                  className="rf-overview-reel"
+                  style={{ animationDelay: `${90 + index * 55}ms` }}
+                  key={reel.id}
+                >
+                  <div className="rf-overview-reel-media">
+                    <img src={getReelThumbnailUrl(reel.id)} alt="" loading="lazy" />
+                    <span className="rf-overview-platform">Reel</span>
+                    <div className="rf-overview-reel-overlay">
+                      <span><Eye size={11} /> {metricValue(reel.viewsCount)}</span>
+                      {reel.duration ? <span>{Math.round(reel.duration)}с</span> : null}
+                    </div>
+                  </div>
+                  <div className="rf-overview-reel-copy">
+                    <strong>{reel.content.hook || reel.caption || 'Открыть разбор ролика'}</strong>
+                    <span>@{reel.competitor.instagramUsername}</span>
+                    {reel.viralScore ? <em>x{reel.viralScore.viewMultiplier.toFixed(1)} выше среднего</em> : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rf-overview-empty">Добавь конкурента и импортируй ролики — здесь появятся самые сильные находки.</div>
+          )}
+        </section>
+
+        <aside className="rf-overview-side">
+          <div className="rf-overview-section-head">
+            <div><h2>Активность конкурентов</h2><p>Последние сильные сигналы</p></div>
+            <Link to="/competitors">Конкуренты <ArrowRight size={13} /></Link>
+          </div>
+          <div className="rf-overview-activity">
+            {reels.slice(0, 5).map((reel, index) => (
+              <Link to={`/reels/${reel.id}`} className="rf-overview-activity-row" key={reel.id}>
+                <span className={reel.viralScore?.viewMultiplier && reel.viralScore.viewMultiplier >= 4 ? 'is-hot' : ''}>
+                  {reel.viralScore?.viewMultiplier && reel.viralScore.viewMultiplier >= 4 ? <TrendingUp size={12} /> : <Eye size={12} />}
+                </span>
+                <div>
+                  <strong>@{reel.competitor.instagramUsername}</strong>
+                  <p>{reel.viralScore?.label ?? 'Новый ролик в библиотеке'}</p>
+                  <small>{reel.viralScore ? `x${reel.viralScore.viewMultiplier.toFixed(1)}` : metricValue(reel.viewsCount)} · #{index + 1}</small>
+                </div>
+              </Link>
+            ))}
+            {!reels.length ? <div className="rf-overview-side-empty">Пока нет новых событий.</div> : null}
+          </div>
+
+          <div className="rf-overview-quick">
+            <span>Быстрые действия</span>
+            <div>
+              <Link to="/competitors"><Users size={15} /> Конкурент</Link>
+              <Link to="/library"><Bookmark size={15} /> Импорт ролика</Link>
+              <Link to="/ideas"><Plus size={15} /> Новая идея</Link>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <section className="rf-own-account" aria-labelledby="rf-own-account-title">
+        <div className="rf-own-account-heading">
+          <div>
+            <span>Мои сервисы</span>
+            <h2 id="rf-own-account-title">Свой аккаунт</h2>
+            <p>Подключи Instagram или YouTube и держи главные показатели рядом с контентом конкурентов.</p>
+          </div>
           {connectedAccount ? (
-            <div className="rf-account-actions">
-              <button
-                type="button"
-                className="rf-account-icon-button"
-                onClick={() => accountQuery.refetch()}
-                aria-label="Обновить статистику"
-                title="Обновить"
-              >
-                <RefreshCw size={17} className={accountQuery.isFetching ? 'is-spinning' : ''} />
-              </button>
-              <button
-                type="button"
-                className="rf-account-text-button"
-                onClick={() => openConnect(connectedAccount.platform)}
-              >
-                Изменить
-              </button>
-              <button
-                type="button"
-                className="rf-account-text-button is-muted"
-                onClick={disconnectAccount}
-              >
-                Отключить
-              </button>
+            <div className="rf-own-account-actions">
+              <button type="button" onClick={() => accountQuery.refetch()} aria-label="Обновить статистику"><RefreshCw size={16} className={accountQuery.isFetching ? 'is-spinning' : ''} /></button>
+              <button type="button" onClick={() => openConnect(connectedAccount.platform)}>Изменить</button>
+              <button type="button" className="is-muted" onClick={disconnectAccount}>Отключить</button>
             </div>
           ) : null}
         </div>
 
         {!connectedAccount || isConnectOpen ? (
-          <form className="rf-account-connect" onSubmit={handleConnect}>
-            <div className="rf-account-platforms" aria-label="Платформа">
-              <button
-                type="button"
-                className={`rf-account-platform ${draftPlatform === 'instagram' ? 'is-active' : ''}`}
-                onClick={() => setDraftPlatform('instagram')}
-              >
-                <Instagram size={18} />
-                Instagram
-              </button>
-              <button
-                type="button"
-                className={`rf-account-platform ${draftPlatform === 'youtube' ? 'is-active' : ''}`}
-                onClick={() => setDraftPlatform('youtube')}
-              >
-                <Youtube size={19} />
-                YouTube
-              </button>
+          <form className="rf-own-account-connect" onSubmit={handleConnect}>
+            <div className="rf-own-account-platforms">
+              <button type="button" className={draftPlatform === 'instagram' ? 'is-active' : ''} onClick={() => setDraftPlatform('instagram')}><Instagram size={16} /> Instagram</button>
+              <button type="button" className={draftPlatform === 'youtube' ? 'is-active' : ''} onClick={() => setDraftPlatform('youtube')}><Youtube size={17} /> YouTube</button>
             </div>
-
-            <label className="rf-account-input">
-              <span>
-                {draftPlatform === 'instagram'
-                  ? 'Username или ссылка на профиль'
-                  : '@handle, Channel ID или ссылка на канал'}
-              </span>
-              <div>
-                <input
-                  value={draftIdentifier}
-                  onChange={(event) => setDraftIdentifier(event.target.value)}
-                  placeholder={
-                    draftPlatform === 'instagram'
-                      ? '@username'
-                      : '@channel или youtube.com/@channel'
-                  }
-                  autoComplete="off"
-                  required
-                />
-                <button type="submit">Подключить</button>
-              </div>
+            <label>
+              <span>{draftPlatform === 'instagram' ? 'Username или ссылка на профиль' : '@handle, Channel ID или ссылка на канал'}</span>
+              <div><input value={draftIdentifier} onChange={(event) => setDraftIdentifier(event.target.value)} placeholder={draftPlatform === 'instagram' ? '@username' : 'youtube.com/@channel'} required /><button type="submit">Подключить</button></div>
             </label>
-
-            {connectedAccount ? (
-              <button
-                type="button"
-                className="rf-account-cancel"
-                onClick={() => setConnectOpen(false)}
-              >
-                Отмена
-              </button>
-            ) : null}
+            {connectedAccount ? <button type="button" className="rf-own-account-cancel" onClick={() => setConnectOpen(false)}>Отмена</button> : null}
           </form>
         ) : accountQuery.isError ? (
-          <div className="rf-account-error" role="alert">
-            <div>
-              <strong>Не удалось обновить статистику</strong>
-              <span>Проверь аккаунт или ссылку и попробуй ещё раз.</span>
-            </div>
-            <button type="button" onClick={() => accountQuery.refetch()}>
-              Повторить
-            </button>
-          </div>
+          <div className="rf-own-account-error"><div><strong>Не удалось обновить статистику</strong><span>Проверь аккаунт или ссылку и попробуй ещё раз.</span></div><button type="button" onClick={() => accountQuery.refetch()}>Повторить</button></div>
         ) : (
-          <div className="rf-account-summary">
-            <div className="rf-account-profile">
-              <div className="rf-account-avatar">
-                {account?.avatarUrl ? (
-                  <img src={account.avatarUrl} alt="" />
-                ) : (
-                  <AccountPlatformIcon size={23} aria-hidden="true" />
-                )}
-              </div>
-              <div>
-                <span className="rf-account-platform-label">
-                  <AccountPlatformIcon size={14} />
-                  {(account?.platform ?? connectedAccount.platform) === 'youtube'
-                    ? 'YouTube'
-                    : 'Instagram'}
-                </span>
-                <strong>
-                  {account?.displayName ??
-                    (accountQuery.isLoading ? 'Загружаем аккаунт…' : connectedAccount.identifier)}
-                </strong>
-                <small>{account?.identifier ?? connectedAccount.identifier}</small>
-              </div>
+          <div className="rf-own-account-summary">
+            <div className="rf-own-account-profile">
+              <div className="rf-own-account-avatar">{account?.avatarUrl ? <img src={account.avatarUrl} alt="" /> : <AccountPlatformIcon size={22} />}</div>
+              <div><span><AccountPlatformIcon size={13} />{(account?.platform ?? connectedAccount.platform) === 'youtube' ? 'YouTube' : 'Instagram'}</span><strong>{account?.displayName ?? connectedAccount.identifier}</strong><small>{account?.identifier ?? connectedAccount.identifier}</small></div>
             </div>
-
-            <div className="rf-account-metrics" aria-label="Статистика аккаунта">
-              <article className="rf-account-metric">
-                <span><Eye size={18} /> Просмотры</span>
-                <strong>{metricValue(account?.views)}</strong>
-                <small>{account?.viewsLabel ?? 'Обновляем данные'}</small>
-              </article>
-              <article className="rf-account-metric">
-                <span><Users size={18} /> Подписчики</span>
-                <strong>{metricValue(account?.subscribers)}</strong>
-                <small>Сейчас</small>
-              </article>
-              <article className="rf-account-metric">
-                <span><Video size={18} /> Публикации</span>
-                <strong>{metricValue(account?.publications)}</strong>
-                <small>Всего на аккаунте</small>
-              </article>
+            <div className="rf-own-account-metrics">
+              <article><span><Eye size={16} /> Просмотры</span><strong>{metricValue(account?.views)}</strong><small>{account?.viewsLabel ?? 'Обновляем данные'}</small></article>
+              <article><span><Users size={16} /> Подписчики</span><strong>{metricValue(account?.subscribers)}</strong><small>Сейчас</small></article>
+              <article><span><Video size={16} /> Публикации</span><strong>{metricValue(account?.publications)}</strong><small>Всего</small></article>
             </div>
           </div>
         )}
