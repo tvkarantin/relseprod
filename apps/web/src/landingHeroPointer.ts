@@ -1,6 +1,11 @@
 const POINTER_QUERY = '(pointer: fine) and (prefers-reduced-motion: no-preference)'
 
-const REAL_REEL_EMBED = 'https://www.instagram.com/reel/DBUpNT4Nllw/embed/'
+const REAL_REEL_VIDEO =
+  'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?media=DMpuiXeubFY&forceFunctionRegion=ap-northeast-1'
+const REAL_REEL_POSTER =
+  'https://tphahouachokghqlsczf.supabase.co/functions/v1/instagram-imginn?thumbnail=DMpuiXeubFY&forceFunctionRegion=ap-northeast-1&username=garyvee'
+const CREATOR_AVATAR =
+  'https://garyvaynerchuk.com/wp-content/uploads/2026/01/Gary-ChukMedia-headshot-390x585.jpg'
 
 let frameId = 0
 let currentX = 0
@@ -12,29 +17,54 @@ function hydrateRealHeroReel(): boolean {
   const reel = document.querySelector<HTMLElement>('.rf3-main-reel')
   if (!reel) return false
 
-  if (!reel.querySelector('.rf3-real-instagram-embed')) {
-    const media = reel.querySelector<HTMLElement>(':scope > img, :scope > video')
-    const iframe = document.createElement('iframe')
-    iframe.className = 'rf3-real-instagram-embed'
-    iframe.src = REAL_REEL_EMBED
-    iframe.title = 'Instagram Reel @hormozi'
-    iframe.loading = 'eager'
-    iframe.allow = 'autoplay; encrypted-media; picture-in-picture'
-    iframe.setAttribute('allowfullscreen', 'true')
-    iframe.setAttribute('scrolling', 'no')
-    iframe.setAttribute('frameborder', '0')
-    if (media) media.replaceWith(iframe)
-    else reel.prepend(iframe)
+  const currentMedia = reel.querySelector<HTMLElement>(
+    ':scope > img, :scope > video, :scope > iframe',
+  )
+
+  if (!reel.querySelector('.rf3-real-reel-video')) {
+    const video = document.createElement('video')
+    video.className = 'rf3-real-reel-video'
+    video.src = REAL_REEL_VIDEO
+    video.poster = REAL_REEL_POSTER
+    video.muted = true
+    video.loop = true
+    video.autoplay = true
+    video.playsInline = true
+    video.preload = 'metadata'
+    video.setAttribute('aria-label', 'Instagram Reel @garyvee')
+    video.addEventListener('canplay', () => {
+      void video.play().catch(() => undefined)
+    })
+
+    if (currentMedia) currentMedia.replaceWith(video)
+    else reel.prepend(video)
   }
 
   const creatorCard = document.querySelector<HTMLElement>('.rf3-creator-card')
-  if (creatorCard) creatorCard.setAttribute('aria-hidden', 'true')
+  if (creatorCard) {
+    creatorCard.removeAttribute('aria-hidden')
+    const avatar = creatorCard.querySelector<HTMLElement>('.rf3-avatar')
+    const username = creatorCard.querySelector<HTMLElement>('strong')
+    const followers = creatorCard.querySelector<HTMLElement>('small')
+
+    if (avatar && !avatar.querySelector('img')) {
+      avatar.textContent = ''
+      const image = document.createElement('img')
+      image.src = CREATOR_AVATAR
+      image.alt = 'Gary Vaynerchuk'
+      image.loading = 'eager'
+      image.referrerPolicy = 'no-referrer'
+      avatar.append(image)
+    }
+    if (username) username.textContent = '@garyvee'
+    if (followers) followers.textContent = '11.8M подписчиков'
+  }
 
   const viralCard = document.querySelector<HTMLElement>('.rf3-viral-card')
   const viralLabel = viralCard?.querySelector<HTMLElement>('small')
   const viralValue = viralCard?.querySelector<HTMLElement>(':scope > strong')
-  if (viralLabel) viralLabel.textContent = 'Reel выше среднего'
-  if (viralValue) viralValue.textContent = '3.5M+'
+  if (viralLabel) viralLabel.textContent = 'Аудитория автора'
+  if (viralValue) viralValue.textContent = '11.8M'
 
   return true
 }
