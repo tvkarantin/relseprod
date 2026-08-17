@@ -32,7 +32,7 @@ jobs:
           files = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
           changed = []
           for raw in files:
-              if not raw:
+              if not raw or raw == ".github/workflows/rebrand-realsflow.yml":
                   continue
               path = Path(raw)
               try:
