@@ -17,6 +17,7 @@ const ReelDetailsPage = lazy(() => import('@/pages/ReelDetailsPage').then((modul
 const MyReelsPage = lazy(() => import('@/pages/MyReelsPage').then((module) => ({ default: module.MyReelsPage })))
 const ResourcesPage = lazy(() => import('@/pages/ResourcesPage').then((module) => ({ default: module.ResourcesPage })))
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage').then((module) => ({ default: module.SubscriptionPage })))
+const TelegramAuthCallbackPage = lazy(() => import('@/pages/TelegramAuthCallbackPage').then((module) => ({ default: module.TelegramAuthCallbackPage })))
 const AiDashboardPage = lazy(() => import('@/features/ai-dashboard').then((module) => ({ default: module.AiDashboardPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
@@ -105,6 +106,7 @@ export function App() {
       <RouteSeo />
       <Routes>
         <Route index element={<LandingRegistrationGate />} />
+        <Route path="auth/telegram" element={<TelegramAuthCallbackPage />} />
         <Route
           element={
             <>
