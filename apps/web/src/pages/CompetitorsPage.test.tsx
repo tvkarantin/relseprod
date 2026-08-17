@@ -80,7 +80,7 @@ describe('CompetitorsPage', () => {
         'https://instagram.com/newuser',
       ),
     )
-    expect(await screen.findByText(/добавлен/)).toBeInTheDocument()
+    expect(await screen.findByText('Конкурент @newuser добавлен')).toBeInTheDocument()
   })
 
   it('submits the form when Enter is pressed', async () => {
@@ -145,7 +145,7 @@ describe('CompetitorsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Импортировать Reels' }))
 
     await waitFor(() => expect(mockedCompetitors.startImport).toHaveBeenCalledWith(1))
-    expect(await screen.findByText(/Ожидание завершения Actor/)).toBeInTheDocument()
+    expect(await screen.findByText('Получаем рилсы')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
 
     expect(
@@ -175,7 +175,7 @@ describe('CompetitorsPage', () => {
     await user.click(within(panel).getByRole('button', { name: 'Повторить' }))
 
     await waitFor(() => expect(mockedJobs.retryJob).toHaveBeenCalledWith(60))
-    expect(await screen.findByText(/Ожидание завершения Actor/)).toBeInTheDocument()
+    expect(await screen.findByText('Получаем рилсы')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
     await waitFor(() => expect(mockedJobs.fetchJob).toHaveBeenCalledWith(61, expect.any(AbortSignal)))
   })
@@ -195,7 +195,7 @@ describe('CompetitorsPage', () => {
 
     renderWithProviders(<CompetitorsPage />)
 
-    expect(await screen.findByText(/Ожидание завершения Actor/)).toBeInTheDocument()
+    expect(await screen.findByText('Получаем рилсы')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
     await waitFor(() => expect(mockedJobs.fetchJob).toHaveBeenCalledWith(77, expect.any(AbortSignal)))
   })
