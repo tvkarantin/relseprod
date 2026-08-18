@@ -1,4 +1,4 @@
-"""Background task for translating and analyzing a Reel transcript."""
+"""Background task for translating and analyzing a Reel transcript via OpenRouter only."""
 
 import logging
 from typing import Any
