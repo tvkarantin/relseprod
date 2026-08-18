@@ -39,10 +39,11 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, ge=1, le=65535)
 
     database_url: str = "sqlite:///./data/relseprod.db"
-    # Vercel Marketplace (Supabase) injects POSTGRES_URL automatically when
-    # the resource is connected to the project. DATABASE_URL remains the local
-    # development override and takes precedence when it is explicitly non-SQLite.
+    # Vercel Marketplace (Supabase) normally injects POSTGRES_URL. If a custom
+    # prefix was configured as POSTGRES_URL, Vercel exposes POSTGRES_URL_POSTGRES_URL.
+    # Support both so production never falls back to SQLite because of env naming.
     postgres_url: str = ""
+    postgres_url_postgres_url: str = ""
 
     youtube_api_key: str = ""
     youtube_daily_quota_limit: int = Field(default=9000, ge=100, le=10000)
@@ -163,12 +164,13 @@ class Settings(BaseSettings):
     def sqlalchemy_database_url(self) -> str:
         """Return the SQLAlchemy-ready database URL.
 
-        Local development keeps using DATABASE_URL/SQLite. On Vercel, connecting
-        a Supabase Marketplace resource injects POSTGRES_URL, which is used as a
-        fallback. PostgreSQL URLs are normalized to psycopg 3 explicitly.
+        Local development keeps using DATABASE_URL/SQLite. On Vercel, a connected
+        Supabase Marketplace resource provides PostgreSQL credentials. The normal
+        POSTGRES_URL name is preferred, with the custom-prefixed Vercel variable
+        POSTGRES_URL_POSTGRES_URL accepted as a fallback.
         """
         url = self.database_url.strip()
-        postgres_url = self.postgres_url.strip()
+        postgres_url = self.postgres_url.strip() or self.postgres_url_postgres_url.strip()
         if (not url or url.startswith("sqlite")) and postgres_url:
             url = postgres_url
 
