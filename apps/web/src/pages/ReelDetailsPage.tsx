@@ -13,6 +13,7 @@ import {
 import { ErrorState, LoadingState } from '@/components/feedback/States'
 import { useToast } from '@/components/feedback/toastContext'
 import { ReelContentEditor, type ReelContentEditorHandle } from '@/components/forms/ReelContentEditor'
+import { ContentPlanPreparationFlow } from '@/components/reels/ContentPlanPreparationFlow'
 import { ReelPlayer } from '@/components/reels/ReelPlayer'
 import { ReelTranscriptionControls } from '@/components/reels/ReelTranscriptionControls'
 import { ReelAnalysisControls } from '@/components/reels/ReelAnalysisControls'
@@ -96,6 +97,7 @@ export function ReelDetailsPage() {
       )
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.list({}), exact: false })
       void queryClient.invalidateQueries({ queryKey: ['reels', 'my'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reels.contentPlan() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary() })
     },
   })
@@ -148,9 +150,28 @@ export function ReelDetailsPage() {
     return {
       hook: editorRef.current?.getHook() ?? '',
       script: editorRef.current?.getScript() ?? '',
-      cta: editorRef.current?.getCta() ?? ''
+      cta: editorRef.current?.getCta() ?? '',
     }
   }, [])
+
+  const handleMoveToFilmed = useCallback(async () => {
+    const currentValues = handleGetCurrentValues()
+    const cachedReel = queryClient.getQueryData<Reel>(queryKeys.reels.details(reelId))
+
+    try {
+      await saveMutation.mutateAsync({
+        hook: currentValues.hook,
+        script: currentValues.script,
+        cta: currentValues.cta,
+        notes: cachedReel?.content.notes ?? '',
+        contentStatus: 'filmed',
+      })
+      toast.success('Готово — рилс перемещён в «Снято»')
+      navigate('/my-reels')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }, [handleGetCurrentValues, navigate, queryClient, reelId, saveMutation, toast])
 
   if (!Number.isFinite(reelId) || reelId <= 0) {
     return (
@@ -178,55 +199,64 @@ export function ReelDetailsPage() {
 
   const reel = reelQuery.data
   const isAutomaticPreparation = searchParams.get('preparing') === '1'
+  const isContentPlanWorkflow = searchParams.get('workflow') === 'content-plan'
   const title = reel.caption ? truncate(reel.caption, 60) : `Рилс @${reel.competitor.instagramUsername}`
 
   return (
-    <div className="page-content reel-details-page">
+    <div className={`page-content reel-details-page${isContentPlanWorkflow ? ' content-plan-workflow-page' : ''}`}>
       <header className="reel-detail-header">
         <div className="reel-detail-title">
-          <h1>{title}</h1>
-          <p>@{reel.competitor.instagramUsername}</p>
+          {isContentPlanWorkflow ? <span className="eyebrow">Контент-план · Доработка</span> : null}
+          <h1>{isContentPlanWorkflow ? 'Подготовка сценария' : title}</h1>
+          <p>{isContentPlanWorkflow ? title : `@${reel.competitor.instagramUsername}`}</p>
         </div>
         <div className="reel-detail-actions">
-            {reel.content.contentStatus === 'new' ? (
-              <div className="reel-detail-decisions" aria-label="Решение по рилсу">
-                <button
-                  type="button"
-                  className="button button-lime reel-decision-take"
-                  disabled={takeToWorkMutation.isPending || rejectMutation.isPending}
-                  onClick={() => takeToWorkMutation.mutate()}
+          {isContentPlanWorkflow ? (
+            <>
+              <span className="content-badge reel-detail-status content-idea">Доработка</span>
+              <Link to="/my-reels" className="button">← Контент-план</Link>
+            </>
+          ) : (
+            <>
+              {reel.content.contentStatus === 'new' ? (
+                <div className="reel-detail-decisions" aria-label="Решение по рилсу">
+                  <button
+                    type="button"
+                    className="button button-lime reel-decision-take"
+                    disabled={takeToWorkMutation.isPending || rejectMutation.isPending}
+                    onClick={() => takeToWorkMutation.mutate()}
+                  >
+                    {takeToWorkMutation.isPending ? 'Переносим…' : 'Взять в работу'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-danger reel-decision-reject"
+                    disabled={takeToWorkMutation.isPending || rejectMutation.isPending}
+                    onClick={() => rejectMutation.mutate()}
+                  >
+                    {rejectMutation.isPending ? 'Удаляем…' : 'Не подошёл'}
+                  </button>
+                </div>
+              ) : (
+                <span
+                  className={`content-badge reel-detail-status content-${reel.content.contentStatus}`}
                 >
-                  {takeToWorkMutation.isPending ? 'Переносим…' : 'Взять в работу'}
-                </button>
-                <button
-                  type="button"
-                  className="button button-danger reel-decision-reject"
-                  disabled={takeToWorkMutation.isPending || rejectMutation.isPending}
-                  onClick={() => rejectMutation.mutate()}
+                  {CONTENT_STATUS_LABELS[reel.content.contentStatus]}
+                </span>
+              )}
+              <Link to="/ideas" className="button">← К идеям</Link>
+              {reel.originalUrl ? (
+                <a
+                  href={reel.originalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="button"
                 >
-                  {rejectMutation.isPending ? 'Удаляем…' : 'Не подошёл'}
-                </button>
-              </div>
-            ) : (
-              <span
-                className={`content-badge reel-detail-status content-${reel.content.contentStatus}`}
-              >
-                {CONTENT_STATUS_LABELS[reel.content.contentStatus]}
-              </span>
-            )}
-            <Link to="/ideas" className="button">
-              ← К идеям
-            </Link>
-            {reel.originalUrl ? (
-              <a
-                href={reel.originalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="button"
-              >
-                Открыть в Instagram ↗
-              </a>
-            ) : null}
+                  Открыть в Instagram ↗
+                </a>
+              ) : null}
+            </>
+          )}
         </div>
       </header>
 
@@ -250,7 +280,14 @@ export function ReelDetailsPage() {
         </aside>
 
         <section className="reel-detail-workflow" aria-label="Обработка и сценарий">
-          {isAutomaticPreparation ? (
+          {isContentPlanWorkflow ? (
+            <ContentPlanPreparationFlow
+              reelId={reel.id}
+              videoUrl={reel.videoUrl}
+              initialTranscription={reel.transcription}
+              onApplyAnalysis={handleApplyAnalysis}
+            />
+          ) : isAutomaticPreparation ? (
             <AutomaticPreparationStatus reelId={reel.id} />
           ) : (
             <>
@@ -274,7 +311,7 @@ export function ReelDetailsPage() {
               />
             </>
           )}
-          {/* Remounting on reelId resets the editor when navigating between reels. */}
+
           <ReelContentEditor
             ref={editorRef}
             key={reel.id}
@@ -282,6 +319,24 @@ export function ReelDetailsPage() {
             content={reel.content}
             onSave={handleSave}
           />
+
+          {isContentPlanWorkflow ? (
+            <section className="surface content-plan-next-step">
+              <div>
+                <span className="eyebrow">Шаг 3</span>
+                <h2>Сценарий готов?</h2>
+                <p>Отредактируй Hook, основную часть и CTA. Дальше рилс сразу уйдёт в колонку «Снято».</p>
+              </div>
+              <button
+                type="button"
+                className="button button-lime content-plan-next-button"
+                onClick={() => void handleMoveToFilmed()}
+                disabled={saveMutation.isPending}
+              >
+                {saveMutation.isPending ? 'Сохраняем…' : 'Дальше · переместить в «Снято» →'}
+              </button>
+            </section>
+          ) : null}
         </section>
       </div>
     </div>
