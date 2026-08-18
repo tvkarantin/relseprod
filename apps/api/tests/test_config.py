@@ -62,6 +62,33 @@ def test_relative_sqlite_paths_resolve_against_the_api_directory() -> None:
     assert settings.is_sqlite is True
 
 
+def test_prefixed_vercel_postgres_url_is_used_when_database_url_is_sqlite() -> None:
+    settings = make_settings(
+        database_url="sqlite:///./data/relseprod.db",
+        postgres_url="",
+        postgres_url_postgres_url="postgresql://user:pass@db.example.test:5432/postgres",
+    )
+
+    assert (
+        settings.sqlalchemy_database_url
+        == "postgresql+psycopg://user:pass@db.example.test:5432/postgres"
+    )
+    assert settings.is_sqlite is False
+
+
+def test_standard_postgres_url_takes_precedence_over_prefixed_fallback() -> None:
+    settings = make_settings(
+        database_url="sqlite:///./data/relseprod.db",
+        postgres_url="postgresql://standard@db.example.test/postgres",
+        postgres_url_postgres_url="postgresql://prefixed@db.example.test/postgres",
+    )
+
+    assert (
+        settings.sqlalchemy_database_url
+        == "postgresql+psycopg://standard@db.example.test/postgres"
+    )
+
+
 def test_absolute_and_memory_sqlite_urls_are_left_untouched(tmp_path: Path) -> None:
     absolute = f"sqlite:///{(tmp_path / 'x.db').as_posix()}"
     assert make_settings(database_url=absolute).sqlalchemy_database_url == absolute
