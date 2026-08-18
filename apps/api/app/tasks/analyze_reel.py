@@ -1,4 +1,4 @@
-"""Background task for analyzing a Reel transcript via OpenRouter."""
+"""Background task for translating and analyzing a Reel transcript."""
 
 import logging
 from typing import Any
@@ -8,6 +8,7 @@ from app.core.errors import AppError, ErrorCode, InternalError
 from app.database.session import get_session_factory
 from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_transcription import ReelTranscription
+from app.services.ai_gateway import VercelAIGatewayService
 from app.services.openrouter import OpenRouterService
 from app.services.reel_analysis import ReelAnalysisService
 
@@ -22,7 +23,11 @@ def analyze_reel_task(
 ) -> None:
     session = get_session_factory(settings)()
     service = ReelAnalysisService(session, settings)
-    openrouter = OpenRouterService(settings)
+    ai_client = (
+        OpenRouterService(settings)
+        if settings.openrouter_configured
+        else VercelAIGatewayService(settings)
+    )
 
     try:
         service.mark_processing(analysis_id)
@@ -60,7 +65,7 @@ def analyze_reel_task(
                 }
             ]
 
-        result = openrouter.analyze_transcription(
+        result = ai_client.analyze_transcription(
             transcript=transcription.transcript or "",
             utterances=normalized_utterances,
             detected_language=transcription.dominant_language,
@@ -88,5 +93,5 @@ def analyze_reel_task(
         except Exception as inner_exc:
             logger.exception("Failed to mark analysis as failed", exc_info=inner_exc)
     finally:
-        openrouter.close()
+        ai_client.close()
         session.close()
