@@ -95,7 +95,9 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "openai/gpt-oss-120b:free"
+    # Let OpenRouter choose an actually available free model that satisfies
+    # our structured-output requirements instead of pinning one provider/model.
+    openrouter_model: str = "openrouter/free"
     openrouter_timeout_seconds: int = Field(default=180, ge=10, le=1800)
     openrouter_temperature: float = Field(default=0.1, ge=0, le=2)
     openrouter_max_output_tokens: int = Field(default=4096, ge=256, le=16384)
