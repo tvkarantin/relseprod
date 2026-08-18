@@ -6,6 +6,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -14,6 +15,19 @@ API_DIR = Path(__file__).resolve().parents[2]
 """Absolute path of ``apps/api`` — the backend project root."""
 
 DEFAULT_CORS_ORIGINS: tuple[str, ...] = ("http://localhost:4173",)
+
+
+def _sanitize_postgres_url(url: str) -> str:
+    """Remove integration-only query parameters unsupported by libpq/psycopg."""
+    if not url.startswith(("postgres://", "postgresql://")):
+        return url
+    parts = urlsplit(url)
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key.lower() != "supa"
+    ]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
 class AppEnv(StrEnum):
@@ -174,6 +188,7 @@ class Settings(BaseSettings):
         if (not url or url.startswith("sqlite")) and postgres_url:
             url = postgres_url
 
+        url = _sanitize_postgres_url(url)
         if url.startswith("postgres://"):
             return f"postgresql+psycopg://{url[len('postgres://') :]}"
         if url.startswith("postgresql://"):
