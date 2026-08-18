@@ -1,15 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { adaptReel, fetchReels, getReelThumbnailUrl, skipReel } from '@/api/reels'
+import { fetchReels, getReelThumbnailUrl, skipReel, takeReelToWork } from '@/api/reels'
 import { queryKeys } from '@/api/queryKeys'
 import { ErrorState, LoadingState } from '@/components/feedback/States'
 import { useToast } from '@/components/feedback/toastContext'
-import { CreatorProfileDialog } from '@/components/profile/CreatorProfileDialog'
 import { ReelPlayer } from '@/components/reels/ReelPlayer'
-import type { CreatorProfile } from '@/types/creatorProfile'
-import { isCreatorProfileReady, loadCreatorProfile } from '@/types/creatorProfile'
 import { getErrorMessage } from '@/utils/errors'
 import { formatCompactNumber, formatDate, formatDuration, truncate } from '@/utils/format'
 
@@ -19,8 +15,6 @@ export function IdeaFeedPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const toast = useToast()
-  const [isProfileOpen, setProfileOpen] = useState(false)
-  const [adaptAfterProfile, setAdaptAfterProfile] = useState(false)
 
   const feedKey = queryKeys.reels.list(FEED_QUERY)
   const feedQuery = useQuery({
@@ -51,31 +45,17 @@ export function IdeaFeedPage() {
     onError: (error) => toast.error(getErrorMessage(error)),
   })
 
-  const adaptMutation = useMutation({
-    mutationFn: (profile: CreatorProfile) => adaptReel(reel!.id, profile),
-    onSuccess: (result) => {
+  const takeToPlanMutation = useMutation({
+    mutationFn: () => takeReelToWork(reel!.id),
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.reels.all() })
-      toast.success('AI уже готовит первую версию сценария')
-      navigate(`/reels/${result.reelId}?preparing=1`)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reels.contentPlan() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary() })
+      toast.success('Рилс добавлен в контент-план')
+      navigate(`/reels/${saved.reelId}?workflow=content-plan`)
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   })
-
-  const handleAdapt = () => {
-    const profile = loadCreatorProfile()
-    if (!isCreatorProfileReady(profile)) {
-      setAdaptAfterProfile(true)
-      setProfileOpen(true)
-      return
-    }
-    adaptMutation.mutate(profile)
-  }
-
-  const handleProfileSaved = (profile: CreatorProfile) => {
-    if (!adaptAfterProfile) return
-    setAdaptAfterProfile(false)
-    adaptMutation.mutate(profile)
-  }
 
   if (feedQuery.isLoading) {
     return <div className="page-content idea-feed-state"><LoadingState label="Ищем сильную идею…" /></div>
@@ -100,7 +80,7 @@ export function IdeaFeedPage() {
   }
 
   const score = reel.viralScore
-  const isActing = skipMutation.isPending || adaptMutation.isPending
+  const isActing = skipMutation.isPending || takeToPlanMutation.isPending
   const title = truncate(reel.caption || `Рилс @${reel.competitor.instagramUsername}`, 150)
 
   return (
@@ -159,7 +139,7 @@ export function IdeaFeedPage() {
 
           <div className="idea-decision-copy">
             <strong>Подходит вашему контенту?</strong>
-            <span>После выбора AI сам расшифрует, переведёт и соберёт сценарий.</span>
+            <span>Рилс сразу попадёт в контент-план, а транскрипт запустится автоматически.</span>
           </div>
 
           <div className="idea-decisions">
@@ -175,26 +155,15 @@ export function IdeaFeedPage() {
             <button
               type="button"
               className="idea-adapt"
-              onClick={handleAdapt}
+              onClick={() => takeToPlanMutation.mutate()}
               disabled={isActing}
             >
-              <span>{adaptMutation.isPending ? 'Запускаем AI…' : 'Сделать под меня'}</span>
-              <small>транскрипт → перевод → сценарий</small>
+              <span>{takeToPlanMutation.isPending ? 'Добавляем…' : 'Сделать под меня'}</span>
+              <small>контент-план → транскрипт → сценарий</small>
             </button>
           </div>
-
-          <button type="button" className="profile-inline-link" onClick={() => setProfileOpen(true)}>
-            Настроить мой стиль
-          </button>
         </div>
       </article>
-
-      {isProfileOpen ? (
-        <CreatorProfileDialog
-          onClose={() => { setProfileOpen(false); setAdaptAfterProfile(false) }}
-          onSaved={handleProfileSaved}
-        />
-      ) : null}
     </div>
   )
 }
