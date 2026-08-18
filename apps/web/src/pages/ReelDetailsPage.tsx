@@ -322,10 +322,10 @@ export function ReelDetailsPage() {
 
           {isContentPlanWorkflow ? (
             <section className="surface content-plan-next-step">
-              <div>
-                <span className="eyebrow">Шаг 3</span>
-                <h2>Сценарий готов?</h2>
-                <p>Отредактируй Hook, основную часть и CTA. Дальше рилс сразу уйдёт в колонку «Снято».</p>
+              <div className="content-plan-next-copy">
+                <span className="eyebrow">Финал</span>
+                <h2>Готово к съёмке?</h2>
+                <p>Проверь Hook, основную часть и CTA — затем отправь карточку в «Снято».</p>
               </div>
               <button
                 type="button"
@@ -333,7 +333,7 @@ export function ReelDetailsPage() {
                 onClick={() => void handleMoveToFilmed()}
                 disabled={saveMutation.isPending}
               >
-                {saveMutation.isPending ? 'Сохраняем…' : 'Дальше · переместить в «Снято» →'}
+                {saveMutation.isPending ? 'Сохраняем…' : 'Переместить в «Снято» →'}
               </button>
             </section>
           ) : null}
