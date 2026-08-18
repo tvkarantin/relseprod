@@ -42,9 +42,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Log startup/shutdown without touching the database schema."""
     settings: Settings = app.state.settings
     logger.info(
-        "Starting Reels Finder API (env=%s, apify_configured=%s)",
+        "Starting Reels Finder API (env=%s, apify_configured=%s, openrouter_configured=%s)",
         settings.app_env,
         settings.apify_configured,
+        settings.openrouter_configured,
     )
     yield
     logger.info("Reels Finder API stopped")
