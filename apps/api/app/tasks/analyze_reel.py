@@ -8,7 +8,6 @@ from app.core.errors import AppError, ErrorCode, InternalError
 from app.database.session import get_session_factory
 from app.models.reel_analysis import ReelAnalysis
 from app.models.reel_transcription import ReelTranscription
-from app.services.ai_gateway import VercelAIGatewayService
 from app.services.openrouter import OpenRouterService
 from app.services.reel_analysis import ReelAnalysisService
 
@@ -23,11 +22,7 @@ def analyze_reel_task(
 ) -> None:
     session = get_session_factory(settings)()
     service = ReelAnalysisService(session, settings)
-    ai_client = (
-        OpenRouterService(settings)
-        if settings.openrouter_configured
-        else VercelAIGatewayService(settings)
-    )
+    ai_client = OpenRouterService(settings)
 
     try:
         service.mark_processing(analysis_id)
