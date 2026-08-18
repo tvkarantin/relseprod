@@ -1,0 +1,74 @@
+.content-plan-workflow-page .reel-detail-title .eyebrow {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.content-plan-preparation-flow {
+  display: grid;
+  gap: 12px;
+}
+
+.content-plan-preparation-flow .workflow-card {
+  align-items: flex-start;
+}
+
+.content-plan-transcript-card {
+  display: grid;
+  gap: 14px;
+}
+
+.content-plan-transcript-text {
+  width: 100%;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.65;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-subtle, rgba(0, 0, 0, 0.025));
+  color: var(--text);
+  font-size: 14px;
+}
+
+.content-plan-analysis-card .workflow-actions {
+  justify-content: flex-start;
+}
+
+.content-plan-analysis-card .workflow-button-primary {
+  min-height: 44px;
+}
+
+.content-plan-next-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px;
+}
+
+.content-plan-next-step h2 {
+  margin: 4px 0 6px;
+}
+
+.content-plan-next-step p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.content-plan-next-button {
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding-inline: 22px;
+}
+
+@media (max-width: 820px) {
+  .content-plan-next-step {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .content-plan-next-button {
+    width: 100%;
+  }
+}
