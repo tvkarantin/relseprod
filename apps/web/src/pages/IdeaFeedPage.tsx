@@ -22,22 +22,31 @@ export function IdeaFeedPage() {
   const [isProfileOpen, setProfileOpen] = useState(false)
   const [adaptAfterProfile, setAdaptAfterProfile] = useState(false)
 
+  const feedKey = queryKeys.reels.list(FEED_QUERY)
   const feedQuery = useQuery({
-    queryKey: queryKeys.reels.list(FEED_QUERY),
+    queryKey: feedKey,
     queryFn: ({ signal }) => fetchReels(FEED_QUERY, signal),
   })
   const reel = feedQuery.data?.items[0]
 
   const moveToNext = async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.reels.all() })
-    await feedQuery.refetch()
+    // The skip endpoint changes the current reel from NEW to SKIPPED. Fetch the
+    // next NEW reel explicitly and replace the feed cache in one step instead
+    // of relying on an invalidate/refetch race on the same active query.
+    await queryClient.invalidateQueries({ queryKey: queryKeys.reels.all(), refetchType: 'none' })
+    const nextFeed = await fetchReels(FEED_QUERY)
+    queryClient.setQueryData(feedKey, nextFeed)
   }
 
   const skipMutation = useMutation({
     mutationFn: () => skipReel(reel!.id),
     onSuccess: async () => {
-      toast.info('Поняли — такое больше не показываем')
-      await moveToNext()
+      try {
+        await moveToNext()
+        toast.info('Поняли — такое больше не показываем')
+      } catch (error) {
+        toast.error(getErrorMessage(error))
+      }
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   })
@@ -107,7 +116,7 @@ export function IdeaFeedPage() {
         </div>
       </header>
 
-      <article className={`idea-focus ${isActing ? 'is-acting' : ''}`}>
+      <article key={reel.id} className={`idea-focus ${isActing ? 'is-acting' : ''}`}>
         <div className="idea-focus-media">
           <ReelPlayer
             videoUrl={reel.videoUrl}
