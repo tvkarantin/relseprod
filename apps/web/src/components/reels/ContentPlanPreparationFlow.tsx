@@ -133,8 +133,8 @@ export function ContentPlanPreparationFlow({
     <div className="content-plan-preparation-flow">
       <section className="workflow-card content-plan-transcript-card">
         <div className="workflow-card-copy">
-          <span className="eyebrow">Шаг 1</span>
-          <h2>Транскрипт</h2>
+          <span className="eyebrow">01 · Транскрипт</span>
+          <h2>Текст из видео</h2>
           <div className={`workflow-status ${transcriptionStatus === 'completed' ? 'is-success' : ''}`}>
             <i
               className={
@@ -148,7 +148,7 @@ export function ContentPlanPreparationFlow({
             {!transcriptionStatus && 'Запускаем расшифровку автоматически'}
             {transcriptionStatus === 'queued' && 'Расшифровка в очереди'}
             {transcriptionStatus === 'processing' && 'Распознаём речь из видео…'}
-            {transcriptionStatus === 'completed' && transcriptText && 'Транскрипт готов'}
+            {transcriptionStatus === 'completed' && transcriptText && 'Транскрипт готов — можно переходить к разбору'}
             {transcriptionStatus === 'completed' && !transcriptText && 'Речь в видео не обнаружена'}
             {transcriptionStatus === 'failed' &&
               (transcription?.errorMessage || 'Не удалось получить транскрипт')}
@@ -183,8 +183,8 @@ export function ContentPlanPreparationFlow({
 
       <section className="workflow-card content-plan-analysis-card">
         <div className="workflow-card-copy">
-          <span className="eyebrow">Шаг 2</span>
-          <h2>Разложить сценарий</h2>
+          <span className="eyebrow">02 · Структура</span>
+          <h2>Разбор сценария</h2>
           <div className={`workflow-status ${analysis?.status === 'completed' ? 'is-success' : ''}`}>
             <i
               className={
@@ -195,14 +195,22 @@ export function ContentPlanPreparationFlow({
                     : ''
               }
             />
-            {transcriptionStatus !== 'completed' && 'Сначала дождитесь готового транскрипта'}
-            {transcriptionStatus === 'completed' && !analysis && 'AI выделит Hook, основную часть и CTA'}
+            {transcriptionStatus !== 'completed' && 'Ждём готовый транскрипт'}
+            {transcriptionStatus === 'completed' && !analysis && 'AI разложит сценарий на понятные блоки'}
             {analysis?.status === 'queued' && 'Разбор поставлен в очередь'}
-            {analysis?.status === 'processing' && 'AI разбирает видео по структуре…'}
-            {analysis?.status === 'completed' && !analysisApplied && 'Разбор готов'}
-            {analysis?.status === 'completed' && analysisApplied && 'Hook, основная часть и CTA перенесены в редактор'}
+            {analysis?.status === 'processing' && 'AI выделяет Hook, основную часть и CTA…'}
+            {analysis?.status === 'completed' && !analysisApplied && 'Структура готова — перенеси её в редактор'}
+            {analysis?.status === 'completed' && analysisApplied && 'Структура уже перенесена в редактор'}
             {analysis?.status === 'failed' && (analysis.errorMessage || 'Не удалось разобрать сценарий')}
           </div>
+        </div>
+
+        <div className="workflow-structure" aria-label="Структура сценария">
+          <span>Hook</span>
+          <b aria-hidden="true">→</b>
+          <span>Основная часть</span>
+          <b aria-hidden="true">→</b>
+          <span>CTA</span>
         </div>
 
         <div className="workflow-actions">
@@ -213,7 +221,7 @@ export function ContentPlanPreparationFlow({
               onClick={() => startAnalysisMutation.mutate()}
               disabled={analysisPending}
             >
-              {startAnalysisMutation.isPending ? 'Разбираем…' : 'Разложить на Hook · основную часть · CTA'}
+              {startAnalysisMutation.isPending ? 'Разбираем…' : 'Разложить сценарий'}
             </button>
           ) : null}
 
@@ -223,7 +231,7 @@ export function ContentPlanPreparationFlow({
               className="workflow-button workflow-button-primary"
               onClick={applyExistingAnalysis}
             >
-              Перенести разбор в редактор
+              Перенести в редактор
             </button>
           ) : null}
 
