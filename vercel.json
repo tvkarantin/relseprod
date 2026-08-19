@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "fluid": true,
-  "regions": ["fra1"]
+  "regions": ["fra1"],
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" }
+  ]
 }
